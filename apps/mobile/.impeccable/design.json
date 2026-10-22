@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T16:29:17.317Z",
+  "title": "Design System: Aulink · Familia",
+  "extensions": {
+    "typographyMeta": {
+      "status": {
+        "displayName": "Estado en medallón",
+        "purpose": "Tinta oscura, 44/50; 36/41 bajo360; título largo34/39 o28/32. Texto nativo escalable."
+      },
+      "status-compact": {
+        "displayName": "Estado compacto",
+        "purpose": "Medallón bajo360; altura mínima, no fija."
+      }
+    },
+    "motion": [
+      {
+        "name": "medallion-back",
+        "value": "360deg / 28000ms / linear / infinite",
+        "purpose": "Capa trasera; cancela al perder foco, background o reducción de movimiento."
+      },
+      {
+        "name": "medallion-middle",
+        "value": "-360deg / 36000ms / linear / infinite",
+        "purpose": "Segunda capa trasera, sentido opuesto. Frente y contenido sin transform."
+      }
+    ],
+    "effects": [
+      {
+        "name": "glass-materials",
+        "value": "control 22 / action 52 / navigation 68",
+        "purpose": "Stronger neutral glass on history and navigation; weaker controls; optical top-edge highlight."
+      },
+      {
+        "name": "native-blur",
+        "value": "expo-blur ~58.0.5",
+        "purpose": "Single background-only BlurTargetView; Android12+ dimezisBlurViewSdk31Plus; olderAndroid lightweight fallback; supported iOS LiquidGlass else BlurView."
+      },
+      {
+        "name": "web-blur",
+        "value": "11px / 26px / 34px; saturate(125%)",
+        "purpose": "Reduced-transparency preference switches to opaque surfaces."
+      },
+      {
+        "name": "status-orb",
+        "value": "assets/images/status-orb.png",
+        "purpose": "One visual sphere, repeated as opaque scene paint to prevent retained scenes overlapping."
+      },
+      {
+        "name": "attendance-medallion",
+        "value": "assets/images/attendance-shape.svg",
+        "purpose": "Geometría propia en tres capas; posteriores giratorias en sentidos opuestos, frente fijo y texto nativo."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Historial",
+      "kind": "button",
+      "refersTo": "button-history",
+      "description": "Acción de cristal neutro, texto blanco y borde superior más luminoso.",
+      "html": "<button type=\"button\" class=\"ds-history\">Historial de asistencias</button>",
+      "css": ".ds-history { min-height:58px; padding:16px; border:1px solid rgba(255,255,255,.10); border-top-color:rgba(255,255,255,.48); border-bottom-color:rgba(255,255,255,.04); border-radius:18px; background:rgba(255,255,255,.085); color:#fff; font:600 16px/24px system-ui,sans-serif; backdrop-filter:blur(26px) saturate(125%); } .ds-history:active { background:rgba(255,255,255,.12); }"
+    },
+    {
+      "name": "Volver",
+      "kind": "button",
+      "description": "Muestra del texto y objetivo táctil; icono nativo omitido. Sin estados web inventados ni acción de router.",
+      "html": "<button type=\"button\" class=\"ds-back\">Volver</button>",
+      "css": ".ds-back { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 16px 0 0; margin-bottom: 20px; border: none; background: #4C2D73; color: #FFFFFF; font-family: system-ui, sans-serif; font-size: 17px; line-height: 25px; } .ds-back:active { background: rgba(255,255,255,0.12); }"
+    },
+    {
+      "name": "Nota de demostración",
+      "kind": "custom",
+      "description": "Texto observado al pie del contenido, sin interacción.",
+      "html": "<p class=\"ds-demo\">Datos de ejemplo</p>",
+      "css": ".ds-demo { margin: 20px 0 0; background: #4C2D73; color: #E0D4EE; font-family: system-ui, sans-serif; font-size: 12px; line-height: 18px; text-align: center; }"
+    },
+    {
+      "name": "Filtro de evaluación",
+      "kind": "custom",
+      "description": "Muestra de los cuatro filtros compactos; selección funcional pertenece a GradesScreen.",
+      "html": "<div class=\"ds-evaluations\"><button type=\"button\" aria-pressed=\"true\">Total</button><button type=\"button\" aria-pressed=\"false\">Eval. 1</button><button type=\"button\" aria-pressed=\"false\">Eval. 2</button><button type=\"button\" aria-pressed=\"false\">Eval. 3</button></div>",
+      "css": ".ds-evaluations { display:flex; gap:6px; } .ds-evaluations button { flex:1; min-width:0; min-height:48px; padding:12px 8px; border:0; border-radius:16px; background:transparent; color:#E0D4EE; font:13px/20px system-ui,sans-serif; text-align:center; } .ds-evaluations button[aria-pressed=\"true\"] { color:#C8EF9A; font-weight:600; background:rgba(255,255,255,.025); backdrop-filter:blur(11px) saturate(125%); }"
+    }
+  ],
+  "narrative": {
+    "overview": "Interfaz sencilla: fondo morado, texto blanco y acentos verdes, amarillos y rojos. El estado actual del hijo tiene prioridad; su identidad permanece visible. Aplicación de teléfono React Native, adaptativa a iOS y Android, con implementación nativa como fuente visual, no una composición web aprobada.",
+    "keyCharacteristics": [
+      "Medallón orgánico claro para el estado, con acentos semánticos oscuros.",
+      "Cristal neutro para navegación e historial.",
+      "Texto operativo sin subtítulos duplicados."
+    ],
+    "rules": [],
+    "dos": [
+      "**Do** conservar el contexto del hijo y la prioridad del estado actual.",
+      "**Do** usar la paleta de familia y la tipografía nativa del sistema.",
+      "**Do** identificar los datos ficticios y acompañar el color con texto."
+    ],
+    "donts": [
+      "**Don't** aplicar el tema legado a las nuevas pantallas de familia.",
+      "**Don't** inventar fuentes display, rampas tonales, animaciones o estados no observados.",
+      "**Don't** presentar los snippets web como validación nativa: faltan capturas y pruebas visuales en dispositivos, escalado de texto, contraste y tecnologías de asistencia."
+    ]
+  }
+}
