@@ -1,0 +1,21 @@
+# Dependencies and generated output
+node_modules/
+dist/
+dist-ssr/
+.output/
+.nitro/
+.tanstack/
+.expo/
+coverage/
+*.tsbuildinfo
+
+# Secrets (keep example files versionable)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local tooling
+.atl/
+.DS_Store
+*.log

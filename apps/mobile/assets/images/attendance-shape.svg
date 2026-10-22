@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 420" preserveAspectRatio="none">
+  <title>Superficie orgánica de asistencia</title>
+  <!-- Authored UI geometry, adapted to the user's rounded five-sided reference. -->
+  <path fill="#fff" d="M200 18
+    C232 18 255 51 286 75
+    C325 105 376 125 381 171
+    C386 210 366 250 354 290
+    C342 332 340 375 302 392
+    C267 407 230 395 195 398
+    C155 401 110 408 82 379
+    C54 350 55 307 43 268
+    C31 229 11 190 24 153
+    C38 115 85 104 117 80
+    C146 58 168 18 200 18Z"/>
+</svg>

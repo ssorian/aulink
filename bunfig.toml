@@ -1,0 +1,3 @@
+[install]
+# Keep each app’s dependency versions separate (notably React and React Native).
+linker = "isolated"
