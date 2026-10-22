@@ -16,6 +16,7 @@
     "dev:android": "bun run --filter aulink-mobile android",
     "dev:ios": "bun run --filter aulink-mobile ios",
     "dev:mobile:web": "bun run --filter aulink-mobile web",
+    "build:android": "bun run --filter aulink-mobile build:android",
     "build:web": "bun run --filter aulink-web build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint",
