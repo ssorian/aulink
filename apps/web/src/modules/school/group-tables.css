@@ -1,0 +1,74 @@
+.group-table-scroll {
+	overflow: auto;
+	max-height: 65vh;
+	border: 1px solid var(--line);
+	scrollbar-color: var(--line) transparent;
+}
+.group-table-scroll:focus-visible,
+.group-tables button:focus-visible {
+	outline: 2px solid var(--action);
+	outline-offset: 3px;
+}
+.group-table-scroll table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	color: var(--ink);
+	font-variant-numeric: tabular-nums;
+}
+.group-table-scroll caption {
+	text-align: left;
+	padding: 12px;
+}
+.group-table-scroll th,
+.group-table-scroll td {
+	text-align: left;
+	padding: 12px;
+	border-bottom: 1px solid var(--line);
+	white-space: nowrap;
+}
+.group-table-scroll thead th {
+	position: sticky;
+	top: 0;
+	background: var(--surface, #fff);
+	z-index: 1;
+}
+.group-table-scroll small {
+	display: block;
+	font-weight: normal;
+}
+.group-table-scroll tbody tr:hover {
+	background: color-mix(in srgb, var(--action) 5%, transparent);
+}
+.group-tables .day-square {
+	width: 36px;
+	height: 36px;
+	min-width: 36px;
+	padding: 0;
+	border-radius: 4px;
+	background: #edf0f3;
+	color: #374151;
+	border: 1px solid #9ca3af;
+}
+.group-tables .day-square[data-status="E"] {
+	background: #fff0b3;
+	color: #684500;
+	border-color: #ad8000;
+}
+.group-tables .day-square[data-status="C"] {
+	background: #d8efdf;
+	color: #17552b;
+	border-color: #4b845b;
+}
+.group-tables .day-square[data-status="F"] {
+	background: #fbe0df;
+	color: #892721;
+	border-color: #b55c55;
+}
+.group-tables .day-square[aria-pressed="true"] {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+.group-tables details {
+	margin-top: 20px;
+}

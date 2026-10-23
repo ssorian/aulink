@@ -1,0 +1,480 @@
+import { useEffect, useRef, useState } from "react";
+import { Icon } from "../../components/ui/icon";
+import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
+import { CommunicationsView } from "./communications-view";
+import { filterDirectory } from "./experience";
+import { type Field, type Flow, FlowDialog } from "./flow-dialog";
+import { GroupFollowupView } from "./group-followup-view";
+import { GroupDirectory, GroupWorkspace } from "./group-workspace";
+import { HomeView } from "./home-view";
+import { buildMockData, mergeMockData } from "./mock-data";
+import { type SchoolPage, schoolNavigation, sectionFor } from "./navigation";
+import { SetupView } from "./setup-view";
+import { StaffView } from "./staff-view";
+import { StudentProfile } from "./student-profile";
+import { StudentsView } from "./students-view";
+import { field, options } from "./view-helpers";
+import { apply, previewCSV, restore, type State } from "./workflows";
+
+export function schoolBreadcrumb(section: string, page: string) {
+	return [
+		"Administración",
+		...(section === "Administración" ? [] : [section]),
+		...(page === section ? [] : [page]),
+	].join(" / ");
+}
+
+export function SchoolApp() {
+	const [s, setState] = useState<State>(buildMockData);
+	const [ready, setReady] = useState(false);
+	const [storage, setStorage] = useState("Cargando almacenamiento local…");
+	const [page, setPage] = useState<SchoolPage>("Inicio");
+	const section = sectionFor(page);
+	const [followupGroup, setFollowupGroup] = useState("");
+	const [flow, setFlow] = useState<Flow | null>(null);
+	const [message, setMessage] = useState("");
+	const [query, setQuery] = useState("");
+	const [groupFilter, setGroupFilter] = useState("");
+	const [profile, setProfile] = useState("");
+	const [groupId, setGroupId] = useState("");
+	const [profileOrigin, setProfileOrigin] = useState("");
+	const directoryPosition = useRef({ x: 0, y: 0, top: 0, left: 0 });
+	const groupPosition = useRef({ x: 0, y: 0 });
+	const [groupTabs, setGroupTabs] = useState<Record<string, string>>({});
+	const [noticeGroup, setNoticeGroup] = useState("");
+	const [cycleFilter, setCycleFilter] = useState("");
+	const [csv, setCSV] = useState("Nombre,Matrícula,Grupo");
+	const [csvPreview, setCSVPreview] = useState(false);
+	useEffect(() => {
+		try {
+			const raw = localStorage.getItem("aulink-school-demo-v1");
+			const saved = raw ? restore(raw) : null;
+			const loaded = saved || buildMockData();
+			setState(loaded);
+			setCSV(
+				`Nombre,Matrícula,Grupo\nAlumna Demo,DEMO-IMPORT-001,${loaded.groups[0]?.id || ""}`,
+			);
+			setStorage(
+				raw && !saved
+					? "Datos locales inválidos: se recuperó el ejemplo inicial."
+					: "Datos guardados solo en este navegador.",
+			);
+		} catch {
+			setStorage(
+				"Almacenamiento no disponible: los cambios solo durarán esta sesión.",
+			);
+		}
+		setReady(true);
+	}, []);
+	function commit(next: State) {
+		setState(next);
+		try {
+			localStorage.setItem("aulink-school-demo-v1", JSON.stringify(next));
+			setStorage("Cambios guardados solo en este navegador.");
+		} catch {
+			setStorage(
+				"No se pudo guardar: cambios solo en memoria; se perderán al recargar.",
+			);
+		}
+		setMessage("Cambio aplicado.");
+	}
+	function open(
+		kind: string,
+		title: string,
+		fields: Field[],
+		values: Record<string, string> = {},
+		preview?: string[],
+		description = "Completa la información, revisa el resumen y confirma. Cancelar conserva la captura sin aplicar cambios.",
+	) {
+		setFlow({ kind, title, fields, values, preview, description });
+	}
+
+	const groups = options(
+		"group",
+		"Grupo / ciclo",
+		s.groups.map((g) => ({
+			id: g.id,
+			name: `${g.name} · ${s.cycles.find((c) => c.id === g.cycle)?.name}`,
+		})),
+	);
+	const groupName = (id: string | undefined) =>
+		s.groups.find((x) => x.id === id)?.name || "Sin grupo";
+	const selected = s.students.find((x) => x.id === profile);
+	const rows = previewCSV(s, csv);
+	const visible = filterDirectory(s, query, groupFilter, cycleFilter);
+	const contextGroup = s.groups.find(
+		(g) =>
+			g.id ===
+			(page === "Grupos"
+				? groupId
+				: page === "Comunicados"
+					? noticeGroup
+					: page === "Calificaciones" ||
+							page === "Asistencia" ||
+							page === "Conducta"
+						? followupGroup
+						: page === "Alumnos" && !profile
+							? groupFilter
+							: ""),
+	);
+	const contextCycle =
+		contextGroup?.cycle || (page === "Alumnos" && !profile ? cycleFilter : "");
+	function openDirectoryProfile(id: string) {
+		const table = document
+			.getElementById(`student-${id}`)
+			?.closest<HTMLElement>(".table-scroll");
+		directoryPosition.current = {
+			x: window.scrollX,
+			y: window.scrollY,
+			top: table?.scrollTop || 0,
+			left: table?.scrollLeft || 0,
+		};
+		setProfileOrigin("");
+		setProfile(id);
+		window.scrollTo(0, 0);
+	}
+	function returnFromProfile() {
+		setProfile("");
+		if (profileOrigin) {
+			setGroupId(profileOrigin);
+			setPage("Grupos");
+			requestAnimationFrame(() => {
+				window.scrollTo(groupPosition.current.x, groupPosition.current.y);
+				document
+					.getElementById(`group-${profileOrigin}-student-${profile}`)
+					?.focus({ preventScroll: true });
+			});
+		} else {
+			requestAnimationFrame(() => {
+				const trigger = document.getElementById(`student-${profile}`);
+				const table = trigger?.closest<HTMLElement>(".table-scroll");
+				const position = directoryPosition.current;
+				if (table) {
+					table.scrollTop = position.top;
+					table.scrollLeft = position.left;
+				}
+				window.scrollTo(position.x, position.y);
+				trigger?.focus({ preventScroll: true });
+			});
+		}
+	}
+	function loadExamples() {
+		const result = mergeMockData(s);
+		open(
+			"mock-data",
+			"Agregar datos de ejemplo",
+			[],
+			{},
+			[
+				"36 alumnos ficticios, 6 grupos, historial, materias, horarios, avisos y equipos de ejemplo. Los registros existentes no se editan ni se borran.",
+				`Se agregarán ${result.added} registros nuevos. ${result.conflicts.length} conflictos o dependencias omitidas; se conservan los datos existentes.`,
+				...result.conflicts.slice(0, 12),
+				...(result.conflicts.length > 12
+					? [
+							`Otras ${result.conflicts.length - 12} omisiones conservadoras; no se reasignan registros.`,
+						]
+					: []),
+				"Volver a cargar no duplica registros. Sin contactos reales, QR, correo ni push.",
+			],
+			"Revisa la incorporación de datos sintéticos a este navegador. Cancelar no modifica nada.",
+		);
+	}
+	const storageError =
+		/^(Datos locales inválidos|Almacenamiento no disponible|No se pudo guardar)/.test(
+			storage,
+		);
+	const schoolLabel = s.school.name.replace(/\s*·\s*Demo\s*$/, "");
+	const addStudent = () =>
+		open("student", "Inscribir alumno", [
+			field("name", "Nombre del alumno"),
+			field("matricula", "Matrícula única"),
+			groups,
+		]);
+	return (
+		<div className="app">
+			<a className="skip-link" href="#main">
+				Saltar al contenido
+			</a>
+			<aside className="sidebar">
+				<a className="brand" href="#main">
+					<span>á</span> aulink<span className="brand-dot">●</span>
+				</a>
+				<div className="school-mark">
+					<span className="avatar">IA</span>
+					<div>
+						<strong>{schoolLabel}</strong>
+					</div>
+				</div>
+				<nav aria-label="Administración escolar">
+					{schoolNavigation.map((item) => (
+						<button
+							type="button"
+							key={item.label}
+							aria-current={section === item ? "page" : undefined}
+							onClick={() => {
+								setPage(item.pages[0]);
+								setMessage("");
+							}}
+						>
+							<Icon name={item.icon} size={20} />
+							{item.label}
+						</button>
+					))}
+				</nav>
+			</aside>
+			<div className="main-shell">
+				<header className="topbar">
+					<span>{schoolBreadcrumb(section.label, page)}</span>
+					<section className="context-bar" aria-label="Contexto de consulta">
+						<strong className="context-school">{schoolLabel}</strong>
+						<span>
+							{s.cycles.find((c) => c.id === contextCycle)?.name ||
+								(page === "Alumnos" && profile
+									? "Historial completo"
+									: "Todos los ciclos")}
+						</span>
+						{contextGroup && <span>Grupo {contextGroup.name}</span>}
+						{page === "Alumnos" && selected && (
+							<span>Expediente: {selected.name}</span>
+						)}
+					</section>
+				</header>
+				<main id="main" tabIndex={-1}>
+					<div className="page-heading">
+						<div>
+							<h1>{section.label}</h1>
+						</div>
+					</div>
+					{section.pages.length > 1 && (
+						<WorkspaceTabs
+							label={section.label}
+							items={section.pages}
+							value={page}
+							onChange={(destination) => {
+								setPage(destination);
+								setMessage("");
+							}}
+						/>
+					)}
+					{storageError && (
+						<div className="notice error" role="alert">
+							{storage}
+						</div>
+					)}
+					{message && <output className="feedback">{message}</output>}
+					{!ready ? (
+						<p>Cargando…</p>
+					) : (
+						<>
+							{page === "Inicio" && (
+								<HomeView
+									s={s}
+									onNavigate={(destination) => {
+										const pages = {
+											students: "Alumnos",
+											groups: "Grupos",
+											communications: "Comunicados",
+											setup: "Terminales",
+										} satisfies Record<typeof destination, SchoolPage>;
+										setPage(pages[destination]);
+										if (destination === "students") {
+											setProfile("");
+											setProfileOrigin("");
+										}
+										if (destination === "groups") setGroupId("");
+										if (destination === "communications") setNoticeGroup("");
+										setMessage("");
+										requestAnimationFrame(() =>
+											document.getElementById("main")?.focus(),
+										);
+									}}
+								/>
+							)}
+							{page === "Alumnos" &&
+								(profile ? (
+									<StudentProfile
+										key={profile}
+										s={s}
+										open={open}
+										studentId={profile}
+										onBack={returnFromProfile}
+										backLabel={
+											profileOrigin
+												? "Volver al grupo de origen"
+												: "Volver a Alumnos"
+										}
+										onGroup={(id) => {
+											setGroupId(id);
+											setPage("Grupos");
+										}}
+									/>
+								) : (
+									<>
+										<label className="cycle-filter">
+											Ciclo del directorio
+											<select
+												value={cycleFilter}
+												onChange={(e) => {
+													setCycleFilter(e.target.value);
+													setGroupFilter("");
+												}}
+											>
+												<option value="">Todos los ciclos</option>
+												{s.cycles.map((c) => (
+													<option key={c.id} value={c.id}>
+														{c.name}
+													</option>
+												))}
+											</select>
+										</label>
+										<StudentsView
+											s={s}
+											open={open}
+											groups={groups}
+											groupName={groupName}
+											query={query}
+											setQuery={setQuery}
+											groupFilter={groupFilter}
+											setGroupFilter={setGroupFilter}
+											profile={profile}
+											setProfile={openDirectoryProfile}
+											cycleFilter={cycleFilter}
+											onClearFilters={() => {
+												setQuery("");
+												setGroupFilter("");
+												setCycleFilter("");
+											}}
+											selected={selected}
+											csv={csv}
+											setCSV={setCSV}
+											csvPreview={csvPreview}
+											setCSVPreview={setCSVPreview}
+											rows={rows}
+											visible={visible}
+											addStudent={addStudent}
+										/>
+									</>
+								))}
+							{page === "Grupos" &&
+								(groupId ? (
+									<GroupWorkspace
+										key={groupId}
+										s={s}
+										open={open}
+										groupId={groupId}
+										tab={groupTabs[groupId] || "Alumnos"}
+										setTab={(tab) =>
+											setGroupTabs({ ...groupTabs, [groupId]: tab })
+										}
+										onBack={() => setGroupId("")}
+										onStudent={(id) => {
+											groupPosition.current = {
+												x: window.scrollX,
+												y: window.scrollY,
+											};
+											setProfileOrigin(groupId);
+											setProfile(id);
+											setPage("Alumnos");
+										}}
+										onNotice={(id) => {
+											setNoticeGroup(id);
+											setPage("Comunicados");
+										}}
+									/>
+								) : (
+									<GroupDirectory s={s} open={open} onSelect={setGroupId} />
+								))}
+							{page === "Comunicados" && (
+								<>
+									{noticeGroup && (
+										<div className="notice">
+											<strong>
+												Desde {s.groups.find((g) => g.id === noticeGroup)?.name}{" "}
+												·{" "}
+												{
+													s.cycles.find(
+														(c) =>
+															c.id ===
+															s.groups.find((g) => g.id === noticeGroup)?.cycle,
+													)?.name
+												}
+											</strong>
+											<div className="actions">
+												<button
+													type="button"
+													onClick={() => {
+														setGroupId(noticeGroup);
+														setPage("Grupos");
+													}}
+												>
+													← Volver al grupo
+												</button>
+												<button
+													type="button"
+													onClick={() => setNoticeGroup("")}
+												>
+													Quitar contexto de grupo
+												</button>
+											</div>
+										</div>
+									)}
+									<CommunicationsView
+										s={s}
+										open={open}
+										contextGroup={noticeGroup}
+									/>
+								</>
+							)}
+							{page === "Personal" && <StaffView s={s} open={open} />}
+							{(page === "Calificaciones" ||
+								page === "Asistencia" ||
+								page === "Conducta") && (
+								<GroupFollowupView
+									s={s}
+									open={open}
+									mode={page}
+									groupId={followupGroup}
+									onGroup={setFollowupGroup}
+								/>
+							)}
+							{(page === "Configuración" ||
+								page === "Ciclos y calendario" ||
+								page === "Terminales") && (
+								<SetupView
+									tab={page === "Configuración" ? "Escuela" : page}
+									s={s}
+									open={open}
+									storageStatus={storage}
+									onLoadExamples={loadExamples}
+								/>
+							)}
+						</>
+					)}
+				</main>
+			</div>
+			<FlowDialog
+				flow={flow}
+				onClose={() => setFlow(null)}
+				onConfirm={(values) => {
+					if (!flow) return;
+					let next = s;
+					const samples = flow.kind === "mock-data" ? mergeMockData(s) : null;
+					if (samples) next = samples.state;
+					else if (flow.kind === "import") {
+						for (const r of previewCSV(s, csv).filter((r) => !r.error))
+							next = apply(next, {
+								kind: "student",
+								data: { name: r.name, matricula: r.matricula, group: r.group },
+							});
+					} else next = apply(s, { kind: flow.kind, data: values });
+					commit(next);
+					if (samples)
+						setMessage(
+							`Datos de ejemplo: ${samples.added} registros agregados; ${samples.conflicts.length} omisiones por conflicto. Todo registro existente se conservó.`,
+						);
+					setFlow(null);
+				}}
+			/>
+		</div>
+	);
+}

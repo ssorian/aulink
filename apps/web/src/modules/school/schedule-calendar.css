@@ -1,0 +1,198 @@
+.schedule-calendar {
+	color: var(--ink, #30263f);
+	min-width: 0;
+	font-variant-numeric: tabular-nums;
+}
+.schedule-calendar p {
+	color: var(--ink-muted, #635570);
+	max-width: 75ch;
+}
+.schedule-header,
+.schedule-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin: 20px 0;
+}
+.schedule-header h2 {
+	margin-bottom: 6px;
+}
+.schedule-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+.schedule-calendar button,
+.schedule-calendar input,
+.schedule-calendar summary {
+	min-height: 44px;
+}
+.schedule-calendar button {
+	color: var(--action, #67409e);
+}
+.schedule-calendar button.primary {
+	color: white;
+	background: var(--action, #67409e);
+}
+.schedule-calendar button:disabled {
+	cursor: not-allowed;
+}
+.schedule-calendar :focus-visible {
+	outline: 3px solid var(--action, #67409e);
+	outline-offset: 3px;
+}
+.schedule-calendar ::selection {
+	background: var(--action, #67409e);
+	color: white;
+}
+.schedule-calendar input {
+	caret-color: var(--action, #67409e);
+}
+.schedule-disclaimer {
+	border: 1px solid var(--line, #ddd4e8);
+	padding: 12px 16px;
+	border-radius: 8px;
+	background: var(--surface, #fff);
+}
+.schedule-scroll {
+	overflow: auto;
+	max-height: 650px;
+	border: 1px solid var(--line, #ddd4e8);
+	margin-top: 12px;
+	scrollbar-color: var(--action, #67409e) var(--surface, #fff);
+	scrollbar-width: thin;
+	scroll-padding-top: 120px;
+}
+.schedule-grid {
+	display: grid;
+	grid-template-columns: 70px repeat(7, minmax(160px, 1fr));
+	min-width: 1190px;
+	background: var(--surface, #fff);
+}
+.schedule-corner,
+.schedule-day-heading {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	background: var(--surface, #fff);
+	border-bottom: 1px solid var(--line, #ddd4e8);
+	padding: 8px;
+}
+.schedule-day-heading {
+	border-left: 1px solid var(--line, #ddd4e8);
+}
+.schedule-day-heading button {
+	width: 100%;
+	text-align: left;
+}
+.schedule-day-heading button[aria-pressed="true"] {
+	background: var(--action, #67409e);
+	color: white;
+}
+.schedule-day-heading p {
+	font-size: 12px;
+	line-height: 1.5;
+	margin-top: 6px;
+}
+.schedule-axis {
+	position: sticky;
+	left: 0;
+	z-index: 10;
+	background: var(--surface, #fff);
+}
+.schedule-axis span {
+	position: absolute;
+	right: 8px;
+	font-size: 12px;
+	color: var(--ink-muted, #635570);
+}
+.schedule-day {
+	position: relative;
+	border-left: 1px solid var(--line, #ddd4e8);
+}
+.schedule-day-off {
+	background: var(--surface-muted, #f5f2f8);
+}
+.schedule-hour-line {
+	position: absolute;
+	left: 0;
+	right: 0;
+	border-top: 1px solid var(--line, #ddd4e8);
+}
+.schedule-block {
+	position: absolute;
+	overflow: hidden;
+	padding: 5px;
+	font-size: 12px;
+	line-height: 1.4;
+	border: 1px solid var(--action, #67409e);
+	background: var(--surface-muted, #f0eafa);
+	color: var(--ink, #30263f);
+	border-radius: 5px;
+}
+.schedule-block strong,
+.schedule-block span {
+	display: block;
+}
+.schedule-cancel,
+.schedule-move {
+	background: var(--surface, #fff);
+	border-style: dashed;
+}
+.schedule-cancel strong {
+	text-decoration: line-through;
+}
+.schedule-moved {
+	border-width: 2px;
+}
+.schedule-detail,
+.schedule-settings,
+.schedule-series {
+	margin-top: 28px;
+}
+.schedule-detail h3,
+.schedule-settings h3 {
+	margin-bottom: 8px;
+	font-size: 18px;
+}
+.schedule-occurrence {
+	border-bottom: 1px solid var(--line, #ddd4e8);
+	padding: 16px 0;
+}
+.schedule-occurrence h4 {
+	margin: 0 0 4px;
+	font-size: 15px;
+}
+.schedule-occurrence .schedule-controls {
+	margin-top: 12px;
+}
+.schedule-calendar summary {
+	display: list-item;
+	cursor: pointer;
+	padding: 12px 0;
+	color: var(--action, #67409e);
+}
+.schedule-calendar details p {
+	margin: 8px 0;
+	overflow-wrap: anywhere;
+}
+.schedule-settings button {
+	margin-top: 12px;
+}
+@media (max-width: 760px) {
+	.schedule-toolbar label {
+		width: 100%;
+	}
+	.schedule-header .schedule-controls {
+		width: 100%;
+	}
+	.schedule-controls button {
+		flex-grow: 1;
+	}
+	.schedule-scroll {
+		max-height: 520px;
+	}
+}
