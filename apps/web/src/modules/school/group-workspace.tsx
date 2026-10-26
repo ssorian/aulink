@@ -1,10 +1,11 @@
 import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
-import { Panel } from "../../components/ui/panel";
-import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
+import { Icon } from "../../components/ui/icon";
+import "./group-directory.css";
 import { useState } from "react";
+import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
 import { GroupAttendanceTable } from "./group-attendance-table";
-import { ScheduleCalendar } from "./schedule-calendar";
 import { GroupGradesTable } from "./group-grades-table";
+import { ScheduleCalendar } from "./schedule-calendar";
 import "./group-tables.css";
 import { groupScope, registrationContext } from "./group-context";
 import { field, options, reason } from "./view-helpers";
@@ -247,8 +248,18 @@ export function GroupDirectory({
 			(!shift || g.shift === shift),
 	);
 	return (
-		<>
-			<div className="actions">
+		<section
+			className="panel group-directory"
+			aria-label="Grupos de la escuela"
+		>
+			<header className="group-directory-header">
+				<div>
+					<h2>Grupos de la escuela</h2>
+					<p>
+						{list.length} {list.length === 1 ? "grupo" : "grupos"} · Alumnos con
+						inscripción activa en cada ciclo
+					</p>
+				</div>
 				<button
 					className="primary"
 					type="button"
@@ -266,10 +277,11 @@ export function GroupDirectory({
 						)
 					}
 				>
+					<Icon name="plus" size={18} />
 					Crear grupo
 				</button>
-			</div>
-			<section className="panel filters">
+			</header>
+			<div className="group-filters">
 				<label>
 					Ciclo
 					<select value={cycle} onChange={(e) => setCycle(e.target.value)}>
@@ -303,58 +315,54 @@ export function GroupDirectory({
 						)}
 					</select>
 				</label>
-			</section>
-			<Panel
-				heading="Grupos de la escuela"
-				description={`${list.length} grupos · Alumnos con inscripción activa en cada ciclo`}
-			>
-				<DataTable caption="Directorio de grupos">
-					<thead>
-						<tr>
-							<th scope="col">Grupo</th>
-							<th scope="col">Ciclo</th>
-							<th scope="col">Grado</th>
-							<th scope="col">Turno</th>
-							<th scope="col">Alumnos activos</th>
-							<th scope="col">Acciones</th>
+			</div>
+			<DataTable caption="Directorio de grupos">
+				<thead>
+					<tr>
+						<th scope="col">Grupo</th>
+						<th scope="col">Ciclo</th>
+						<th scope="col">Grado</th>
+						<th scope="col">Turno</th>
+						<th scope="col">Alumnos activos</th>
+						<th scope="col">Acciones</th>
+					</tr>
+				</thead>
+				<tbody>
+					{list.map((g) => (
+						<tr key={g.id}>
+							<th scope="row">{g.name}</th>
+							<td>
+								{s.cycles.find((c) => c.id === g.cycle)?.name ||
+									"Ciclo no definido"}
+							</td>
+							<td>{g.grade || "Grado no definido"}</td>
+							<td>{g.shift || "Turno no definido"}</td>
+							<td>
+								{
+									s.students.filter(
+										(student) => activeGroup(s, student.id, g.cycle) === g.id,
+									).length
+								}
+							</td>
+							<td>
+								<button
+									type="button"
+									className="group-open"
+									aria-label={`Abrir grupo ${g.name}`}
+									onClick={() => onSelect(g.id)}
+								>
+									Abrir grupo
+								</button>
+							</td>
 						</tr>
-					</thead>
-					<tbody>
-						{list.map((g) => (
-							<tr key={g.id}>
-								<th scope="row">{g.name}</th>
-								<td>
-									{s.cycles.find((c) => c.id === g.cycle)?.name ||
-										"Ciclo no definido"}
-								</td>
-								<td>{g.grade || "Grado no definido"}</td>
-								<td>{g.shift || "Turno no definido"}</td>
-								<td>
-									{
-										s.students.filter(
-											(student) => activeGroup(s, student.id, g.cycle) === g.id,
-										).length
-									}
-								</td>
-								<td>
-									<button
-										type="button"
-										aria-label={`Abrir grupo ${g.name}`}
-										onClick={() => onSelect(g.id)}
-									>
-										Abrir grupo
-									</button>
-								</td>
-							</tr>
-						))}
-						{!list.length && (
-							<EmptyTableRow columns={6}>
-								No hay grupos para estos filtros.
-							</EmptyTableRow>
-						)}
-					</tbody>
-				</DataTable>
-			</Panel>
-		</>
+					))}
+					{!list.length && (
+						<EmptyTableRow columns={6}>
+							No hay grupos para estos filtros.
+						</EmptyTableRow>
+					)}
+				</tbody>
+			</DataTable>
+		</section>
 	);
 }
