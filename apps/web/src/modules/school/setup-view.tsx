@@ -1,5 +1,6 @@
 import { DevicesView } from "./credentials-view";
-import { field, reason } from "./view-helpers";
+import { CycleCalendar } from "./cycle-calendar";
+import { field } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 export function SetupView({
 	s,
@@ -44,52 +45,7 @@ export function SetupView({
 					</p>
 				</section>
 			)}
-			{tab === "Ciclos y calendario" && (
-				<div className="two-columns">
-					<section className="panel">
-						<h2>Ciclos escolares</h2>
-						<button
-							type="button"
-							onClick={() =>
-								open("cycle", "Crear ciclo", [
-									field("name", "Nombre del ciclo"),
-								])
-							}
-						>
-							Crear ciclo
-						</button>
-						{s.cycles.map((c) => (
-							<article className="list-row" key={c.id}>
-								<h3>{c.name}</h3>
-								<p>
-									{s.groups.filter((g) => g.cycle === c.id).length} grupos ·
-									administra sus alumnos y materias en Grupos.
-								</p>
-							</article>
-						))}
-					</section>
-					<section className="panel">
-						<h2>Calendario global</h2>
-						<button
-							type="button"
-							onClick={() =>
-								open("exception", "Agregar día sin clase", [
-									field("date", "Fecha", "date"),
-									reason,
-								])
-							}
-						>
-							Agregar día sin clase
-						</button>
-						{s.exceptions.map((x) => (
-							<p key={x.id}>
-								{x.date} · {x.reason}
-							</p>
-						))}
-						<p>No se generan faltas automáticas.</p>
-					</section>
-				</div>
-			)}
+			{tab === "Ciclos y calendario" && <CycleCalendar s={s} open={open} />}
 			{tab === "Terminales" && <DevicesView s={s} open={open} />}
 			{tab === "Escuela" && (
 				<details className="storage-tools">
