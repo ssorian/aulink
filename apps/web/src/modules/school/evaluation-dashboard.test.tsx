@@ -2,6 +2,11 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EvaluationDashboard } from "./evaluation-dashboard";
+import {
+	buildEvaluationData,
+	buildEvaluationMatrix,
+	summarizeEvaluation,
+} from "./evaluation-results";
 import { initialState, type State } from "./workflows";
 
 function fixture() {
@@ -73,37 +78,58 @@ function render(s: State = fixture(), cycleId = "c1") {
 		/>,
 	);
 }
-test("analytics charts precede the semantic results table with explicit filters", () => {
+
+test("group and subject charts are primary, with the matrix collapsed below", () => {
 	const html = render();
 	for (const text of [
 		"Resultados académicos",
-		"Promedio por evaluación",
-		"Comparación por grupo",
-		"Resultados por grupo, evaluación y materia",
+		"Promedio publicado",
+		"Resultados por grupo y materia",
+		"Promedio por grupo",
+		"Promedio por materia",
+		"Ver tabla de resultados",
+		"Todos los periodos",
 	])
 		expect(html).toContain(text);
-	expect(html.indexOf("Comparación por grupo")).toBeLessThan(
-		html.indexOf("<table"),
-	);
-	for (const id of ["cycle", "scale", "period", "subject"])
+	for (const id of ["cycle", "scale", "period", "subject", "group", "sort"])
 		expect(html).toContain(`for="evaluation-${id}"`);
-	expect(html).not.toContain('value="">Todos');
-	expect(html).toContain(
-		'aria-label="Abrir grupo 1° A · Matemáticas · Primera"',
+	expect(html).toContain('class="evaluation-charts"');
+	expect(html.indexOf('id="evaluation-group-chart"')).toBeLessThan(
+		html.indexOf('class="evaluation-table-detail"'),
 	);
+	expect(html.indexOf('id="evaluation-subject-chart"')).toBeLessThan(
+		html.indexOf('class="evaluation-table-detail"'),
+	);
+	expect(html).toContain('<details class="evaluation-table-detail">');
+	expect(html).toContain('aria-label="Abrir grupo 1° A"');
+	expect(html).not.toContain("evaluation-track");
+	expect(html).not.toContain('<th scope="col">Acción');
+	expect(html).toContain('id="evaluation-group-chart"');
 });
-test("published zero is a result, drafts are absent and scales never combine", () => {
+
+test("published zero remains numeric, missing and draft values are dashes", () => {
 	const html = render();
 	expect(html).toContain('class="evaluation-mean">0</strong>');
 	expect(html).toContain("1 calificación publicada");
-	expect(html).toContain("Sin resultados publicados");
+	expect(html).toContain('aria-hidden="true">—');
+	expect(html).toContain(
+		'class="evaluation-sr-only">Sin resultados publicados',
+	);
 	expect(html).not.toContain("7.777");
 	expect(html).not.toContain(">95<");
-	expect(html).not.toContain("<td>Otra escala</td>");
+	expect(html).not.toContain('<th scope="col">Otra escala</th>');
 	expect(html).toContain("Escala 0–100");
-	expect(html).toContain('style="width:0%"');
 });
-test("empty data explains publication without fabricating group links", () => {
+
+test("single scale is context rather than an unnecessary selector", () => {
+	const s = fixture();
+	s.assignments.pop();
+	const html = render(s);
+	expect(html).not.toContain('id="evaluation-scale"');
+	expect(html).toContain("Escala 0–10");
+});
+
+test("empty data explains publication without fabricating group links or zero", () => {
 	const s = initialState();
 	s.groups = [];
 	s.assignments = [];
@@ -114,6 +140,7 @@ test("empty data explains publication without fabricating group links", () => {
 	expect(html).not.toContain("Abrir grupo");
 	expect(html).not.toContain('class="evaluation-mean">0');
 });
+
 test("cycle-specific scales fall back to the available scale only", () => {
 	const s = fixture();
 	s.cycles.push({ id: "next", name: "Siguiente ciclo" });
@@ -122,74 +149,80 @@ test("cycle-specific scales fall back to the available scale only", () => {
 	const html = render(s, "next");
 	expect(html).toContain('class="evaluation-mean">95</strong>');
 	expect(html).not.toContain("Escala 0–10</option>");
-	expect(html).not.toContain("<td>Matemáticas</td>");
+	expect(html).not.toContain("Matemáticas");
 });
-test("school average has its own named chart with raw scale boundaries", () => {
+
+test("group filter confines all aggregates and matrix cells", () => {
+	const report = summarizeEvaluation(buildEvaluationData(fixture()), {
+		cycleId: "c1",
+		scaleKey: "[0,10]",
+		groupId: "g2",
+	});
+	expect(report.mean).toBeNull();
+	expect(report.count).toBe(0);
+	expect(report.byGroup.map((group) => group.key)).toEqual(["g2"]);
+	expect(report.rows.every((row) => row.groupId === "g2")).toBe(true);
+});
+
+test("matrix combines periods by published record count, not by row means", () => {
 	const s = fixture();
-	s.assignments[0].min = 5;
-	s.grades[0].value = 8;
-	const html = render(s);
-	const chart =
-		html
-			.split('aria-labelledby="evaluation-school-chart"')[1]
-			?.split("</figure>")[0] || "";
-	expect(chart).toContain("Promedio escolar");
-	expect(chart).toContain('class="evaluation-mean">8</strong>');
-	expect(chart).toContain('style="width:60%"');
-	expect(chart).toContain("Mínimo 5");
-	expect(chart).toContain("Máximo 10");
-	expect(chart).toContain("1 calificación publicada");
+	s.assignments.push({ ...s.assignments[0], id: "later", period: "Segunda" });
+	s.grades.push(
+		{ ...s.grades[0], id: "a", assignment: "later", value: 9 },
+		{ ...s.grades[0], id: "b", assignment: "later", value: 9 },
+	);
+	const report = summarizeEvaluation(buildEvaluationData(s), {
+		cycleId: "c1",
+		scaleKey: "[0,10]",
+	});
+	const matrix = buildEvaluationMatrix(report);
+	expect(matrix.subjects).toEqual(["Arte", "Matemáticas"]);
+	expect(matrix.groups[0].cells.get("Matemáticas")).toEqual({
+		mean: 6,
+		count: 3,
+	});
+	expect(matrix.groups[1].cells.get("Arte")).toEqual({ mean: null, count: 0 });
+	expect(matrix.groups[1].cells.has("Matemáticas")).toBe(false);
+	expect(matrix.bySubject).toEqual([
+		{ key: "Arte", label: "Arte", mean: null, count: 0 },
+		{ key: "Matemáticas", label: "Matemáticas", mean: 6, count: 3 },
+	]);
 });
 
-function groupFixture(count: number) {
+test("subject chart weights records across groups and follows combined filters", () => {
 	const s = fixture();
-	s.groups = Array.from({ length: count }, (_, index) => ({
-		id: `group-${index}`,
-		name: `Grupo ${index + 1}`,
-		cycle: "c1",
-	}));
-	s.assignments = s.groups.map((group, index) => ({
-		...s.assignments[0],
-		id: `assignment-${index}`,
-		group: group.id,
-	}));
-	s.grades = s.assignments.map((assignment, index) => ({
-		...s.grades[0],
-		id: `grade-${index}`,
-		assignment: assignment.id,
-		value: index,
-	}));
-	return s;
-}
-
-test("five groups remain in normal flow and one period does not repeat the school plot", () => {
-	const html = render(groupFixture(5));
-	const chart =
-		html
-			.split('aria-labelledby="evaluation-group-chart"')[1]
-			?.split("</figure>")[0] || "";
-	expect(chart.match(/<li/g)?.length).toBe(5);
-	for (let index = 1; index <= 5; index++)
-		expect(chart).toContain(`Abrir grupo Grupo ${index}`);
-	expect(chart).not.toContain("evaluation-chart-scroll");
-	expect(chart).not.toContain('tabindex="0"');
-	expect(html).not.toContain('id="evaluation-period-chart"');
-	expect(html).toContain("Primera");
-	expect(render()).toContain('id="evaluation-period-chart"');
+	s.assignments[1].subject = "Matemáticas";
+	s.assignments[1].period = "Primera";
+	s.grades[1].published = true;
+	s.grades[1].value = 9;
+	s.grades.push({ ...s.grades[1], id: "another", value: 9 });
+	const data = buildEvaluationData(s);
+	const filters = {
+		cycleId: "c1",
+		scaleKey: "[0,10]",
+		period: "Primera",
+		subject: "Matemáticas",
+	};
+	const all = buildEvaluationMatrix(summarizeEvaluation(data, filters));
+	expect(all.bySubject[0]).toEqual({
+		key: "Matemáticas",
+		label: "Matemáticas",
+		mean: 6,
+		count: 3,
+	});
+	const group = buildEvaluationMatrix(
+		summarizeEvaluation(data, { ...filters, groupId: "g1" }),
+	);
+	expect(group.bySubject[0].mean).toBe(0);
+	expect(group.bySubject[0].count).toBe(1);
+	expect(
+		buildEvaluationMatrix(
+			summarizeEvaluation(data, { ...filters, groupId: "missing" }),
+		).bySubject,
+	).toEqual([]);
 });
 
-test("large group comparisons expose continuation and keyboard scrolling", () => {
-	const html = render(groupFixture(9));
-	const chart =
-		html
-			.split('aria-labelledby="evaluation-group-chart"')[1]
-			?.split("</figure>")[0] || "";
-	expect(chart).toContain("evaluation-chart-scroll");
-	expect(chart).toContain('tabindex="0"');
-	expect(chart).toContain("9 resultados · Desplaza para ver todos");
-});
-
-test("diagnostics explicitly describe global exclusions and retained duplicates", () => {
+test("diagnostics remain explicit about global exclusions and retained duplicates", () => {
 	const s = fixture();
 	s.grades.push(
 		{ ...s.grades[0], id: "duplicate" },

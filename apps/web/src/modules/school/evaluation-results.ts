@@ -31,6 +31,7 @@ export type EvaluationFilters = {
 	scaleKey: string;
 	period?: string;
 	subject?: string;
+	groupId?: string;
 };
 export type EvaluationBucket = {
 	key: string;
@@ -125,6 +126,43 @@ export function buildEvaluationData(s: State): EvaluationData {
 	};
 }
 
+/** Collapse period rows without giving small classes or empty rows extra weight. */
+export function buildEvaluationMatrix(report: EvaluationReport) {
+	const subjects = [...new Set(report.rows.map((row) => row.subject))].sort(
+		compare,
+	);
+	const groups = report.byGroup.map((group) => {
+		const cells = new Map<string, { mean: number | null; count: number }>();
+		for (const row of report.rows.filter((row) => row.groupId === group.key)) {
+			const previous = cells.get(row.subject);
+			const count = (previous?.count || 0) + row.count;
+			const sum =
+				(previous?.mean ?? 0) * (previous?.count || 0) +
+				(row.mean ?? 0) * row.count;
+			cells.set(row.subject, { mean: count ? sum / count : null, count });
+		}
+		return { ...group, cells };
+	});
+	const bySubject: EvaluationBucket[] = subjects.map((subject) => {
+		const cells = groups.flatMap((group) => {
+			const cell = group.cells.get(subject);
+			return cell ? [cell] : [];
+		});
+		const count = cells.reduce((total, cell) => total + cell.count, 0);
+		const sum = cells.reduce(
+			(total, cell) => total + (cell.mean ?? 0) * cell.count,
+			0,
+		);
+		return {
+			key: subject,
+			label: subject,
+			mean: count ? sum / count : null,
+			count,
+		};
+	});
+	return { subjects, groups, bySubject };
+}
+
 const compare = new Intl.Collator("es", { numeric: true }).compare;
 const rowKey = (item: EvaluationAssignment) =>
 	JSON.stringify([item.groupId, item.period, item.subject, item.scaleKey]);
@@ -144,7 +182,8 @@ export function summarizeEvaluation(
 		item.cycleId === filters.cycleId &&
 		item.scaleKey === filters.scaleKey &&
 		(!filters.period || item.period === filters.period) &&
-		(!filters.subject || item.subject === filters.subject);
+		(!filters.subject || item.subject === filters.subject) &&
+		(!filters.groupId || item.groupId === filters.groupId);
 	const rows = new Map<string, { row: EvaluationResultRow; total: Total }>();
 	const periods = new Map<string, { label: string; total: Total }>();
 	const groups = new Map<string, { label: string; total: Total }>();

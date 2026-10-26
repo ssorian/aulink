@@ -44,6 +44,30 @@ export function SchoolApp() {
 	const [profileOrigin, setProfileOrigin] = useState("");
 	const directoryPosition = useRef({ x: 0, y: 0, top: 0, left: 0 });
 	const groupPosition = useRef({ x: 0, y: 0 });
+	const [evaluationVisited, setEvaluationVisited] = useState(false);
+	const evaluationContainer = useRef<HTMLDivElement>(null);
+	const evaluationPosition = useRef<{
+		x: number;
+		y: number;
+		trigger: HTMLElement | null;
+	} | null>(null);
+	useEffect(() => {
+		if (page !== "Calificaciones") return;
+		setEvaluationVisited(true);
+		const position = evaluationPosition.current;
+		if (!position) return;
+		const frame = requestAnimationFrame(() => {
+			window.scrollTo(position.x, position.y);
+			if (
+				position.trigger?.isConnected &&
+				evaluationContainer.current?.contains(position.trigger)
+			) {
+				position.trigger.focus({ preventScroll: true });
+			}
+			evaluationPosition.current = null;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [page]);
 	const [groupTabs, setGroupTabs] = useState<Record<string, string>>({});
 	const [noticeGroup, setNoticeGroup] = useState("");
 	const [cycleFilter, setCycleFilter] = useState("");
@@ -430,17 +454,32 @@ export function SchoolApp() {
 								</>
 							)}
 							{page === "Personal" && <StaffView s={s} open={open} />}
-							{page === "Calificaciones" && (
-								<EvaluationDashboard
-									s={s}
-									cycleId={effectiveEvaluationCycle}
-									onCycleChange={setEvaluationCycle}
-									onOpenGroup={(id) => {
-										setGroupId(id);
-										setGroupTabs({ ...groupTabs, [id]: "Calificaciones" });
-										setPage("Grupos");
-									}}
-								/>
+							{(evaluationVisited || page === "Calificaciones") && (
+								<div
+									ref={evaluationContainer}
+									hidden={page !== "Calificaciones"}
+								>
+									<EvaluationDashboard
+										s={s}
+										cycleId={effectiveEvaluationCycle}
+										onCycleChange={setEvaluationCycle}
+										onOpenGroup={(id) => {
+											const active = document.activeElement;
+											evaluationPosition.current = {
+												x: window.scrollX,
+												y: window.scrollY,
+												trigger:
+													active instanceof HTMLElement &&
+													evaluationContainer.current?.contains(active)
+														? active
+														: null,
+											};
+											setGroupId(id);
+											setGroupTabs({ ...groupTabs, [id]: "Calificaciones" });
+											setPage("Grupos");
+										}}
+									/>
+								</div>
 							)}
 							{(page === "Asistencia" || page === "Conducta") && (
 								<GroupFollowupView

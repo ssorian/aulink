@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { buildEvaluationData, summarizeEvaluation } from "./evaluation-results";
+import { EvaluationCharts } from "./evaluation-charts";
+import {
+	buildEvaluationData,
+	buildEvaluationMatrix,
+	summarizeEvaluation,
+} from "./evaluation-results";
 import type { State } from "./workflows";
 import "./evaluation-dashboard.css";
 
@@ -9,108 +14,19 @@ type Props = {
 	onCycleChange: (id: string) => void;
 	onOpenGroup: (id: string) => void;
 };
-type Scale = ReturnType<typeof buildEvaluationData>["scales"][number];
-type Bucket = ReturnType<typeof summarizeEvaluation>["byGroup"][number];
 const number = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 });
-const average = (value: number | null) =>
-	value === null ? "Sin resultados publicados" : number.format(value);
 const countLabel = (count: number) =>
 	`${count} ${count === 1 ? "calificación publicada" : "calificaciones publicadas"}`;
-
-function MeanTrack({ mean, scale }: { mean: number; scale: Scale }) {
-	const width = Math.max(
-		0,
-		Math.min(100, ((mean - scale.min) / (scale.max - scale.min)) * 100),
-	);
-	return (
-		<div className="evaluation-track" aria-hidden="true">
-			<span style={{ width: `${width}%` }} />
-		</div>
+function ResultValue({ value }: { value: number | null | undefined }) {
+	return value == null ? (
+		<span>
+			<span aria-hidden="true">—</span>
+			<span className="evaluation-sr-only">Sin resultados publicados</span>
+		</span>
+	) : (
+		number.format(value)
 	);
 }
-
-function ScaleAxis({ scale }: { scale: Scale }) {
-	return (
-		<div className="evaluation-axis">
-			<span>Mínimo {number.format(scale.min)}</span>
-			<span>Máximo {number.format(scale.max)}</span>
-		</div>
-	);
-}
-
-function MeanBars({
-	buckets,
-	scale,
-	title,
-	id,
-	onOpenGroup,
-}: {
-	buckets: Bucket[];
-	scale: Scale | undefined;
-	title: string;
-	id: string;
-	onOpenGroup?: (id: string) => void;
-}) {
-	const scrollable = buckets.length > 8;
-	return (
-		<figure className="evaluation-chart" aria-labelledby={id}>
-			<figcaption>
-				<h3 id={id}>{title}</h3>
-				<p>
-					Promedios en la escala original ·{" "}
-					{scale?.label || "Sin escala disponible"}
-				</p>
-				{scrollable && (
-					<p>{buckets.length} resultados · Desplaza para ver todos</p>
-				)}
-			</figcaption>
-			{scale && <ScaleAxis scale={scale} />}
-			{buckets.length ? (
-				<section
-					className={
-						scrollable ? "evaluation-chart-scroll" : "evaluation-chart-list"
-					}
-					tabIndex={scrollable ? 0 : undefined}
-					aria-label={`${title}${scrollable ? ", lista desplazable" : ", resultados"}`}
-				>
-					<ul className="evaluation-bars">
-						{buckets.map((bucket) => (
-							<li key={bucket.key}>
-								<div className="evaluation-bar-label">
-									{onOpenGroup ? (
-										<button
-											type="button"
-											onClick={() => onOpenGroup(bucket.key)}
-											aria-label={`Abrir grupo ${bucket.label}`}
-										>
-											{bucket.label}
-										</button>
-									) : (
-										<span>{bucket.label}</span>
-									)}
-								</div>
-								<div className="evaluation-bar-data">
-									<div className="evaluation-bar-value">
-										{scale && bucket.mean !== null && (
-											<MeanTrack mean={bucket.mean} scale={scale} />
-										)}
-										<strong>{average(bucket.mean)}</strong>
-									</div>
-									<span className="evaluation-bar-detail">
-										{countLabel(bucket.count)}
-									</span>
-								</div>
-							</li>
-						))}
-					</ul>
-				</section>
-			) : (
-				<p className="evaluation-chart-empty">Sin resultados publicados</p>
-			)}
-		</figure>
-	);
-}
-
 export function EvaluationDashboard({
 	s,
 	cycleId,
@@ -123,7 +39,9 @@ export function EvaluationDashboard({
 		scale: "",
 		period: "",
 		subject: "",
+		groupId: "",
 	});
+	const [sort, setSort] = useState("group");
 	const cycleAssignments = data.assignments.filter(
 		(a) => a.cycleId === cycleId,
 	);
@@ -142,29 +60,70 @@ export function EvaluationDashboard({
 		);
 	const periods = choices("period");
 	const subjects = choices("subject");
+	const groups = [
+		...new Map(assignments.map((a) => [a.groupId, a.groupName])).entries(),
+	].sort((a, b) => a[1].localeCompare(b[1], "es", { numeric: true }));
 	const current = selection.cycle === cycleId && selection.scale === scaleKey;
 	const period =
 		current && periods.includes(selection.period) ? selection.period : "";
 	const subject =
 		current && subjects.includes(selection.subject) ? selection.subject : "";
+	const groupId =
+		current && groups.some(([id]) => id === selection.groupId)
+			? selection.groupId
+			: "";
 	const report = summarizeEvaluation(data, {
 		cycleId,
 		scaleKey,
 		period,
 		subject,
+		groupId,
+	});
+	const matrix = buildEvaluationMatrix(report);
+	const sortedGroups = [...matrix.groups].sort((a, b) => {
+		if (sort === "group") return 0;
+		if (a.mean === null) return b.mean === null ? 0 : 1;
+		if (b.mean === null) return -1;
+		return sort === "highest" ? b.mean - a.mean : a.mean - b.mean;
 	});
 	const cycleName =
 		s.cycles.find((cycle) => cycle.id === cycleId)?.name ||
 		"Sin ciclo disponible";
-	const emptyGroup = s.groups.find((group) => group.cycle === cycleId);
-	function changeFilter(field: "period" | "subject", value: string) {
+	const publishedPeriods = [
+		...new Set(
+			data.records
+				.filter(
+					(record) =>
+						record.cycleId === cycleId &&
+						record.scaleKey === scaleKey &&
+						(!subject || record.subject === subject) &&
+						(!groupId || record.groupId === groupId),
+				)
+				.map((record) => record.period),
+		),
+	];
+	function changeFilter(
+		field: "period" | "subject" | "groupId",
+		value: string,
+	) {
 		setSelection({
 			cycle: cycleId,
 			scale: scaleKey,
 			period,
 			subject,
+			groupId,
 			[field]: value,
 		});
+	}
+	function resetFilters() {
+		setSelection({
+			cycle: cycleId,
+			scale: scaleKey,
+			period: "",
+			subject: "",
+			groupId: "",
+		});
+		setSort("group");
 	}
 	return (
 		<section
@@ -172,13 +131,10 @@ export function EvaluationDashboard({
 			aria-label="Resultados académicos"
 		>
 			<header className="evaluation-header">
-				<h2>Resultados académicos</h2>
-				<p>
-					Consulta únicamente calificaciones publicadas, un ciclo y una escala a
-					la vez.
-				</p>
-			</header>
-			<div className="evaluation-filters">
+				<div>
+					<h2>Resultados académicos</h2>
+					<p>Solo calificaciones publicadas.</p>
+				</div>
 				<label htmlFor="evaluation-cycle">
 					Ciclo escolar
 					<select
@@ -191,6 +147,7 @@ export function EvaluationDashboard({
 								scale: "",
 								period: "",
 								subject: "",
+								groupId: "",
 							});
 							onCycleChange(event.target.value);
 						}}
@@ -205,40 +162,17 @@ export function EvaluationDashboard({
 						))}
 					</select>
 				</label>
-				<label htmlFor="evaluation-scale">
-					Escala
-					<select
-						id="evaluation-scale"
-						value={scaleKey}
-						disabled={!scales.length}
-						onChange={(event) =>
-							setSelection({
-								cycle: cycleId,
-								scale: event.target.value,
-								period: "",
-								subject: "",
-							})
-						}
-					>
-						{!scales.length && (
-							<option value="">Sin escalas disponibles</option>
-						)}
-						{scales.map((item) => (
-							<option key={item.key} value={item.key}>
-								{item.label}
-							</option>
-						))}
-					</select>
-				</label>
+			</header>
+			<div className="evaluation-context">
 				<label htmlFor="evaluation-period">
-					Evaluación
+					Periodo
 					<select
 						id="evaluation-period"
 						value={period}
 						disabled={!periods.length}
 						onChange={(event) => changeFilter("period", event.target.value)}
 					>
-						<option value="">Todas</option>
+						<option value="">Todos los periodos</option>
 						{periods.map((item) => (
 							<option key={item}>{item}</option>
 						))}
@@ -252,160 +186,240 @@ export function EvaluationDashboard({
 						disabled={!subjects.length}
 						onChange={(event) => changeFilter("subject", event.target.value)}
 					>
-						<option value="">Todas</option>
+						<option value="">Todas las materias</option>
 						{subjects.map((item) => (
 							<option key={item}>{item}</option>
 						))}
 					</select>
 				</label>
+				<label htmlFor="evaluation-group">
+					Grupo
+					<select
+						id="evaluation-group"
+						value={groupId}
+						disabled={!groups.length}
+						onChange={(event) => changeFilter("groupId", event.target.value)}
+					>
+						<option value="">Todos los grupos</option>
+						{groups.map(([id, name]) => (
+							<option key={id} value={id}>
+								{name}
+							</option>
+						))}
+					</select>
+				</label>
+				<label htmlFor="evaluation-sort">
+					Ordenar por
+					<select
+						id="evaluation-sort"
+						value={sort}
+						onChange={(event) => setSort(event.target.value)}
+					>
+						<option value="group">Grupo</option>
+						<option value="highest">Mayor promedio</option>
+						<option value="lowest">Menor promedio</option>
+					</select>
+				</label>
+				{(period || subject || groupId || sort !== "group") && (
+					<button
+						className="evaluation-reset"
+						type="button"
+						onClick={resetFilters}
+					>
+						Restablecer filtros
+					</button>
+				)}
+
+				{scales.length > 1 ? (
+					<label htmlFor="evaluation-scale">
+						Escala
+						<select
+							id="evaluation-scale"
+							value={scaleKey}
+							onChange={(event) =>
+								setSelection({
+									cycle: cycleId,
+									scale: event.target.value,
+									period: "",
+									subject: "",
+									groupId: "",
+								})
+							}
+						>
+							{scales.map((item) => (
+								<option key={item.key} value={item.key}>
+									{item.label}
+								</option>
+							))}
+						</select>
+					</label>
+				) : null}
 			</div>
 			<section
 				className="evaluation-overview"
-				aria-label="Gráficas de resultados publicados"
+				aria-label="Resumen de resultados"
+				aria-live="polite"
 			>
-				<figure
-					className="evaluation-school-mean"
-					aria-live="polite"
-					aria-labelledby="evaluation-school-chart"
-				>
-					<figcaption>
-						<h3 id="evaluation-school-chart">Promedio escolar</h3>
+				<div className="evaluation-summary-value">
+					<strong className="evaluation-mean">
+						{report.mean === null ? "—" : number.format(report.mean)}
+					</strong>
+					<div>
+						<h3>Promedio publicado</h3>
 						<p>
-							{cycleName} · {scale?.label || "Sin escala disponible"}
+							{scale
+								? `Escala ${number.format(scale.min)}–${number.format(scale.max)}`
+								: "Sin escala disponible"}
 						</p>
-					</figcaption>
-					<div className="evaluation-school-plot">
-						<strong className="evaluation-mean">{average(report.mean)}</strong>
-						{scale && report.mean !== null && (
-							<>
-								<MeanTrack mean={report.mean} scale={scale} />
-								<ScaleAxis scale={scale} />
-							</>
-						)}
 					</div>
-					<p>
-						{countLabel(report.count)}
-						<br />
-						{period ||
-							(report.byPeriod.length === 1
-								? report.byPeriod[0].label
-								: "Todas las evaluaciones")}{" "}
-						· {subject || "Todas las materias"}
-					</p>
-				</figure>
-				<div
-					className={
-						report.byPeriod.length > 1
-							? "evaluation-chart-pair"
-							: "evaluation-chart-single"
-					}
-				>
-					{report.byPeriod.length > 1 && (
-						<MeanBars
-							buckets={report.byPeriod}
-							scale={scale}
-							title="Promedio por evaluación"
-							id="evaluation-period-chart"
-						/>
-					)}
-					<MeanBars
-						buckets={report.byGroup}
-						scale={scale}
-						title="Comparación por grupo"
-						id="evaluation-group-chart"
-						onOpenGroup={onOpenGroup}
-					/>
 				</div>
-				{report.count === 0 && (
-					<div className="evaluation-empty">
-						<h3>Sin resultados publicados</h3>
-						<p>
-							Publica calificaciones desde el espacio de un grupo para consultar
-							sus resultados aquí. Si ya existen, revisa el ciclo, la escala y
-							los filtros seleccionados.
-						</p>
-						{emptyGroup && (
-							<button type="button" onClick={() => onOpenGroup(emptyGroup.id)}>
-								Abrir grupo {emptyGroup.name}
-							</button>
-						)}
-					</div>
-				)}
+				<div className="evaluation-summary-context">
+					<p>
+						{report.byGroup.length}{" "}
+						{report.byGroup.length === 1 ? "grupo" : "grupos"} ·{" "}
+						{countLabel(report.count)}
+					</p>
+					<p>
+						{period || "Todos los periodos"} · {subject || "Todas las materias"}
+					</p>
+					{!period && publishedPeriods.length === 1 && (
+						<p>Publicaciones disponibles solo en: {publishedPeriods[0]}.</p>
+					)}
+				</div>
 			</section>
 			<section
 				className="evaluation-results"
-				aria-labelledby="evaluation-results-heading"
+				aria-label="Consulta de resultados"
 			>
-				<h3 id="evaluation-results-heading">
-					Resultados por grupo, evaluación y materia
-				</h3>
-				<p>
-					{cycleName} · {scale?.label || "Sin escala disponible"} ·{" "}
-					{report.rows.length} resultados
-				</p>
-				<p className="evaluation-scroll-hint">
-					Desplaza la tabla horizontalmente para consultar todas las columnas.
-				</p>
-				<section
-					className="evaluation-table-scroll"
-					// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable results need keyboard access.
-					tabIndex={0}
-					aria-label="Resultados por grupo, tabla con desplazamiento horizontal"
-				>
-					<table>
-						<caption>
-							Promedios publicados · {cycleName} ·{" "}
-							{scale?.label || "Sin escala disponible"}
-						</caption>
-						<thead>
-							<tr>
-								{[
-									"Grupo",
-									"Evaluación",
-									"Materia",
-									"Promedio",
-									"Calificaciones",
-									"Acción",
-								].map((heading) => (
-									<th scope="col" key={heading}>
-										{heading}
-									</th>
-								))}
-							</tr>
-						</thead>
-						<tbody>
-							{report.rows.map((row) => (
-								<tr key={row.key}>
-									<th scope="row">{row.groupName}</th>
-									<td>{row.period}</td>
-									<td>{row.subject}</td>
-									<td className="evaluation-number">{average(row.mean)}</td>
-									<td className="evaluation-number">{row.count}</td>
-									<td>
-										<button
-											type="button"
-											onClick={() => onOpenGroup(row.groupId)}
-											aria-label={`Abrir grupo ${row.groupName} · ${row.subject} · ${row.period}`}
-										>
-											Abrir grupo
-										</button>
-									</td>
-								</tr>
-							))}
-							{!report.rows.length && (
+				{report.count === 0 && (
+					<div className="evaluation-empty" aria-live="polite">
+						<h3>Sin resultados publicados</h3>
+						<p>
+							{data.records.some(
+								(record) =>
+									record.cycleId === cycleId && record.scaleKey === scaleKey,
+							)
+								? "No hay calificaciones publicadas con estos filtros. Prueba con otro periodo, materia o grupo."
+								: "Publica calificaciones desde el espacio de un grupo para consultar sus resultados aquí."}
+						</p>
+					</div>
+				)}
+				<EvaluationCharts
+					groups={sortedGroups}
+					subjects={matrix.bySubject}
+					scale={scale}
+					mean={report.mean}
+					onOpenGroup={onOpenGroup}
+				/>
+				<details className="evaluation-table-detail">
+					<summary>Ver tabla de resultados</summary>
+					<h3 id="evaluation-results-heading">
+						Resultados por grupo y materia
+					</h3>
+					<p className="evaluation-matrix-note">
+						{period || "Todos los periodos, ponderados por calificaciones"} · —
+						Sin resultados publicados
+					</p>
+					<section
+						className="evaluation-table-scroll"
+						// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable matrix needs keyboard access.
+						tabIndex={0}
+						aria-label="Resultados por grupo, tabla con desplazamiento horizontal"
+					>
+						<table>
+							<caption className="evaluation-sr-only">
+								Promedios publicados · {cycleName} ·{" "}
+								{scale?.label || "Sin escala disponible"}
+							</caption>
+							<thead>
 								<tr>
-									<td colSpan={6}>No hay asignaciones para esta selección.</td>
+									<th scope="col">Grupo</th>
+									{matrix.subjects.map((item) => (
+										<th scope="col" key={item}>
+											{item}
+										</th>
+									))}
+									<th scope="col">Promedio</th>
 								</tr>
-							)}
-						</tbody>
-					</table>
-				</section>
+							</thead>
+							<tbody>
+								{sortedGroups.map((group) => (
+									<tr key={group.key}>
+										<th scope="row">
+											<button
+												type="button"
+												className="evaluation-group-link"
+												onClick={() => onOpenGroup(group.key)}
+												aria-label={`Abrir grupo ${group.label}`}
+											>
+												{group.label}
+											</button>
+										</th>
+										{matrix.subjects.map((item) => (
+											<td
+												key={item}
+												title={countLabel(group.cells.get(item)?.count || 0)}
+											>
+												<ResultValue value={group.cells.get(item)?.mean} />
+											</td>
+										))}
+										<td className="evaluation-total">
+											<strong>
+												<ResultValue value={group.mean} />
+											</strong>
+											<small>{countLabel(group.count)}</small>
+										</td>
+									</tr>
+								))}
+								{!sortedGroups.length && (
+									<tr>
+										<td colSpan={matrix.subjects.length + 2}>
+											No hay asignaciones para esta selección.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</section>
+					<div className="evaluation-mobile-groups">
+						{sortedGroups.map((group) => (
+							<details key={group.key}>
+								<summary>
+									<span>{group.label}</span>
+									<strong>
+										Promedio <ResultValue value={group.mean} />
+									</strong>
+								</summary>
+								<dl>
+									{matrix.subjects.map((item) => (
+										<div key={item}>
+											<dt>{item}</dt>
+											<dd>
+												<ResultValue value={group.cells.get(item)?.mean} />
+												<small>
+													{countLabel(group.cells.get(item)?.count || 0)}
+												</small>
+											</dd>
+										</div>
+									))}
+								</dl>
+								<button
+									type="button"
+									className="evaluation-group-link"
+									onClick={() => onOpenGroup(group.key)}
+								>
+									Abrir grupo {group.label}
+								</button>
+							</details>
+						))}
+					</div>
+				</details>
 				<details className="evaluation-method">
 					<summary>Cómo se calculan los resultados</summary>
 					<p>
-						Cada calificación publicada tiene el mismo peso en el promedio
-						escolar; no se promedian los promedios de los grupos. Se usa su
-						valor actual, no su historial de cambios.
+						Cada calificación publicada tiene el mismo peso en el promedio; no
+						se promedian los promedios de los grupos. Se usa su valor actual, no
+						su historial de cambios.
 					</p>
 					<p>
 						Las calificaciones faltantes no se convierten en cero. Los
@@ -414,9 +428,10 @@ export function EvaluationDashboard({
 						ni cobertura.
 					</p>
 					<p>
-						Los filtros se aplican a todas las gráficas y a la tabla. Abrir un
-						grupo lleva a su sección de calificaciones, no a una materia o
-						evaluación específica.
+						Los filtros se aplican a las gráficas y a la tabla. Con todos los
+						periodos seleccionados, cada materia reúne sus calificaciones
+						publicadas de esos periodos. Abrir un grupo lleva a su sección de
+						calificaciones, no a una materia o evaluación específica.
 					</p>
 				</details>
 				{(data.diagnostics.excluded > 0 || data.diagnostics.duplicates > 0) && (
