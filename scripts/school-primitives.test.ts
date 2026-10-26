@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createRequire } from "node:module";
-import { StaffView } from "../apps/web/src/modules/school/staff-view";
+import { StaffRoleAction, StaffView } from "../apps/web/src/modules/school/staff-view";
 import { DevicesView } from "../apps/web/src/modules/school/credentials-view";
 import { GroupDirectory } from "../apps/web/src/modules/school/group-workspace";
 import { initialState } from "../apps/web/src/modules/school/workflows";
@@ -155,8 +155,22 @@ test("directory row actions retain their open payloads", () => {
 			props.onClick?.();
 		clickActions(props.children);
 	};
-	clickActions(StaffView({ s, open }));
+	// Exercise the stateless action, not a hook-owning component outside React.
+	clickActions(StaffRoleAction({ person: s.staff[0], open }));
 	clickActions(DevicesView({ s, open }));
+	expect(calls[0][2]).toEqual([
+		{
+			key: "role",
+			label: "Nueva responsabilidad",
+			options: [
+				"Administración escolar",
+				"Control escolar",
+				"Docente",
+				"Operador de terminal",
+			].map((value) => ({ value, label: value })),
+		},
+		{ key: "reason", label: "Motivo / evidencia", type: "textarea" },
+	]);
 	expect(calls.map((args) => [args[0], args[1], args[3]])).toEqual([
 		[
 			"staff-role",

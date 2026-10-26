@@ -13,7 +13,7 @@ function render(s = initialState()) {
 test("group directory unifies heading, count, creation, filters and table", () => {
 	const s = initialState();
 	const html = render(s);
-	expect(html).toMatch(/^<section class="panel group-directory"/);
+	expect(html).toMatch(/^<section class="group-directory"/);
 	expect(html).toContain('aria-label="Grupos de la escuela"');
 	const header = html.match(/<header[^>]*>(.*?)<\/header>/)?.[1];
 	expect(header).toContain("<h2>Grupos de la escuela</h2>");
@@ -123,4 +123,14 @@ test("empty groups retain six-column recovery and creation", () => {
 	expect(html).toContain('<td colSpan="6" class="ui-table-empty">');
 	expect(html).toContain("No hay grupos para estos filtros.");
 	expect(html).toContain("Crear grupo");
+});
+
+test("group card contains the table but not directory controls", () => {
+	const html = render();
+	const card = html.slice(html.indexOf('class="ui-table-card"'));
+	expect(html).toContain('class="ui-table-card"');
+	expect(card).toContain("<table");
+	for (const outside of ["<header", "<select", "group-filters", "Crear grupo"]) {
+		expect(card).not.toContain(outside);
+	}
 });

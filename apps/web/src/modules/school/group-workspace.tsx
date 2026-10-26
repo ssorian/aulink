@@ -248,10 +248,7 @@ export function GroupDirectory({
 			(!shift || g.shift === shift),
 	);
 	return (
-		<section
-			className="panel group-directory"
-			aria-label="Grupos de la escuela"
-		>
+		<section className="group-directory" aria-label="Grupos de la escuela">
 			<header className="group-directory-header">
 				<div>
 					<h2>Grupos de la escuela</h2>
@@ -316,7 +313,7 @@ export function GroupDirectory({
 					</select>
 				</label>
 			</div>
-			<DataTable caption="Directorio de grupos">
+			<DataTable caption="Directorio de grupos" variant="card">
 				<thead>
 					<tr>
 						<th scope="col">Grupo</th>

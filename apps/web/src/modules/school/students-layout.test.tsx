@@ -49,6 +49,7 @@ test("directory owns its heading, actions and three explicitly labeled filters",
 	const html = render();
 	expect(html).toMatch(/^<section[^>]*aria-label="Directorio de alumnos"/);
 	expect(html).toContain("<h2>Directorio de alumnos</h2>");
+	expect(html).not.toContain('class="panel student-directory"');
 	expect(html).toContain("2 de 2 alumnos");
 	for (const label of [
 		"Buscar alumno",
@@ -66,23 +67,38 @@ test("directory owns its heading, actions and three explicitly labeled filters",
 	);
 });
 
-test("compact rows preserve every enrollment, accessible action and scroll anchor", () => {
+test("selected cycle keeps rows focused and the name opens the profile", () => {
 	const html = render();
 	const body = html.split("<tbody>")[1];
-	expect(body).toContain("Histórico");
-	expect(body).toContain("2025–2026");
-	expect(body).toContain("2026–2027");
-	expect(body).toMatch(
-		/Ana Ejemplo<\/strong><span[^>]*>DEMO-001<\/span><\/td>/,
-	);
+	expect(body).not.toContain("Histórico");
+	expect(body).not.toContain("2025–2026");
+	expect(body).not.toContain("2026–2027");
+	expect(body).toMatch(/Ana Ejemplo<\/button><span[^>]*>DEMO-001<\/span>/);
 	expect(html).not.toContain('<th scope="col">Matrícula</th>');
 	expect(html).toContain('id="student-s1"');
 	expect(html).toContain('aria-label="Abrir Ana Ejemplo"');
-	expect(html).toContain("Ver expediente");
+	expect(html).not.toContain('<th scope="col">Expediente</th>');
 	expect(html).toContain(
 		'tabindex="0" aria-label="Resultados de alumnos, desplazamiento horizontal"',
 	);
 	expect(html).toContain("Alumnos y grupos históricos por ciclo escolar");
+});
+
+test("all cycles explicitly preserves historical enrollments", () => {
+	const body = render({ cycleFilter: "" }).split("<tbody>")[1];
+	expect(body).toContain("Histórico");
+	expect(body).toContain("2026–2027");
+	expect(body).toContain("2025–2026");
+});
+
+test("active filters are individually removable and search can be cleared", () => {
+	const html = render({ query: "Ana", groupFilter: "g1" });
+	for (const label of [
+		"Limpiar búsqueda",
+		"Quitar filtro de ciclo",
+		"Quitar filtro de grupo",
+	])
+		expect(html).toContain(`aria-label="${label}"`);
 });
 
 test("empty results retain recovery and a live count", () => {
@@ -109,4 +125,16 @@ test("CSV expansion exposes errors and only enables review for valid rows", () =
 	});
 	expect(valid).toContain("Revisar filas válidas (1)");
 	expect(valid).not.toContain('disabled=""');
+});
+
+test("only the student table is a card, including empty recovery", () => {
+	const html = render({ visible: [], query: "nadie" });
+	const card = html.split('<div class="ui-table-card">')[1];
+	expect(card).toBeDefined();
+	expect(card).toContain('class="ui-table-scroll table-scroll"');
+	expect(card).toContain('<td colSpan="2" class="ui-table-empty">No se encontraron alumnos.');
+	expect(card).not.toContain("<h2>");
+	expect(card).not.toContain('class="directory-filters"');
+	expect(card).not.toContain("Limpiar filtros");
+	expect(html.match(/No se encontraron alumnos/g)).toHaveLength(1);
 });

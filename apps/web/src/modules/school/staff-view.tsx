@@ -1,19 +1,71 @@
+import { useState } from "react";
+import {
+	DirectoryHeader,
+	DirectorySearch,
+	DirectoryIdentity,
+	DirectoryFilterChip,
+} from "./directory-components";
 import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
 import "./staff-view.css";
 import { Icon } from "../../components/ui/icon";
 import { field, options, reason, roles } from "./view-helpers";
 import type { ViewProps } from "./view-types";
+export function filterStaff(
+	staff: ViewProps["s"]["staff"],
+	query: string,
+	role: string,
+) {
+	const normalize = (text: string) =>
+		text
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.trim();
+	return staff.filter(
+		(person) =>
+			(!role || person.role === role) &&
+			normalize(person.name).includes(normalize(query)),
+	);
+}
+export function StaffRoleAction({
+	person,
+	open,
+}: {
+	person: ViewProps["s"]["staff"][number];
+	open: ViewProps["open"];
+}) {
+	return (
+		<button
+			className="staff-change"
+			aria-label={`Cambiar responsabilidad de ${person.name}`}
+			type="button"
+			onClick={() =>
+				open(
+					"staff-role",
+					`Cambiar responsabilidad de ${person.name}`,
+					[options("role", "Nueva responsabilidad", roles), reason],
+					{ id: person.id },
+				)
+			}
+		>
+			Cambiar responsabilidad
+		</button>
+	);
+}
+
 export function StaffView({ s, open }: Pick<ViewProps, "s" | "open">) {
+	const [query, setQuery] = useState("");
+	const [role, setRole] = useState("");
+	const visible = filterStaff(s.staff, query, role);
 	return (
 		<section
-			className="panel staff-directory"
+			className="staff-directory"
 			aria-label="Personal de la escuela"
 		>
-			<header className="staff-header">
-				<div>
-					<h2>Personal de la escuela</h2>
-					<p>Docentes y personal administrativo · {s.staff.length} registros</p>
-				</div>
+			<DirectoryHeader
+				title="Personal de la escuela"
+				count={`${visible.length} de ${s.staff.length} registros`}
+			>
 				<button
 					className="primary"
 					type="button"
@@ -35,12 +87,62 @@ export function StaffView({ s, open }: Pick<ViewProps, "s" | "open">) {
 					<Icon name="plus" size={18} />
 					Agregar personal
 				</button>
-			</header>
+			</DirectoryHeader>
 			<p className="staff-disclaimer">
 				Estas responsabilidades no implementan autorización. No se envían
 				invitaciones.
 			</p>
-			<DataTable caption="Directorio del personal">
+			<div className="directory-filters staff-filters">
+				<DirectorySearch
+					id="staff-query"
+					label="Buscar personal"
+					placeholder="Nombre del personal"
+					value={query}
+					onChange={setQuery}
+				/>
+				<label htmlFor="staff-role">
+					Responsabilidad
+					<select
+						id="staff-role"
+						value={role}
+						onChange={(event) => setRole(event.target.value)}
+					>
+						<option value="">Todas las responsabilidades</option>
+						{[
+							...new Set([
+								...roles.map((item) => item.name),
+								...s.staff.map((person) => person.role),
+							]),
+						].map((value) => (
+							<option key={value} value={value}>
+								{value}
+							</option>
+						))}
+					</select>
+				</label>
+			</div>
+			<div className="result-toolbar">
+				{role && (
+					<DirectoryFilterChip
+						label="Quitar filtro de responsabilidad"
+						onRemove={() => setRole("")}
+					>
+						{role}
+					</DirectoryFilterChip>
+				)}
+				{(query || role) && (
+					<button
+						type="button"
+						onClick={() => {
+							setQuery("");
+							setRole("");
+						}}
+					>
+						Limpiar filtros
+					</button>
+				)}
+			</div>
+			<DataTable caption="Directorio del personal" variant="card">
 				<thead>
 					<tr>
 						<th scope="col">Nombre</th>
@@ -50,10 +152,14 @@ export function StaffView({ s, open }: Pick<ViewProps, "s" | "open">) {
 					</tr>
 				</thead>
 				<tbody>
-					{s.staff.map((x) => (
+					{visible.map((x) => (
 						<tr key={x.id}>
-							<th scope="row">{x.name}</th>
-							<td>{x.role}</td>
+							<th scope="row">
+								<DirectoryIdentity name={x.name} />
+							</th>
+							<td>
+								<span className="directory-group">{x.role}</span>
+							</td>
 							<td>
 								{x.history.length ? (
 									<details>
@@ -75,28 +181,15 @@ export function StaffView({ s, open }: Pick<ViewProps, "s" | "open">) {
 								)}
 							</td>
 							<td>
-								<button
-									className="staff-change"
-									aria-label={`Cambiar responsabilidad de ${x.name}`}
-									type="button"
-									onClick={() =>
-										open(
-											"staff-role",
-											`Cambiar responsabilidad de ${x.name}`,
-											[options("role", "Nueva responsabilidad", roles), reason],
-											{ id: x.id },
-										)
-									}
-								>
-									Cambiar responsabilidad
-								</button>
+								<StaffRoleAction person={x} open={open} />
 							</td>
 						</tr>
 					))}
-					{!s.staff.length && (
+					{!visible.length && (
 						<EmptyTableRow columns={4}>
-							Agrega docentes y personal administrativo para organizar tu
-							comunidad.
+							{s.staff.length
+								? "No se encontró personal. Limpia los filtros para ver todos los registros."
+								: "Agrega docentes y personal administrativo para organizar tu comunidad."}
 						</EmptyTableRow>
 					)}
 				</tbody>

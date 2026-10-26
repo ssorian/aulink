@@ -1,4 +1,11 @@
 import "./students-view.css";
+import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
+import {
+	DirectoryHeader,
+	DirectorySearch,
+	DirectoryIdentity,
+	DirectoryFilterChip,
+} from "./directory-components";
 import { Icon } from "../../components/ui/icon";
 import type { ViewProps } from "./view-types";
 import { activeGroup } from "./workflows";
@@ -48,32 +55,27 @@ export function StudentsView({
 >) {
 	return (
 		<section
-			className="panel student-directory"
+			className="student-directory"
 			aria-label="Directorio de alumnos"
 		>
-			<header className="directory-header">
-				<div>
-					<h2>Directorio de alumnos</h2>
-					<output aria-live="polite">
-						{visible.length} de {s.students.length} alumnos
-					</output>
-				</div>
-				<div className="actions">
-					<button className="primary" type="button" onClick={addStudent}>
-						<Icon name="plus" size={18} />
-						Inscribir alumno
-					</button>
-					<button
-						type="button"
-						aria-expanded={csvPreview}
-						aria-controls="directory-import"
-						onClick={() => setCSVPreview(!csvPreview)}
-					>
-						<Icon name="upload" size={18} />
-						Importar CSV
-					</button>
-				</div>
-			</header>
+			<DirectoryHeader
+				title="Directorio de alumnos"
+				count={`${visible.length} de ${s.students.length} alumnos`}
+			>
+				<button className="primary" type="button" onClick={addStudent}>
+					<Icon name="plus" size={18} />
+					Inscribir alumno
+				</button>
+				<button
+					type="button"
+					aria-expanded={csvPreview}
+					aria-controls="directory-import"
+					onClick={() => setCSVPreview(!csvPreview)}
+				>
+					<Icon name="upload" size={18} />
+					Importar CSV
+				</button>
+			</DirectoryHeader>
 			{csvPreview && (
 				<section
 					className="directory-import"
@@ -121,15 +123,13 @@ export function StudentsView({
 				</section>
 			)}
 			<div className="directory-filters">
-				<label htmlFor="directory-query">
-					Buscar alumno
-					<input
-						id="directory-query"
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Nombre o matrícula"
-					/>
-				</label>
+				<DirectorySearch
+					id="directory-query"
+					label="Buscar alumno"
+					placeholder="Nombre o matrícula"
+					value={query}
+					onChange={setQuery}
+				/>
 				<label htmlFor="directory-cycle">
 					Ciclo del directorio
 					<select
@@ -164,69 +164,81 @@ export function StudentsView({
 				</label>
 			</div>
 			<div className="result-toolbar">
+				{cycleFilter && (
+					<DirectoryFilterChip
+						label="Quitar filtro de ciclo"
+						onRemove={() => onCycleFilterChange("")}
+					>
+						{s.cycles.find((c) => c.id === cycleFilter)?.name}
+					</DirectoryFilterChip>
+				)}
+				{groupFilter && (
+					<DirectoryFilterChip
+						label="Quitar filtro de grupo"
+						onRemove={() => setGroupFilter("")}
+					>
+						{groupName(groupFilter)}
+					</DirectoryFilterChip>
+				)}
 				{(query || groupFilter || cycleFilter) && (
 					<button type="button" onClick={onClearFilters}>
 						Limpiar filtros
 					</button>
 				)}
 			</div>
-			<p className="directory-scroll-hint" id="directory-scroll-hint">
-				Desliza la tabla para ver grupos y expedientes.
-			</p>
-			<section
-				className="table-scroll"
-				aria-describedby="directory-scroll-hint"
-				// biome-ignore lint/a11y/noNoninteractiveTabindex: enables keyboard scrolling of the table.
-				tabIndex={0}
-				aria-label="Resultados de alumnos, desplazamiento horizontal"
+			<DataTable
+				caption="Alumnos y grupos históricos por ciclo escolar"
+				variant="card"
+				scrollClassName="table-scroll"
+				scrollLabel="Resultados de alumnos, desplazamiento horizontal"
 			>
-				<table>
-					<caption className="sr-only">
-						Alumnos y grupos históricos por ciclo escolar
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Alumno</th>
-							<th scope="col">Grupos por ciclo</th>
-							<th scope="col">Expediente</th>
-						</tr>
-					</thead>
-					<tbody>
-						{visible.map((x) => (
-							<tr key={x.id}>
-								<td>
-									<strong>{x.name}</strong>
-									<span className="directory-matricula">{x.matricula}</span>
-								</td>
-								<td>
-									{x.enrollments.map((e) => (
+				<thead>
+					<tr>
+						<th scope="col">Alumno</th>
+						<th scope="col">{cycleFilter ? "Grupo" : "Grupos por ciclo"}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{visible.map((x) => (
+						<tr key={x.id}>
+							<td>
+								<DirectoryIdentity
+									name={
+										<button
+											id={`student-${x.id}`}
+											className="directory-profile"
+											aria-label={`Abrir ${x.name}`}
+											type="button"
+											onClick={() => setProfile(x.id)}
+										>
+											{x.name}
+										</button>
+									}
+									secondary={x.matricula}
+								/>
+							</td>
+							<td>
+								{x.enrollments
+									.filter((e) => !cycleFilter || e.cycle === cycleFilter)
+									.map((e) => (
 										<p className="directory-enrollment" key={e.cycle}>
 											<span className="directory-group">
 												{groupName(activeGroup(s, x.id, e.cycle))}
 											</span>{" "}
-											{s.cycles.find((c) => c.id === e.cycle)?.name}
+											{!cycleFilter &&
+												s.cycles.find((c) => c.id === e.cycle)?.name}
 										</p>
 									))}
-								</td>
-								<td>
-									<button
-										id={`student-${x.id}`}
-										className="directory-profile"
-										aria-label={`Abrir ${x.name}`}
-										type="button"
-										onClick={() => setProfile(x.id)}
-									>
-										Ver expediente
-									</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</section>
-			{!visible.length && (
-				<p>No se encontraron alumnos. Limpia los filtros o inscribe uno.</p>
-			)}
+							</td>
+						</tr>
+					))}
+					{!visible.length && (
+						<EmptyTableRow columns={2}>
+							No se encontraron alumnos. Limpia los filtros o inscribe uno.
+						</EmptyTableRow>
+					)}
+				</tbody>
+			</DataTable>
 		</section>
 	);
 }

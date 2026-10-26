@@ -1,7 +1,7 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { StaffView } from "./staff-view";
+import { filterStaff, StaffView } from "./staff-view";
 import { initialState } from "./workflows";
 
 function render(empty = false) {
@@ -40,10 +40,11 @@ function render(empty = false) {
 
 test("staff panel unifies heading, count and primary action with visible disclaimer", () => {
 	const html = render();
-	expect(html).toMatch(/^<section class="panel staff-directory"/);
+	expect(html).toMatch(/^<section class="staff-directory"/);
+	expect(html).not.toContain('class="panel staff-directory"');
 	const header = html.match(/<header[^>]*>(.*?)<\/header>/)?.[1];
 	expect(header).toContain("Personal de la escuela");
-	expect(header).toContain("Docentes y personal administrativo · 2 registros");
+	expect(header).toContain("2 de 2 registros");
 	expect(header).toContain('class="primary"');
 	expect(header).toContain("Agregar personal");
 	expect(header).toContain("<svg");
@@ -57,7 +58,9 @@ test("staff keeps semantic columns, row headers, caption and keyboard scrolling"
 	expect(html).toContain("<caption>Directorio del personal</caption>");
 	for (const name of ["Nombre", "Responsabilidad", "Historial", "Acciones"])
 		expect(html).toContain(`<th scope="col">${name}</th>`);
-	expect(html).toContain('<th scope="row">Ana Ejemplo</th>');
+	expect(html).toContain(
+		'<th scope="row"><span class="directory-identity">Ana Ejemplo</span></th>',
+	);
 	expect(html).toContain('class="ui-table-scroll"');
 	expect(html).toContain('tabindex="0"');
 	expect(html).toContain("Desliza para ver todas las columnas");
@@ -87,4 +90,36 @@ test("empty staff retains the four-column table and recovery", () => {
 	expect(html).toContain(
 		"Agrega docentes y personal administrativo para organizar tu comunidad.",
 	);
+});
+
+test("staff supports labeled search and responsibility filters", () => {
+	const html = render();
+	expect(html).toContain('for="staff-query"');
+	expect(html).toContain('for="staff-role"');
+	expect(html).toContain('aria-live="polite"');
+});
+
+test("staff search ignores accents and combines with responsibility", () => {
+	const staff = [
+		{ id: "a", name: "María López", role: "Docente", history: [] },
+		{ id: "b", name: "Mario López", role: "Dirección", history: [] },
+	];
+	expect(filterStaff(staff, "  MARIA  ", "").map((x) => x.id)).toEqual(["a"]);
+	expect(filterStaff(staff, "lopez", "Dirección").map((x) => x.id)).toEqual([
+		"b",
+	]);
+	expect(filterStaff(staff, "nadie", "")).toEqual([]);
+	expect(filterStaff(staff, "", "")).toHaveLength(2);
+});
+
+test("only the staff table is a card, not its heading or filters", () => {
+	const html = render();
+	const card = html.split('<div class="ui-table-card">')[1];
+	expect(card).toBeDefined();
+	expect(card).toContain('<section class="ui-table-scroll"');
+	expect(card).toContain("<table");
+	expect(card).not.toContain("<h2>");
+	expect(card).not.toContain("Agregar personal");
+	expect(card).not.toContain('id="staff-query"');
+	expect(render(true).split('<div class="ui-table-card">')[1]).toContain('class="ui-table-empty"');
 });
