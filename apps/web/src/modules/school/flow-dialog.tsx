@@ -6,6 +6,7 @@ export type Field = {
 	options?: { value: string; label: string }[];
 	type?: string;
 	optional?: boolean;
+	rows?: number;
 	validate?: (
 		value: string,
 		values: Record<string, string>,
@@ -19,7 +20,7 @@ export type Flow = {
 	values: Record<string, string>;
 	preview?: string[];
 };
-const cacheKey = (flow: Flow) =>
+export const flowDraftKey = (flow: Flow) =>
 	[
 		flow.kind,
 		flow.title,
@@ -28,6 +29,7 @@ const cacheKey = (flow: Flow) =>
 		flow.values.assignment,
 		flow.values.event,
 		flow.values.group,
+		flow.values.date,
 	].join("|");
 
 export function FlowDialog({
@@ -54,7 +56,7 @@ export function FlowDialog({
 				document.activeElement instanceof HTMLElement
 					? document.activeElement
 					: null;
-			setValues(cache.current[cacheKey(flow)] || flow.values);
+			setValues(cache.current[flowDraftKey(flow)] || flow.values);
 			setErrors({});
 			setStep(0);
 			setError("");
@@ -75,7 +77,7 @@ export function FlowDialog({
 		}
 	}, [flow, step, error, errors]);
 	function close() {
-		if (flow) cache.current[cacheKey(flow)] = values;
+		if (flow) cache.current[flowDraftKey(flow)] = values;
 		onClose();
 	}
 	return (
@@ -132,7 +134,7 @@ export function FlowDialog({
 					}
 					try {
 						onConfirm(values);
-						if (flow) delete cache.current[cacheKey(flow)];
+						if (flow) delete cache.current[flowDraftKey(flow)];
 					} catch (e) {
 						setError(e instanceof Error ? e.message : "Revisa los datos.");
 						alert.current?.focus();
@@ -165,6 +167,7 @@ export function FlowDialog({
 								</select>
 							) : f.type === "textarea" ? (
 								<textarea
+									rows={f.rows}
 									aria-invalid={!!errors[f.key]}
 									aria-describedby={
 										errors[f.key] ? `flow-error-${f.key}` : undefined

@@ -1,12 +1,19 @@
 import { z } from "zod";
 import {
+	applyCalendar,
+	calendarEventsSchema,
+	calendarHolidaysSchema,
+} from "./calendar-workflows";
+import {
 	applySchedule,
 	assertDate,
 	scheduleChangesSchema,
 	scheduleWindowsSchema,
 } from "./schedule-helpers";
 
-const enrollment = z.object({ group: z.string(), cycle: z.string() });
+import { cycleDates, cycleSchema } from "./cycle-dates";
+
+ const enrollment = z.object({ group: z.string(), cycle: z.string() });
 const history = z.array(
 	z.object({
 		id: z.string(),
@@ -22,7 +29,7 @@ const schema = z.object({
 		timezone: z.string(),
 		shift: z.string(),
 	}),
-	cycles: z.array(z.object({ id: z.string(), name: z.string() })),
+	cycles: z.array(cycleSchema),
 	groups: z.array(
 		z.object({
 			id: z.string(),
@@ -32,6 +39,8 @@ const schema = z.object({
 			shift: z.string().optional(),
 		}),
 	),
+	calendarHolidays: calendarHolidaysSchema,
+	calendarEvents: calendarEventsSchema,
 	exceptions: z.array(
 		z.object({ id: z.string(), date: z.string(), reason: z.string() }),
 	),
@@ -181,6 +190,8 @@ export function initialState(legacy = false): State {
 			{ id: "g1", name: "1° A", cycle: "c1", grade: "1°", shift: "Matutino" },
 			{ id: "g2", name: "2° B", cycle: "c1", grade: "2°", shift: "Matutino" },
 		],
+		calendarHolidays: [],
+		calendarEvents: [],
 		exceptions: [],
 		students: [
 			{
@@ -336,8 +347,14 @@ export function apply(state: State, { kind, data: d }: Command): State {
 		case "cycle":
 			if (s.cycles.some((x) => x.name === req("name")))
 				throw Error("El ciclo ya existe.");
-			s.cycles.push({ id, name: req("name") });
+			s.cycles.push({ id, name: req("name"), ...cycleDates(d, true) });
 			break;
+		case "cycle-dates": {
+			const cycle = s.cycles.find((item) => item.id === d.id);
+			if (!cycle) throw Error("Selecciona un ciclo existente.");
+			Object.assign(cycle, cycleDates(d));
+			break;
+		}
 		case "group":
 			if (!s.cycles.some((x) => x.id === d.cycle))
 				throw Error("Selecciona un ciclo.");
@@ -360,6 +377,10 @@ export function apply(state: State, { kind, data: d }: Command): State {
 		case "schedule-window":
 		case "schedule-occurrence":
 			applySchedule(s, kind, d, id);
+			break;
+		case "calendar-holiday":
+		case "calendar-event":
+			applyCalendar(s, kind, d, id);
 			break;
 		case "exception":
 			assertDate(req("date"));

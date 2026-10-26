@@ -2,30 +2,111 @@
 	min-width: 0;
 	font-variant-numeric: tabular-nums;
 }
-.cycle-calendar .panel {
-	margin: 0 0 20px;
+.cycle-settings {
+	margin-bottom: 20px;
+	padding: 16px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 12px;
 }
-.cycle-settings,
-.cycle-month-header,
-.cycle-month-navigation,
-.cycle-day-detail {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 20px;
+.cycle-settings {
+	container-type: inline-size;
 }
-.cycle-context {
-	flex: 1;
+.cycle-settings-row {
+	display: grid;
+	grid-template-columns: minmax(260px, 300px) minmax(0, 1fr) auto;
+	align-items: start;
+	gap: 16px 24px;
+}
+.cycle-selector,
+.cycle-date-metadata > div {
+	display: grid;
+	gap: 4px;
 	min-width: 0;
 }
-.cycle-context label {
-	max-width: 360px;
+.cycle-selector,
+.cycle-date-metadata dt {
+	font-size: 12px;
+	line-height: 18px;
+	font-weight: 500;
+	color: var(--ink-muted);
+}
+.cycle-selector select {
+	width: 100%;
+	height: 44px;
 	color: var(--ink);
 }
-.cycle-context p {
-	margin-top: 8px;
+.cycle-date-metadata {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	min-width: 0;
+	margin: 0;
+}
+.cycle-date-metadata dd {
+	display: flex;
+	align-items: center;
+	min-height: 44px;
+	margin: 0;
+	font-size: 14px;
+	line-height: 20px;
+	overflow-wrap: anywhere;
+	color: var(--ink);
+}
+.cycle-settings-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding-top: 22px;
+}
+.cycle-settings-actions button {
+	white-space: nowrap;
+}
+.cycle-settings-caption {
+	margin: 12px 0 0;
 	font-size: 13px;
-	max-width: 65ch;
+	line-height: 1.5;
+	color: var(--ink-muted);
+}
+@container (max-width: 940px) {
+	.cycle-settings-row {
+		grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+	}
+	.cycle-settings-actions {
+		grid-column: 1 / -1;
+		padding-top: 0;
+	}
+}
+@container (max-width: 600px) {
+	.cycle-settings-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+.cycle-month,
+.cycle-month-picker {
+	min-width: 0;
+}
+.cycle-calendar select,
+.cycle-calendar input {
+	min-width: 0;
+	max-width: 100%;
+	min-height: 44px;
+}
+.cycle-calendar button {
+	min-height: 44px;
+}
+.cycle-grid-card {
+	min-width: 0;
+	overflow: hidden;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+.cycle-month-header,
+.cycle-month-navigation {
+	display: flex;
+	align-items: center;
+	gap: 12px;
 }
 .cycle-actions,
 .cycle-month-controls {
@@ -34,19 +115,14 @@
 	flex-wrap: wrap;
 	gap: 8px;
 }
-.cycle-settings {
-	flex-wrap: wrap;
-}
 .cycle-month-header {
 	flex-wrap: wrap;
-	padding-bottom: 20px;
-	border-bottom: 1px solid var(--line);
+	justify-content: space-between;
 }
-.cycle-month-header h2 {
-	margin-bottom: 4px;
-}
-.cycle-month-header p {
+.cycle-month-scope {
+	margin: 6px 0 12px;
 	font-size: 13px;
+	color: var(--ink-muted);
 }
 .cycle-month-controls {
 	align-items: flex-end;
@@ -55,17 +131,17 @@
 	gap: 4px;
 }
 .cycle-month-navigation {
-	padding: 20px 0 16px;
+	flex-wrap: wrap;
 }
-.cycle-month-navigation h3 {
+.cycle-month-navigation h2 {
 	margin: 0;
 	font-size: 22px;
 }
-.cycle-month-navigation h3::first-letter,
-.cycle-day-detail h3::first-letter {
+.cycle-month-navigation h2::first-letter {
 	text-transform: uppercase;
 }
 .cycle-month-navigation button {
+	min-width: 44px;
 	padding: 10px;
 }
 .cycle-previous {
@@ -78,8 +154,6 @@
 	grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 .cycle-weekdays {
-	border: 1px solid var(--line);
-	border-bottom: 0;
 	background: var(--surface-muted);
 }
 .cycle-weekdays span {
@@ -90,7 +164,6 @@
 }
 .cycle-days {
 	border-top: 1px solid var(--line);
-	border-left: 1px solid var(--line);
 }
 .cycle-days .cycle-day {
 	display: flex;
@@ -107,6 +180,12 @@
 	border-radius: 0;
 	font-weight: 500;
 	text-align: left;
+}
+.cycle-days .cycle-day:nth-child(7n) {
+	border-right: 0;
+}
+.cycle-days .cycle-day:nth-last-child(-n + 7) {
+	border-bottom: 0;
 }
 .cycle-day-number {
 	display: grid;
@@ -164,70 +243,19 @@
 	font-size: 12px;
 	color: var(--ink-muted);
 }
-.cycle-calendar-legend > span:first-child {
+.cycle-calendar-legend > span {
 	display: flex;
 	align-items: center;
 	gap: 7px;
 }
-.cycle-day-detail {
-	background: var(--surface-muted);
-	padding: 18px;
-	border-radius: 8px;
-}
-.cycle-day-detail h3 {
-	margin: 0 0 4px;
-}
-.cycle-day-detail button {
-	flex-shrink: 0;
-}
-.cycle-month-events {
-	margin-top: 20px;
-}
-.cycle-month-events summary {
-	padding: 10px 0;
-	cursor: pointer;
-	font-size: 14px;
-	font-weight: 600;
-}
-.cycle-month-events button {
-	display: flex;
-	gap: 16px;
-	width: 100%;
-	text-align: left;
-	border: 0;
-	border-bottom: 1px solid var(--line);
-	border-radius: 0;
-}
-.cycle-month-events strong {
-	flex-shrink: 0;
-}
-.cycle-month-events p {
-	padding: 10px 0;
-}
-.cycle-month .cycle-calendar-note {
-	margin: 18px 0 0;
-	font-size: 12px;
-}
 @media (max-width: 600px) {
-	.cycle-settings,
-	.cycle-day-detail {
-		align-items: stretch;
-		flex-direction: column;
-		gap: 16px;
-	}
-	.cycle-context label {
-		max-width: none;
-	}
-	.cycle-actions button {
-		flex-grow: 1;
-	}
 	.cycle-month-controls {
 		width: 100%;
 	}
 	.cycle-month-picker {
 		flex: 1;
 	}
-	.cycle-month-navigation h3 {
+	.cycle-month-navigation h2 {
 		font-size: 18px;
 	}
 	.cycle-weekdays span {
@@ -248,8 +276,9 @@
 		width: 26px;
 		height: 26px;
 	}
-	.cycle-month-events button {
-		flex-wrap: wrap;
-		gap: 4px 12px;
-	}
 }
+
+.cycle-day-holiday { color: #805215; }
+.cycle-day-holiday .cycle-event-dot { background: #805215; border-radius: 0; }
+.cycle-day-notice { color: #176a63; }
+.cycle-day-notice .cycle-event-dot { background: #176a63; }
