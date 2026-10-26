@@ -13,7 +13,7 @@ const run = (s: State, kind: string, data: Record<string, string>) =>
 test("registration uniqueness, import validation and cancellation", () => {
 	const s = initialState();
 	expect(() =>
-		run(s, "student", { name: "Otro", matricula: "DEMO-001", group: "g1" }),
+		run(s, "student", { name: "Otro", matricula: "AUR-26001", group: "g1" }),
 	).toThrow();
 	expect(s.students).toHaveLength(2);
 	const rows = previewCSV(
@@ -96,19 +96,19 @@ test("audiences deduplicate shared guardians and exclude restricted links", () =
 	let s = initialState();
 	s = run(s, "guardian", {
 		student: "s2",
-		name: "Tutor Ejemplo",
+		name: "Mariana Ruiz Salcedo",
 		reason: "Verificación sintética",
 	});
-	expect(recipients(s, "school", "")).toEqual(["Tutor Ejemplo"]);
-	expect(recipients(s, "group", "g2")).toEqual(["Tutor Ejemplo"]);
-	expect(recipients(s, "student", "s1")).toEqual(["Tutor Ejemplo"]);
+	expect(recipients(s, "school", "")).toEqual(["Mariana Ruiz Salcedo"]);
+	expect(recipients(s, "group", "g2")).toEqual(["Mariana Ruiz Salcedo"]);
+	expect(recipients(s, "student", "s1")).toEqual(["Mariana Ruiz Salcedo"]);
 	s = run(s, "guardian-status", {
 		id: "l1",
 		status: "Restringido",
 		reason: "Prueba",
 	});
 	expect(recipients(s, "student", "s1")).toEqual([]);
-	expect(recipients(s, "school", "")).toEqual(["Tutor Ejemplo"]);
+	expect(recipients(s, "school", "")).toEqual(["Mariana Ruiz Salcedo"]);
 });
 test("draft editing, publication snapshot and no recipients guard", () => {
 	let s = initialState();
@@ -126,7 +126,7 @@ test("draft editing, publication snapshot and no recipients guard", () => {
 		audience: "school",
 	});
 	s = run(s, "notice-publish", { id });
-	expect(s.notices[0].recipients).toEqual(["Tutor Ejemplo"]);
+	expect(s.notices[0].recipients).toEqual(["Mariana Ruiz Salcedo"]);
 	expect(s.notices[0].published).toBe(true);
 	expect(() =>
 		run(s, "notice", { id, title: "Cambio", text: "No", audience: "school" }),
@@ -163,7 +163,7 @@ test("grade review then publication and correction retain original history", () 
 		reason: "Revisión demo",
 	});
 	expect(s.grades[0].history[0].value).toBe("8.5 → 9");
-	expect(s.grades[0].history[0].author).toBe("Personal demo");
+	expect(s.grades[0].history[0].author).toBe("Patricia Salgado Méndez");
 });
 test("failed commands leave entire prior state unchanged", () => {
 	const s = initialState(),

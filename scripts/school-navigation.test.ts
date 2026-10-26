@@ -38,8 +38,8 @@ test("follow-up views require explicit group context and isolate student records
 		expect(render(mode, "")).not.toContain("<table");
 	}
 	const attendance = render("Asistencia", "g1");
-	expect(attendance).toContain("Ana Ejemplo");
-	expect(attendance).not.toContain("Leo Ejemplo");
+	expect(attendance).toContain("Ana Sofía Mendoza Ruiz");
+	expect(attendance).not.toContain("Leonardo Castillo Vega");
 	s.groups = [];
 	expect(render("Conducta", "")).toContain("Crea un grupo en Gestión académica");
 });

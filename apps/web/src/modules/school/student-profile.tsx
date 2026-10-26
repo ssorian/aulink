@@ -1,12 +1,12 @@
-import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
 import { useState } from "react";
+import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
 import { AttendanceView } from "./attendance-view";
 import { ConductView } from "./conduct-view";
 import { CredentialsView } from "./credentials-view";
 import { GradeRecords } from "./grades-view";
 import { field, options, reason } from "./view-helpers";
 import type { ViewProps } from "./view-types";
-import { activeGroup } from "./workflows";
+import { activeGroup, isVerifiedGuardian } from "./workflows";
 
 const tabs = [
 	"Inscripciones",
@@ -178,7 +178,7 @@ export function StudentProfile({
 							<article className="list-row" key={l.id}>
 								<strong>{l.name}</strong>{" "}
 								<span className="pill">
-									{l.status === "Verificado DEMO"
+									{isVerifiedGuardian(l.status)
 										? "Verificado en el registro"
 										: l.status}
 								</span>

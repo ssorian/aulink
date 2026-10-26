@@ -14,8 +14,8 @@ test("rendered tables expose scoped evidence, accessible days and draft grades",
  s.events.push({...s.events[0],id:"foreign",student:"s2",group:"g2",kind:"Inasistencia"});
  const attendance=renderToStaticMarkup(createElement(GroupAttendanceTable,{s,groupId:"g1",open:()=>{}}));
  expect(attendance).toContain("<table>");
- expect(attendance).toContain("Ana Ejemplo · 2026-01-15: Entrada sin salida");
- expect(attendance).not.toContain("Leo Ejemplo");
+ expect(attendance).toContain("Ana Sofía Mendoza Ruiz · 2026-10-19: Entrada sin salida");
+ expect(attendance).not.toContain("Leonardo Castillo Vega");
  expect((attendance.match(/class=\"day-square\"/g)||[]).length).toBe(7);
  s.assignments=[{id:"a",subject:"Historia",period:"P1",teacher:"Demo",min:0,max:10,group:"g1"}];
  s.grades=[{id:"r",student:"s1",assignment:"a",value:8,published:false,history:[]}];

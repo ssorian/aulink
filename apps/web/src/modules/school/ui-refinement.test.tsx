@@ -22,7 +22,7 @@ test("recipient lists start collapsed and expose their verified count in the sum
 	);
 	expect(html).toContain('<details class="publication-recipients">');
 	expect(html).toMatch(/<summary>1 tutor verificado · previstos<\/summary>/);
-	expect(html).toContain("Tutor Ejemplo");
+	expect(html).toContain("Mariana Ruiz Salcedo");
 	expect(html).toContain("Revisar publicación");
 });
 

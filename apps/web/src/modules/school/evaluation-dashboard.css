@@ -1,0 +1,368 @@
+.evaluation-dashboard {
+	min-width: 0;
+	max-width: 100%;
+	color: var(--ink);
+	font-variant-numeric: tabular-nums;
+}
+
+.evaluation-dashboard ::selection {
+	background: var(--selection);
+	color: var(--ink);
+}
+
+.evaluation-dashboard :focus-visible {
+	outline: 2px solid var(--action);
+	outline-offset: 3px;
+}
+
+.evaluation-dashboard h2,
+.evaluation-dashboard h3,
+.evaluation-dashboard p {
+	margin: 0;
+}
+
+.evaluation-dashboard h2 {
+	font-size: 24px;
+	line-height: 1.25;
+}
+
+.evaluation-dashboard h3 {
+	font-size: 17px;
+	line-height: 1.4;
+}
+
+.evaluation-dashboard p {
+	max-width: 72ch;
+	color: var(--ink-muted);
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+.evaluation-dashboard .evaluation-header p {
+	margin-top: 8px;
+}
+
+.evaluation-dashboard .evaluation-filters {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 16px;
+	padding: 24px 0;
+}
+
+.evaluation-dashboard .evaluation-filters label {
+	display: grid;
+	gap: 8px;
+	min-width: 0;
+	margin: 0;
+	font-size: 13px;
+}
+
+.evaluation-dashboard select {
+	min-width: 0;
+	width: 100%;
+	min-height: 44px;
+	color: var(--ink);
+	background: var(--surface);
+	border: 1px solid var(--line);
+}
+
+.evaluation-dashboard select:disabled {
+	color: var(--ink-muted);
+	background: var(--canvas);
+	cursor: not-allowed;
+}
+
+.evaluation-dashboard .evaluation-overview,
+.evaluation-dashboard .evaluation-results {
+	min-width: 0;
+	padding: 28px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--surface);
+}
+
+.evaluation-dashboard .evaluation-school-mean {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+	align-items: center;
+	gap: 12px 32px;
+	margin: 0;
+	padding-bottom: 28px;
+	border-bottom: 1px solid var(--line);
+}
+
+.evaluation-dashboard .evaluation-school-plot {
+	grid-column: 2;
+	grid-row: 1 / 3;
+	min-width: 0;
+}
+
+.evaluation-dashboard .evaluation-axis {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 12px;
+	font-size: 12px;
+	color: var(--ink-muted);
+}
+
+.evaluation-dashboard .evaluation-chart > .evaluation-axis {
+	margin-left: calc(max(70px, 22%) + 12px);
+	margin-right: 50px;
+}
+
+.evaluation-dashboard .evaluation-school-mean h3 {
+	margin-bottom: 4px;
+}
+
+.evaluation-dashboard .evaluation-mean {
+	font-size: clamp(24px, 3vw, 40px);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+}
+
+.evaluation-dashboard .evaluation-chart-pair {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 32px;
+	padding-top: 28px;
+}
+
+.evaluation-dashboard .evaluation-chart-single {
+	padding-top: 28px;
+}
+
+.evaluation-dashboard .evaluation-chart {
+	min-width: 0;
+	margin: 0;
+}
+
+.evaluation-dashboard figcaption p {
+	margin-top: 6px;
+}
+
+.evaluation-dashboard .evaluation-chart-scroll {
+	max-height: 390px;
+	overflow: auto;
+	margin-top: 12px;
+	padding: 4px 8px 4px 4px;
+	scrollbar-color: var(--ink-muted) var(--canvas);
+	scrollbar-width: thin;
+}
+
+.evaluation-dashboard .evaluation-chart-list {
+	margin-top: 12px;
+}
+
+.evaluation-dashboard .evaluation-bars {
+	display: grid;
+	gap: 8px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.evaluation-dashboard .evaluation-bars li {
+	display: grid;
+	grid-template-columns: minmax(70px, 22%) minmax(0, 1fr);
+	align-items: center;
+	gap: 12px;
+	min-height: 52px;
+}
+
+.evaluation-dashboard .evaluation-bar-label {
+	font-size: 14px;
+	overflow-wrap: anywhere;
+}
+
+.evaluation-dashboard .evaluation-bar-data {
+	min-width: 0;
+}
+
+.evaluation-dashboard .evaluation-bar-value {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 14px;
+}
+
+.evaluation-dashboard .evaluation-bar-value strong {
+	min-width: 38px;
+	text-align: right;
+	overflow-wrap: anywhere;
+}
+
+.evaluation-dashboard button {
+	min-height: 44px;
+	padding: 8px 12px;
+	color: var(--action);
+	background: transparent;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.evaluation-dashboard button:hover {
+	background: var(--selection);
+}
+
+.evaluation-dashboard .evaluation-bar-label button {
+	text-align: left;
+	border-color: transparent;
+	padding-left: 0;
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+
+.evaluation-dashboard .evaluation-track {
+	height: 14px;
+	background: var(--canvas);
+	border-inline: 1px solid var(--ink-muted);
+}
+
+.evaluation-dashboard .evaluation-school-plot .evaluation-track {
+	height: 20px;
+	margin-top: 12px;
+}
+
+.evaluation-dashboard .evaluation-bar-value .evaluation-track {
+	flex: 1;
+	min-width: 0;
+}
+
+.evaluation-dashboard .evaluation-track span {
+	display: block;
+	height: 100%;
+	background: var(--action);
+}
+
+.evaluation-dashboard .evaluation-bar-detail {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: var(--ink-muted);
+}
+
+.evaluation-dashboard .evaluation-chart-empty {
+	padding: 32px 0;
+}
+
+.evaluation-dashboard .evaluation-empty {
+	margin-top: 28px;
+	padding-top: 24px;
+	border-top: 1px solid var(--line);
+}
+
+.evaluation-dashboard .evaluation-empty p {
+	margin: 8px 0 16px;
+}
+
+.evaluation-dashboard .evaluation-results {
+	margin-top: 28px;
+}
+
+.evaluation-dashboard .evaluation-results > p {
+	margin-top: 8px;
+}
+
+.evaluation-dashboard .evaluation-results .evaluation-scroll-hint {
+	margin-top: 20px;
+	font-size: 12px;
+}
+
+.evaluation-dashboard .evaluation-table-scroll {
+	max-width: 100%;
+	overflow: auto;
+	margin-top: 8px;
+	scrollbar-color: var(--ink-muted) var(--canvas);
+}
+
+.evaluation-dashboard table {
+	width: 100%;
+	min-width: 740px;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.evaluation-dashboard caption {
+	padding: 12px;
+	text-align: left;
+	color: var(--ink-muted);
+}
+
+.evaluation-dashboard th,
+.evaluation-dashboard td {
+	padding: 12px;
+	text-align: left;
+	border-bottom: 1px solid var(--line);
+	vertical-align: middle;
+}
+
+.evaluation-dashboard thead {
+	background: var(--canvas);
+}
+
+.evaluation-dashboard .evaluation-number {
+	text-align: right;
+}
+
+.evaluation-dashboard td button {
+	white-space: nowrap;
+}
+
+.evaluation-dashboard .evaluation-method {
+	margin-top: 20px;
+}
+
+.evaluation-dashboard summary {
+	min-height: 44px;
+	padding-block: 12px;
+	cursor: pointer;
+	color: var(--action);
+	font-size: 13px;
+}
+
+.evaluation-dashboard .evaluation-method p + p {
+	margin-top: 12px;
+}
+
+.evaluation-dashboard .evaluation-diagnostics {
+	padding-top: 16px;
+	border-top: 1px solid var(--line);
+}
+
+@media (max-width: 1000px) {
+	.evaluation-dashboard .evaluation-chart-pair {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.evaluation-dashboard .evaluation-chart + .evaluation-chart {
+		padding-top: 24px;
+		border-top: 1px solid var(--line);
+	}
+
+	.evaluation-dashboard .evaluation-filters {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 480px) {
+	.evaluation-dashboard .evaluation-filters {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.evaluation-dashboard .evaluation-overview,
+	.evaluation-dashboard .evaluation-results {
+		padding: 20px 16px;
+	}
+
+	.evaluation-dashboard .evaluation-school-mean {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.evaluation-dashboard .evaluation-school-plot {
+		grid-column: auto;
+		grid-row: auto;
+	}
+}

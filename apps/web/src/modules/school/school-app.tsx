@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../components/ui/icon";
 import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
 import { CommunicationsView } from "./communications-view";
+import { EvaluationDashboard } from "./evaluation-dashboard";
 import { filterDirectory } from "./experience";
 import { type Field, type Flow, FlowDialog } from "./flow-dialog";
 import { GroupFollowupView } from "./group-followup-view";
@@ -9,6 +10,7 @@ import { GroupDirectory, GroupWorkspace } from "./group-workspace";
 import { HomeView } from "./home-view";
 import { buildMockData, mergeMockData } from "./mock-data";
 import { type SchoolPage, schoolNavigation, sectionFor } from "./navigation";
+import { migrateLegacySeed } from "./seed-migration";
 import { SetupView } from "./setup-view";
 import { StaffView } from "./staff-view";
 import { StudentProfile } from "./student-profile";
@@ -31,6 +33,8 @@ export function SchoolApp() {
 	const [page, setPage] = useState<SchoolPage>("Inicio");
 	const section = sectionFor(page);
 	const [followupGroup, setFollowupGroup] = useState("");
+	const [evaluationCycle, setEvaluationCycle] = useState("");
+	const effectiveEvaluationCycle = evaluationCycle || s.cycles[0]?.id || "";
 	const [flow, setFlow] = useState<Flow | null>(null);
 	const [message, setMessage] = useState("");
 	const [query, setQuery] = useState("");
@@ -49,16 +53,26 @@ export function SchoolApp() {
 		try {
 			const raw = localStorage.getItem("aulink-school-demo-v1");
 			const saved = raw ? restore(raw) : null;
-			const loaded = saved || buildMockData();
+			const migrated = saved ? migrateLegacySeed(saved) : null;
+			const loaded = migrated?.state || buildMockData();
 			setState(loaded);
 			setCSV(
-				`Nombre,Matrícula,Grupo\nAlumna Demo,DEMO-IMPORT-001,${loaded.groups[0]?.id || ""}`,
+				`Nombre,Matrícula,Grupo\nValeria Pérez Andrade,AUR-26150,${loaded.groups[0]?.id || ""}`,
 			);
 			setStorage(
 				raw && !saved
 					? "Datos locales inválidos: se recuperó el ejemplo inicial."
 					: "Datos guardados solo en este navegador.",
 			);
+			if (migrated?.changed) {
+				try {
+					localStorage.setItem("aulink-school-demo-v1", JSON.stringify(loaded));
+				} catch {
+					setStorage(
+						"No se pudo guardar: cambios solo en memoria; se perderán al recargar.",
+					);
+				}
+			}
 		} catch {
 			setStorage(
 				"Almacenamiento no disponible: los cambios solo durarán esta sesión.",
@@ -109,16 +123,19 @@ export function SchoolApp() {
 				? groupId
 				: page === "Comunicados"
 					? noticeGroup
-					: page === "Calificaciones" ||
-							page === "Asistencia" ||
-							page === "Conducta"
+					: page === "Asistencia" || page === "Conducta"
 						? followupGroup
 						: page === "Alumnos" && !profile
 							? groupFilter
 							: ""),
 	);
 	const contextCycle =
-		contextGroup?.cycle || (page === "Alumnos" && !profile ? cycleFilter : "");
+		contextGroup?.cycle ||
+		(page === "Calificaciones"
+			? effectiveEvaluationCycle
+			: page === "Alumnos" && !profile
+				? cycleFilter
+				: "");
 	function openDirectoryProfile(id: string) {
 		const table = document
 			.getElementById(`student-${id}`)
@@ -310,23 +327,6 @@ export function SchoolApp() {
 									/>
 								) : (
 									<>
-										<label className="cycle-filter">
-											Ciclo del directorio
-											<select
-												value={cycleFilter}
-												onChange={(e) => {
-													setCycleFilter(e.target.value);
-													setGroupFilter("");
-												}}
-											>
-												<option value="">Todos los ciclos</option>
-												{s.cycles.map((c) => (
-													<option key={c.id} value={c.id}>
-														{c.name}
-													</option>
-												))}
-											</select>
-										</label>
 										<StudentsView
 											s={s}
 											open={open}
@@ -339,6 +339,10 @@ export function SchoolApp() {
 											profile={profile}
 											setProfile={openDirectoryProfile}
 											cycleFilter={cycleFilter}
+											onCycleFilterChange={(value) => {
+												setCycleFilter(value);
+												setGroupFilter("");
+											}}
 											onClearFilters={() => {
 												setQuery("");
 												setGroupFilter("");
@@ -426,9 +430,19 @@ export function SchoolApp() {
 								</>
 							)}
 							{page === "Personal" && <StaffView s={s} open={open} />}
-							{(page === "Calificaciones" ||
-								page === "Asistencia" ||
-								page === "Conducta") && (
+							{page === "Calificaciones" && (
+								<EvaluationDashboard
+									s={s}
+									cycleId={effectiveEvaluationCycle}
+									onCycleChange={setEvaluationCycle}
+									onOpenGroup={(id) => {
+										setGroupId(id);
+										setGroupTabs({ ...groupTabs, [id]: "Calificaciones" });
+										setPage("Grupos");
+									}}
+								/>
+							)}
+							{(page === "Asistencia" || page === "Conducta") && (
 								<GroupFollowupView
 									s={s}
 									open={open}

@@ -10,6 +10,79 @@ import {
 	wasEnrolled,
 } from "../apps/web/src/modules/school/workflows";
 
+test("seed records use natural school names and complete personal names", () => {
+	for (const s of [initialState(), buildMockData()]) {
+		expect(JSON.stringify(s)).not.toMatch(/ejemplo|demo|muestra|sintétic|simulación/i);
+		expect(s.school.name).toBe("Instituto Aurora");
+		for (const student of s.students) expect(student.name.split(" ").length).toBeGreaterThanOrEqual(3);
+	}
+});
+
+test("only canonical and legacy verified guardians receive notices", () => {
+	const s = initialState();
+	for (const status of ["Verificado", "Verificado DEMO", "Pendiente", "Restringido", "Revocado", "Desconocido"]) {
+		s.links[0].status = status;
+		expect(recipients(s, "school", "").length).toBe(status === "Verificado" || status === "Verificado DEMO" ? 1 : 0);
+	}
+});
+
+test("legacy seed migration preserves edited rows, custom data and histories", async () => {
+	const { migrateLegacySeed } = await import("../apps/web/src/modules/school/seed-migration");
+	const old = buildMockData(true);
+	old.school.name = "Colegio Aurora · Demo";
+	old.students[0].name = "Lucía Prueba";
+	old.students.push({ id: "custom", name: "Importado Demo", matricula: "IMP-01", enrollments: [] });
+	old.links[0].history.push({ id: "custom-audit", author: "Secretaría", value: "Nota", reason: "Conservar" });
+	old.notices[0].recipients.push("Destinatario histórico");
+	const before = structuredClone(old);
+	const result = migrateLegacySeed(old);
+	expect(result.changed).toBe(true);
+	expect(old).toEqual(before);
+	expect(result.state.school).toEqual(before.school);
+	expect(result.state.students[0]).toEqual(before.students[0]);
+	expect(result.state.students.at(-1)).toEqual(before.students.at(-1));
+	expect(result.state.links[0]).toEqual(before.links[0]);
+	expect(result.state.notices[0]).toEqual(before.notices[0]);
+	expect(result.state.students[1]).toEqual(buildMockData().students[1]);
+	expect(migrateLegacySeed(result.state)).toEqual({ state: result.state, changed: false });
+	expect(mergeMockData(result.state).added).toBe(0);
+	for (const legacy of [initialState(true), buildMockData(true)]) {
+		const migrated = migrateLegacySeed(legacy);
+		expect(migrated.state).toEqual(legacy.students.length === 2 ? initialState() : buildMockData());
+		expect(migrateLegacySeed(migrated.state).changed).toBe(false);
+	}
+});
+
+test("migration does not introduce registration, cycle or group identity collisions", async () => {
+	const { migrateLegacySeed } = await import("../apps/web/src/modules/school/seed-migration");
+	const old = buildMockData(true);
+	const next = buildMockData();
+	old.students.push({ ...next.students[0], id: "custom-student" });
+	old.cycles.push({ ...next.cycles[0], id: "custom-cycle" });
+	old.groups.push({ ...next.groups[0], id: "custom-group" });
+	const migrated = migrateLegacySeed(old).state;
+	expect(migrated.students[0]).toEqual(old.students[0]);
+	expect(migrated.cycles[0]).toEqual(old.cycles[0]);
+	expect(migrated.groups[0]).toEqual(old.groups[0]);
+	expect(migrated.students.at(-1)).toEqual(old.students.at(-1));
+	expect(migrated.cycles.at(-1)).toEqual(old.cycles.at(-1));
+	expect(migrated.groups.at(-1)).toEqual(old.groups.at(-1));
+	expect(migrateLegacySeed(migrated).changed).toBe(false);
+	expect(mergeMockData(migrated).added).toBe(0);
+});
+
+test("seed teachers have no simultaneous lessons within a cycle", () => {
+	const s = buildMockData();
+	for (const slot of s.schedules) {
+		const a = s.assignments.find((x) => x.id === slot.assignment)!;
+		const cycle = s.groups.find((x) => x.id === a.group)!.cycle;
+		expect(s.schedules.some((other) => {
+			const b = s.assignments.find((x) => x.id === other.assignment)!;
+			return other.id !== slot.id && a.teacher === b.teacher && s.groups.find((x) => x.id === b.group)!.cycle === cycle && other.day === slot.day && other.start < slot.end && other.end > slot.start;
+		})).toBe(false);
+	}
+});
+
 test("rich sample validates schema, unique IDs and domain references", () => {
 	const s = buildMockData();
 	expect(restore(JSON.stringify(s))).toEqual(s);
@@ -69,6 +142,11 @@ test("merge is idempotent and preserves edited values and histories", () => {
 	const initial = initialState();
 	const s = mergeMockData(initial).state;
 	expect(s.students).toHaveLength(38);
+	expect(s.cycles).toHaveLength(3);
+	expect(s.groups).toHaveLength(8);
+	expect(s.cycles.slice(0, 1)).toEqual(initial.cycles);
+	expect(s.groups.slice(0, 2)).toEqual(initial.groups);
+	expect(s.students[2].enrollments.at(-1)?.cycle).toBe("sample-v1-cycle-1");
 	s.students[2].name = "Nombre editado";
 	s.links[1].status = "Revocado";
 	s.grades[0].history.push({

@@ -32,11 +32,11 @@ test("publication summary names scope and preserves published recipient snapshot
  const summary = communicationSummary(s,n);
  expect(summary.audience).toContain("1° A");
  expect(summary.audience).toContain("2026–2027");
- expect(summary.recipients).toEqual(["Tutor Ejemplo"]);
+ expect(summary.recipients).toEqual(["Mariana Ruiz Salcedo"]);
  expect(summary.canPublish).toBe(true);
  expect(summary.preview).toEqual({title:"Título",text:"Público"});
  expect(communicationSummary(s,{...n,target:"g2"}).canPublish).toBe(false);
- expect(communicationSummary(s,{...n,audience:"student",target:"s1"}).audience).toContain("Ana Ejemplo");
+ expect(communicationSummary(s,{...n,audience:"student",target:"s1"}).audience).toContain("Ana Sofía Mendoza Ruiz");
  expect(communicationSummary(s,{...n,audience:"school"}).audience).toContain(s.school.name);
  expect(communicationSummary(s,{...n,published:true,recipients:["Original"]}).recipients).toEqual(["Original"]);
  expect(communicationSummary(s,{...n,published:true}).canPublish).toBe(false);

@@ -167,8 +167,9 @@ const schema = z.object({
 });
 export type State = z.infer<typeof schema>;
 export type Command = { kind: string; data: Record<string, string> };
-export function initialState(): State {
-	return {
+/** Legacy mode reproduces the exact original seed for bounded migration only. */
+export function initialState(legacy = false): State {
+	const state: State = {
 		version: 1,
 		school: {
 			name: "Instituto Aurora · ejemplo",
@@ -228,7 +229,21 @@ export function initialState(): State {
 		scheduleWindows: [],
 		transfers: [],
 	};
+	if (!legacy) {
+		state.school.name = "Instituto Aurora";
+		state.students[0].name = "Ana Sofía Mendoza Ruiz";
+		state.students[0].matricula = "AUR-26001";
+		state.students[1].name = "Leonardo Castillo Vega";
+		state.students[1].matricula = "AUR-26002";
+		state.links[0].name = "Mariana Ruiz Salcedo";
+		state.links[0].status = "Verificado";
+		state.events[0].kind = "Entrada";
+		state.events[0].date = "2026-10-19";
+	}
+	return state;
 }
+export const isVerifiedGuardian = (status: string) =>
+	status === "Verificado" || status === "Verificado DEMO";
 export function restore(raw: string): State | null {
 	try {
 		return schema.parse(JSON.parse(raw));
@@ -270,7 +285,7 @@ export function recipients(s: State, audience: string, target: string) {
 			s.links
 				.filter(
 					(l) =>
-						l.status === "Verificado DEMO" &&
+						isVerifiedGuardian(l.status) &&
 						(audience === "school" ||
 							(audience === "student"
 								? l.student === target
@@ -307,7 +322,7 @@ export function apply(state: State, { kind, data: d }: Command): State {
 		id: `audit-${crypto.randomUUID()}`,
 		value,
 		reason: reason(),
-		author: "Personal demo",
+		author: "Patricia Salgado Méndez",
 	});
 	switch (kind) {
 		case "school":
@@ -389,7 +404,7 @@ export function apply(state: State, { kind, data: d }: Command): State {
 				from,
 				to: g.id,
 				reason: reason(),
-				author: "Personal demo",
+				author: "Patricia Salgado Méndez",
 			});
 			break;
 		}
@@ -400,7 +415,7 @@ export function apply(state: State, { kind, data: d }: Command): State {
 					(l) =>
 						l.student === d.student &&
 						l.name === d.name &&
-						l.status === "Verificado DEMO",
+						isVerifiedGuardian(l.status),
 				)
 			)
 				throw Error("El vínculo ya existe.");
@@ -408,8 +423,8 @@ export function apply(state: State, { kind, data: d }: Command): State {
 				id,
 				student: d.student,
 				name: req("name"),
-				status: "Verificado DEMO",
-				history: [entry("Verificado DEMO")],
+				status: "Verificado",
+				history: [entry("Verificado")],
 			});
 			break;
 		case "guardian-status": {
@@ -458,7 +473,7 @@ export function apply(state: State, { kind, data: d }: Command): State {
 				event: d.event,
 				value: req("value"),
 				reason: reason(),
-				author: "Personal demo",
+				author: "Patricia Salgado Méndez",
 			});
 			break;
 		case "notice": {
@@ -505,7 +520,7 @@ export function apply(state: State, { kind, data: d }: Command): State {
 		case "conduct-followup": {
 			const x = s.conduct.find((x) => x.id === d.id);
 			if (!x) throw Error("Reporte inexistente.");
-			x.followup += `\nSeguimiento · Personal demo: ${req("followup")} · Motivo: ${reason()}`;
+			x.followup += `\nSeguimiento · Patricia Salgado Méndez: ${req("followup")} · Motivo: ${reason()}`;
 			break;
 		}
 		case "conduct-publish": {

@@ -29,8 +29,8 @@ const audit = (n: number, value: string, reason: string) => ({
 });
 
 /** Deterministic, synthetic records. IDs and registrations are stable across reloads. */
-export function buildMockData(): State {
-	const s = initialState();
+export function buildMockData(legacy = false): State {
+	let s = initialState(true);
 	for (const key of collections) s[key] = [];
 	s.cycles = [
 		{ id: id("cycle", 1), name: "2026–2027 · Muestra" },
@@ -285,9 +285,138 @@ export function buildMockData(): State {
 			recipients: [],
 		},
 	];
+	if (!legacy) s = naturalSeed(s);
 	for (const notice of s.notices)
 		if (notice.published)
 			notice.recipients = recipients(s, notice.audience, notice.target);
+	return s;
+}
+
+/** Only transforms freshly generated seed data, never persisted/user-authored strings. */
+function naturalSeed(seed: State): State {
+	const replacements: Record<string, string> = {
+		"Instituto Aurora · ejemplo": "Instituto Aurora",
+		"2026–2027 · Muestra": "Agosto 2026 – Julio 2027",
+		"2025–2026 · Muestra histórica": "Agosto 2025 – Julio 2026",
+		"Verificado DEMO": "Verificado",
+		"Personal de ejemplo": "Patricia Salgado Méndez",
+		"Control escolar demo": "Patricia Salgado Méndez",
+		"Verificación exclusivamente sintética":
+			"Identidad y parentesco cotejados con el expediente de inscripción",
+		"Cambio de alcance ficticio con motivo de ejemplo":
+			"Actualización de personas autorizadas a solicitud de la tutora",
+		"Modelo sintético sin QR ni token":
+			"Credencial vigente para el ciclo escolar",
+		"Revisión anterior revocada por reemisión demo":
+			"Reposición por deterioro; revisión anterior revocada",
+		"Entrada sintética": "Entrada",
+		"Salida sintética": "Salida",
+		"Entrada justificada en ejemplo": "Entrada justificada",
+		"Llegada acordada en escenario ficticio":
+			"Retraso por cita médica, comprobante recibido en control escolar",
+		"Escenario ficticio: acuerdo de convivencia durante una actividad.":
+			"Interrumpió la exposición de su equipo; acordó respetar los turnos de participación.",
+		"Escenario ficticio: colaboración en proyecto de ciencias.":
+			"Organizó los materiales y apoyó a su equipo durante el proyecto de ciencias.",
+		"Nota interna sintética: preparar acompañamiento; no compartir esta nota.":
+			"Conversar con la docente titular para acordar el acompañamiento en el aula.",
+		"Revisar el acuerdo en la siguiente sesión de muestra.":
+			"Revisar los acuerdos durante la tutoría del próximo lunes.",
+		"Traslado de ejemplo posterior a la jornada de muestra":
+			"Cambio al turno vespertino solicitado por la familia, efectivo después de la jornada del 19 de octubre",
+		"Docente Ejemplo 1": "Gabriel Torres Nájera",
+		"Docente Ejemplo 2": "Elena Cárdenas Solís",
+		"Periodo 1 · Muestra": "Primer trimestre",
+		"Revisión sintética de captura":
+			"Corrección de captura tras cotejar la rúbrica de evaluación",
+		"Acceso principal · Equipo de muestra": "Acceso principal",
+		"Biblioteca · Equipo de muestra": "Biblioteca",
+		"Alta local: sin conexión física ni sincronización":
+			"Asignado al registro de acceso principal",
+		"Desactivación ficticia para mantenimiento; sin dispositivo real":
+			"Fuera de servicio por mantenimiento preventivo",
+		"Personal Ejemplo 1": "Adriana Beltrán Ríos",
+		"Personal Ejemplo 2": "Patricia Salgado Méndez",
+		"Personal Ejemplo 4": "Roberto Aguilar Téllez",
+		"Día sin clase de muestra; calendario ficticio":
+			"Sesión ordinaria del Consejo Técnico Escolar",
+		"Proyecto de ciencias · Muestra": "Materiales para el proyecto de ciencias",
+		"Simulación: preparar una actividad colaborativa para el grupo. No se ha enviado ningún aviso.":
+			"El jueves 22 de octubre trabajaremos en equipos. Traer una botella reutilizada, una regla y colores; los demás materiales estarán disponibles en el aula.",
+		"Encuentro de familias · Borrador de muestra":
+			"Reunión de familias del primer trimestre",
+		"Borrador sintético para revisar audiencia antes de simular publicación.":
+			"Propuesta de reunión para el 5 de noviembre: avances de aprendizaje, hábitos de estudio y acuerdos de acompañamiento. Horario pendiente de confirmar.",
+		"Reconocimiento individual · Muestra": "Reconocimiento por colaboración",
+		"Ejemplo de contenido compartido, sin entrega por correo ni push.":
+			"Reconocemos su disposición para escuchar y ayudar a sus compañeros durante las actividades del grupo. Gracias por acompañar este esfuerzo desde casa.",
+		"Propuesta sintética pendiente de revisión.":
+			"Revisar la distribución de equipos y los responsables de materiales antes de la próxima sesión.",
+	};
+	const families = [
+		"Mendoza Ruiz",
+		"Castillo Vega",
+		"Hernández Soto",
+		"López Acosta",
+		"García Pineda",
+		"Martínez Luna",
+		"Ramírez Ochoa",
+		"Torres Salas",
+		"Flores Ibarra",
+		"Vargas Molina",
+		"Reyes Duarte",
+		"Morales Rivas",
+		"Cruz Navarro",
+		"Ortiz Castañeda",
+		"Rojas Padilla",
+		"Sánchez Lozano",
+		"Medina Carrillo",
+		"Delgado Fuentes",
+	];
+	const guardians = [
+		"Mariana Ruiz Salcedo",
+		"Daniela Vega Montes",
+		"Isabel Soto Campos",
+		"Rocío Acosta Trejo",
+		"Verónica Pineda Rosales",
+		"Claudia Luna Espinoza",
+		"Adriana Ochoa Serrano",
+		"Beatriz Salas Montero",
+		"Lorena Ibarra Valdés",
+		"Patricia Molina Cervantes",
+		"Silvia Duarte Estrada",
+		"Teresa Rivas Cabrera",
+		"Gabriela Navarro León",
+		"Mónica Castañeda Bravo",
+		"Alejandra Padilla Solano",
+		"Cecilia Lozano Nieto",
+		"Raquel Carrillo Zamora",
+		"Lucía Fuentes Escobar",
+	];
+	for (const [i, student] of seed.students.entries()) {
+		replacements[student.name] =
+			`${student.name.split(" ")[0]} ${families[Math.floor(i / 2)]}`;
+		replacements[student.matricula] =
+			`AUR-${i < 30 ? "26" : "25"}${String(i + 101).padStart(3, "0")}`;
+		replacements[
+			`Familia Ejemplo ${String(Math.floor(i / 2) + 1).padStart(2, "0")}`
+		] = guardians[Math.floor(i / 2)];
+		if (i % 6 === 0)
+			replacements[`Tutor alterno Ejemplo ${i + 1}`] =
+				`Javier ${families[Math.floor(i / 2)].split(" ")[0]} Esquivel`;
+	}
+	for (const group of seed.groups)
+		replacements[group.name] = group.name.replace(" · Muestra", "");
+	// Exact value mapping is confined to this freshly constructed dataset.
+	const s: State = JSON.parse(JSON.stringify(seed), (_key, value: unknown) =>
+		typeof value === "string" ? (replacements[value] ?? value) : value,
+	);
+	for (const [i, slot] of s.schedules.entries()) {
+		const groupIndex = Math.floor(i / 2);
+		const hour = (groupIndex % 2 ? 14 : 8) + Math.floor(groupIndex / 2);
+		slot.start = `${String(hour).padStart(2, "0")}:00`;
+		slot.end = `${String(hour + 1).padStart(2, "0")}:00`;
+	}
 	return s;
 }
 
