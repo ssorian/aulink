@@ -33,10 +33,12 @@ test("contextual destinations highlight their owning section", () => {
 test("follow-up views require explicit group context and isolate student records", () => {
 	const s = initialState();
 	const render = (mode: string, groupId: string) => renderToStaticMarkup(createElement(GroupFollowupView, { s, mode, groupId, onGroup: () => {}, open: () => {} }));
-	for (const mode of ["Calificaciones", "Asistencia", "Conducta"]) {
+	for (const mode of ["Calificaciones", "Conducta"]) {
 		expect(render(mode, "")).toContain("Selecciona un grupo para consultar sus registros.");
 		expect(render(mode, "")).not.toContain("<table");
 	}
+	expect(render("Asistencia", "")).toContain("Panorama escolar");
+	expect(render("Asistencia", "")).not.toContain("Ana Sofía Mendoza Ruiz");
 	const attendance = render("Asistencia", "g1");
 	expect(attendance).toContain("Ana Sofía Mendoza Ruiz");
 	expect(attendance).not.toContain("Leonardo Castillo Vega");

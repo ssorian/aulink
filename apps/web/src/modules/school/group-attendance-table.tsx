@@ -8,16 +8,24 @@ export function GroupAttendanceTable({
 	s,
 	open,
 	groupId,
-}: Pick<ViewProps, "s" | "open"> & { groupId: string }) {
+	initialDate,
+	initialMode = "Semana",
+}: Pick<ViewProps, "s" | "open"> & {
+	groupId: string;
+	initialDate?: string;
+	initialMode?: string;
+}) {
 	const scoped = groupScope(s, groupId);
 	const [date, setDate] = useState(
 		() =>
+			initialDate ||
 			scoped.events
 				.map((e) => e.date)
 				.sort()
-				.at(-1) || new Date().toISOString().slice(0, 10),
+				.at(-1) ||
+			new Date().toISOString().slice(0, 10),
 	);
-	const [mode, setMode] = useState("Semana");
+	const [mode, setMode] = useState(initialMode);
 	const [selected, setSelected] = useState<{
 		student: string;
 		date: string;
