@@ -86,14 +86,14 @@ test("seed teachers have no simultaneous lessons within a cycle", () => {
 test("rich sample validates schema, unique IDs and domain references", () => {
 	const s = buildMockData();
 	expect(restore(JSON.stringify(s))).toEqual(s);
-	expect(s.students).toHaveLength(36);
-	expect(s.groups).toHaveLength(6);
+	expect(s.students).toHaveLength(48);
+	expect(s.groups).toHaveLength(8);
 	const ids = Object.values(s)
 		.filter(Array.isArray)
 		.flat()
 		.map((x) => x.id);
 	expect(new Set(ids).size).toBe(ids.length);
-	expect(new Set(s.students.map((x) => x.matricula)).size).toBe(36);
+	expect(new Set(s.students.map((x) => x.matricula)).size).toBe(48);
 	for (const x of s.students)
 		for (const e of x.enrollments)
 			expect(
@@ -116,6 +116,29 @@ test("rich sample validates schema, unique IDs and domain references", () => {
 		expect(s.students.some((x) => x.id === c.student)).toBe(true);
 	for (const a of s.adjustments)
 		expect(s.events.some((e) => e.id === a.event)).toBe(true);
+});
+test("current groups cover lower and upper secondary plans whose averages differ by subject", () => {
+	const s = buildMockData();
+	const current = s.groups.filter((g) => g.cycle === s.cycles[0].id);
+	expect(current.map((g) => g.name)).toEqual(["1° A", "1° B", "2° A", "2° B", "3° A", "1° Semestre A", "3° Semestre A"]);
+	const means = new Map<string, number[]>();
+	for (const group of current) {
+		const first = s.assignments.filter((a) => a.group === group.id && a.period === "Primer trimestre");
+		expect(first.length).toBeGreaterThanOrEqual(7);
+		expect(new Set(first.map((a) => a.teacher)).size).toBe(first.length);
+		for (const a of first) {
+			expect(s.schedules.some((slot) => slot.assignment === a.id)).toBe(true);
+			expect(s.staff.some((x) => x.name === a.teacher && x.role === "Docente")).toBe(true);
+			const values = s.grades.filter((x) => x.assignment === a.id).map((x) => x.value);
+			means.set(a.subject, [...(means.get(a.subject) || []), ...values]);
+		}
+	}
+	const average = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+	const ranked = [...means.values()].map(average).sort((a, b) => a - b);
+	expect(ranked.at(-1)! - ranked[0]).toBeGreaterThanOrEqual(2);
+	expect(average(means.get("Educación Física")!)).toBeGreaterThan(average(means.get("Matemáticas")!) + 1);
+	expect(s.assignments.some((a) => a.period === "Segundo trimestre" && !s.grades.some((g) => g.assignment === a.id))).toBe(true);
+	expect(s.grades.some((g) => !g.published && s.assignments.find((a) => a.id === g.assignment)?.period === "Segundo trimestre")).toBe(true);
 });
 test("weekly schedule has valid assignments and no group overlap; published audience snapshots agree", () => {
 	const s = buildMockData();
@@ -141,9 +164,9 @@ test("weekly schedule has valid assignments and no group overlap; published audi
 test("merge is idempotent and preserves edited values and histories", () => {
 	const initial = initialState();
 	const s = mergeMockData(initial).state;
-	expect(s.students).toHaveLength(38);
+	expect(s.students).toHaveLength(50);
 	expect(s.cycles).toHaveLength(3);
-	expect(s.groups).toHaveLength(8);
+	expect(s.groups).toHaveLength(10);
 	expect(s.cycles.slice(0, 1)).toEqual(initial.cycles);
 	expect(s.groups.slice(0, 2)).toEqual(initial.groups);
 	expect(s.students[2].enrollments.at(-1)?.cycle).toBe("sample-v1-cycle-1");

@@ -44,6 +44,15 @@ export function buildMockData(legacy = false): State {
 			grade: i === 5 ? "1°" : `${Math.floor(i / 2) + 1}°`,
 			shift: i % 2 ? "Vespertino" : "Matutino",
 		});
+	// Upper-secondary groups follow a semester plan with their own subjects.
+	for (const [n, semester] of ["1°", "3°"].entries())
+		s.groups.push({
+			id: id("group", 6 + n),
+			name: `${semester} Semestre A · Muestra`,
+			cycle: id("cycle", 1),
+			grade: `${semester} semestre`,
+			shift: n ? "Vespertino" : "Matutino",
+		});
 	const names = [
 		"Alba",
 		"Bruno",
@@ -58,7 +67,7 @@ export function buildMockData(legacy = false): State {
 		"Kiara",
 		"Lino",
 	];
-	for (let i = 0; i < 36; i++) {
+	for (let i = 0; i < 48; i++) {
 		const group = s.groups[Math.floor(i / 6)];
 		const student = id("student", i);
 		const enrollments = [{ group: group.id, cycle: group.cycle }];
@@ -179,12 +188,13 @@ export function buildMockData(legacy = false): State {
 				min: 0,
 				max: 10,
 			});
+			const hour = (g % 2 ? 14 : 8) + Math.floor(g / 2);
 			s.schedules.push({
 				id: id("schedule", n),
 				assignment,
 				day: subject ? "Miércoles" : "Lunes",
-				start: group.shift === "Vespertino" ? "14:00" : "08:00",
-				end: group.shift === "Vespertino" ? "15:00" : "09:00",
+				start: `${String(hour).padStart(2, "0")}:00`,
+				end: `${String(hour + 1).padStart(2, "0")}:00`,
 			});
 			for (const student of s.students.filter((x) =>
 				x.enrollments.some((e) => e.group === group.id),
@@ -285,7 +295,7 @@ export function buildMockData(legacy = false): State {
 			recipients: [],
 		},
 	];
-	varyEvaluationSample(s);
+	curriculumSample(s);
 	if (!legacy) s = naturalSeed(s);
 	for (const notice of s.notices)
 		if (notice.published)
@@ -293,50 +303,194 @@ export function buildMockData(legacy = false): State {
 	return s;
 }
 
+type Course = { subject: string; teacher: number; mean: number; trend: number };
+const course = (subject: string, teacher: number, mean: number, trend = 0) => ({
+	subject,
+	teacher,
+	mean,
+	trend,
+});
+const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+/** Study plan by level: lower secondary by grade, upper secondary by semester. */
+function studyPlan(grade = ""): Course[] {
+	if (grade === "1° semestre")
+		return [
+			course("Matemáticas I", 11, 6.3, 0.2),
+			course("Química I", 12, 6.9, -0.2),
+			course("Lectura, Expresión Oral y Escrita I", 13, 8, 0.1),
+			course("Inglés I", 7, 7.5, 0.2),
+			course("Ética I", 15, 8.5),
+			course("Informática I", 16, 8.9),
+			course("Metodología de la Investigación", 14, 7.8, -0.1),
+		];
+	if (grade === "3° semestre")
+		return [
+			course("Matemáticas III", 11, 6.1, 0.3),
+			course("Física I", 14, 6.4, -0.3),
+			course("Biología I", 12, 7.4),
+			course("Historia de México I", 15, 7.7, 0.1),
+			course("Literatura I", 13, 8.2),
+			course("Inglés III", 7, 7.8, 0.1),
+			course("Educación Física", 10, 9.3),
+		];
+	const science =
+		grade === "1°"
+			? course("Biología", 3, 7.7, 0.1)
+			: grade === "2°"
+				? course("Física", 4, 6.6, -0.3)
+				: course("Química", 5, 6.9, 0.2);
+	return [
+		course("Matemáticas", 1, 6.8, 0.3),
+		course("Lengua y comunicación", 2, 8.1),
+		science,
+		course("Historia", 6, 7.9, -0.2),
+		course("Inglés", 7, 7.3, 0.2),
+		course("Formación Cívica y Ética", 8, 8.6),
+		course("Artes", 9, 9.1),
+		course("Educación Física", 10, 9.4),
+	];
+}
+
+/** Stable pseudo-random number in [0, 1) so the sample is identical on every load. */
+function noise(...seed: number[]) {
+	let h = 2166136261;
+	for (const n of seed) h = Math.imul(h ^ n, 16777619);
+	h = Math.imul(h ^ (h >>> 15), 2246822507);
+	h = Math.imul(h ^ (h >>> 13), 3266489909);
+	return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 /**
- * Current-cycle grades get failing results and a partially captured second
- * period, so evaluation follow-up has real work to show.
+ * Current-cycle groups get their full study plan, grades whose averages differ
+ * by subject, and a partially captured second period, so evaluation follow-up
+ * has real work to show.
  */
-function varyEvaluationSample(s: State) {
-	const current = s.groups.filter((g) => g.cycle === s.cycles[0]?.id);
+function curriculumSample(s: State) {
+	const cycle = s.cycles[0]?.id;
+	const current = s.groups.filter((g) => g.cycle === cycle);
 	const roster = (group: string) =>
 		s.students.filter((x) => x.enrollments.some((e) => e.group === group));
+	const studentIndex = new Map(s.students.map((x, i) => [x.id, i]));
+	const value = (
+		c: Course,
+		subject: number,
+		g: number,
+		student: string,
+		period: number,
+		upper: boolean,
+	) => {
+		const n = studentIndex.get(student) ?? 0;
+		const ability = (noise(n, 1) - 0.5) * 3.4;
+		const raw =
+			c.mean +
+			period * c.trend +
+			(noise(g, 7) - 0.5) * 1.2 +
+			(ability * (10.6 - c.mean)) / 3 +
+			(noise(n, subject, period, g) - 0.5) * 1.8;
+		const clamped = Math.min(10, Math.max(5, raw));
+		return upper ? Math.round(clamped * 10) / 10 : Math.round(clamped);
+	};
+	const teacher = (n: number) => `Docente Ejemplo ${n}`;
+	const busy = (group: string, who: string, day: string, start: string) =>
+		s.schedules.some((slot) => {
+			const a = s.assignments.find((x) => x.id === slot.assignment);
+			const owner = s.groups.find((x) => x.id === a?.group);
+			return (
+				slot.day === day &&
+				slot.start === start &&
+				owner?.cycle === cycle &&
+				(a?.group === group || a?.teacher === who)
+			);
+		});
+	let next = 0;
 	for (const [g, group] of current.entries()) {
+		const upper = group.grade?.includes("semestre") ?? false;
 		const students = roster(group.id);
-		for (const a of s.assignments.filter((a) => a.group === group.id)) {
-			const math = a.subject === "Matemáticas";
+		const base = group.shift === "Vespertino" ? 14 : 7;
+		for (const [k, c] of studyPlan(group.grade).entries()) {
+			const existing = s.assignments.find(
+				(a) => a.group === group.id && a.subject === c.subject,
+			);
+			let first = existing?.id;
+			if (!first) {
+				first = id("assignment", 200 + next++);
+				s.assignments.push({
+					id: first,
+					group: group.id,
+					subject: c.subject,
+					teacher: teacher(c.teacher),
+					period: "Periodo 1 · Muestra",
+					min: 0,
+					max: 10,
+				});
+				// One weekly lesson in the group's shift, never double-booking the group or teacher.
+				for (let t = 0; t < 35; t++) {
+					const day = DAYS[(k + g + t) % 5];
+					const hour = base + ((k + Math.floor(t / 5)) % 7);
+					const start = `${String(hour).padStart(2, "0")}:00`;
+					if (busy(group.id, teacher(c.teacher), day, start)) continue;
+					s.schedules.push({
+						id: id("schedule", 200 + next),
+						assignment: first,
+						day,
+						start,
+						end: `${String(hour + 1).padStart(2, "0")}:00`,
+					});
+					break;
+				}
+				for (const student of students)
+					s.grades.push({
+						id: id("grade", 2000 + next * 10 + students.indexOf(student)),
+						assignment: first,
+						student: student.id,
+						value: value(c, k, g, student.id, 0, upper),
+						// One closed-period draft that was never published.
+						published: !(g === 3 && c.subject === "Artes"),
+						history: [],
+					});
+			}
 			// Audited grades keep the value their correction history describes.
-			for (const grade of s.grades.filter(
-				(x) => x.assignment === a.id && !x.history.length,
-			)) {
-				const position = students.findIndex((x) => x.id === grade.student);
-				if (position === 0) grade.value = 6 + g;
-				if (position === 1 + g && g % 2 === 0) grade.value = math ? 5 : 5.5;
-				if (position === 4 - g && g % 2 === 1 && math) grade.value = 5;
+			else
+				for (const grade of s.grades.filter(
+					(x) => x.assignment === first && !x.history.length,
+				))
+					grade.value = value(c, k, g, grade.student, 0, upper);
+			// Second period: coverage varies by subject and group.
+			const source = s.assignments.find((a) => a.id === first);
+			const n = s.assignments.indexOf(source as (typeof s.assignments)[number]);
+			const second = existing
+				? id("assignment", 100 + n)
+				: id("assignment", 600 + next);
+			s.assignments.push({
+				...(source as (typeof s.assignments)[number]),
+				id: second,
+				period: "Periodo 2 · Muestra",
+			});
+			const coverage = noise(g, k, 31);
+			if (coverage >= 0.82) continue;
+			for (const [position, student] of students.entries()) {
+				if (coverage >= 0.7 && position % 2) continue;
+				s.grades.push({
+					id: existing
+						? id("grade", 1000 + n * 10 + position)
+						: id("grade", 6000 + next * 10 + position),
+					assignment: second,
+					student: student.id,
+					value: value(c, k, g, student.id, 1, upper),
+					published: coverage < 0.48,
+					history: [],
+				});
 			}
 		}
 	}
-	const first = [...s.assignments];
-	for (const [n, a] of first.entries()) {
-		const g = current.findIndex((group) => group.id === a.group);
-		if (g < 0) continue;
-		const assignment = id("assignment", 100 + n);
-		s.assignments.push({ ...a, id: assignment, period: "Periodo 2 · Muestra" });
-		const math = a.subject === "Matemáticas";
-		// Coverage per group: complete, all drafts, one subject only, half, none.
-		if (g === 4 || (g === 2 && !math)) continue;
-		for (const [position, student] of roster(a.group).entries()) {
-			if (g === 3 && position % 2) continue;
-			s.grades.push({
-				id: id("grade", 1000 + n * 10 + position),
-				assignment,
-				student: student.id,
-				value: position === 1 && g === 0 ? 5 : 6 + ((position + g) % 5),
-				published: g === 1 || g === 3 ? false : position !== 5,
-				history: [],
-			});
-		}
-	}
+	for (let n = 3; n <= 16; n++)
+		s.staff.push({
+			id: id("staff", 10 + n),
+			name: teacher(n),
+			role: "Docente",
+			history: [],
+		});
 }
 
 /** Only transforms freshly generated seed data, never persisted/user-authored strings. */
@@ -373,6 +527,20 @@ function naturalSeed(seed: State): State {
 			"Cambio al turno vespertino solicitado por la familia, efectivo después de la jornada del 19 de octubre",
 		"Docente Ejemplo 1": "Gabriel Torres Nájera",
 		"Docente Ejemplo 2": "Elena Cárdenas Solís",
+		"Docente Ejemplo 3": "Sofía Ramírez Cordero",
+		"Docente Ejemplo 4": "Héctor Villalobos Arce",
+		"Docente Ejemplo 5": "Natalia Ponce Guzmán",
+		"Docente Ejemplo 6": "Arturo Méndez Robles",
+		"Docente Ejemplo 7": "Karina Ortega Lara",
+		"Docente Ejemplo 8": "Leticia Barrera Gil",
+		"Docente Ejemplo 9": "Fernando Quintero Paz",
+		"Docente Ejemplo 10": "Omar Galindo Reyna",
+		"Docente Ejemplo 11": "Ricardo Ávila Montaño",
+		"Docente Ejemplo 12": "Mariela Juárez Treviño",
+		"Docente Ejemplo 13": "Diana Esparza Ruelas",
+		"Docente Ejemplo 14": "Iván Cortés Bermúdez",
+		"Docente Ejemplo 15": "Julia Aguirre Campos",
+		"Docente Ejemplo 16": "Saúl Domínguez Prado",
 		"Periodo 1 · Muestra": "Primer trimestre",
 		"Periodo 2 · Muestra": "Segundo trimestre",
 		"Revisión sintética de captura":
@@ -420,6 +588,12 @@ function naturalSeed(seed: State): State {
 		"Sánchez Lozano",
 		"Medina Carrillo",
 		"Delgado Fuentes",
+		"Guerrero Valle",
+		"Juárez Peña",
+		"Aguilar Moreno",
+		"Herrera Bustos",
+		"Romero Lara",
+		"Salinas Cortés",
 	];
 	const guardians = [
 		"Mariana Ruiz Salcedo",
@@ -440,12 +614,18 @@ function naturalSeed(seed: State): State {
 		"Cecilia Lozano Nieto",
 		"Raquel Carrillo Zamora",
 		"Lucía Fuentes Escobar",
+		"Elena Valle Sandoval",
+		"Norma Peña Villegas",
+		"Sandra Moreno Gallegos",
+		"Andrea Bustos Quiroz",
+		"Marisol Lara Arriaga",
+		"Rebeca Cortés Medrano",
 	];
 	for (const [i, student] of seed.students.entries()) {
 		replacements[student.name] =
 			`${student.name.split(" ")[0]} ${families[Math.floor(i / 2)]}`;
 		replacements[student.matricula] =
-			`AUR-${i < 30 ? "26" : "25"}${String(i + 101).padStart(3, "0")}`;
+			`AUR-${i < 30 || i >= 36 ? "26" : "25"}${String(i + 101).padStart(3, "0")}`;
 		replacements[
 			`Familia Ejemplo ${String(Math.floor(i / 2) + 1).padStart(2, "0")}`
 		] = guardians[Math.floor(i / 2)];
@@ -459,12 +639,6 @@ function naturalSeed(seed: State): State {
 	const s: State = JSON.parse(JSON.stringify(seed), (_key, value: unknown) =>
 		typeof value === "string" ? (replacements[value] ?? value) : value,
 	);
-	for (const [i, slot] of s.schedules.entries()) {
-		const groupIndex = Math.floor(i / 2);
-		const hour = (groupIndex % 2 ? 14 : 8) + Math.floor(groupIndex / 2);
-		slot.start = `${String(hour).padStart(2, "0")}:00`;
-		slot.end = `${String(hour + 1).padStart(2, "0")}:00`;
-	}
 	return s;
 }
 
