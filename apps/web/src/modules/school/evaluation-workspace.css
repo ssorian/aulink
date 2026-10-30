@@ -45,19 +45,55 @@
 	background: var(--line);
 }
 .evaluation-dashboard .evaluation-progress-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
 	margin: 8px 0 24px;
+}
+.evaluation-progress-legend > span {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.evaluation-legend-swatch {
+	width: 10px;
+	height: 10px;
+	flex: none;
 }
 .evaluation-dashboard .evaluation-progress-table th,
 .evaluation-dashboard .evaluation-progress-table td {
 	text-align: left;
 	padding: 10px;
 }
+.evaluation-dashboard .evaluation-progress-table td {
+	padding: 0;
+}
+.evaluation-progress-na {
+	display: block;
+	padding: 10px;
+}
 .evaluation-dashboard .evaluation-progress-cell {
 	width: 100%;
+	min-height: 44px;
+	padding: 10px;
 	text-align: left;
 	color: var(--ink);
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+	cursor: pointer;
 	display: grid;
 	gap: 4px;
+}
+.evaluation-dashboard .evaluation-progress-cell:hover {
+	background: var(--selection);
+}
+.evaluation-progress-cell strong {
+	font-weight: 600;
+}
+.evaluation-progress-count {
+	color: var(--ink-muted);
+	font-size: 12px;
 }
 .evaluation-progress-cell small {
 	margin: 0;
@@ -107,6 +143,18 @@
 .evaluation-dashboard .evaluation-risk-table th,
 .evaluation-dashboard .evaluation-risk-table td {
 	text-align: left;
+}
+.evaluation-dashboard .evaluation-risk-table tbody th {
+	font-size: 14px;
+	font-weight: 600;
+}
+.evaluation-draft-tag {
+	display: inline-block;
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: var(--surface-muted);
+	color: var(--ink-muted);
+	font-size: 12px;
 }
 .evaluation-risk-table ul {
 	padding: 0;
@@ -160,4 +208,9 @@
 		content: attr(data-label) ": ";
 		font-weight: 600;
 	}
+}
+.evaluation-dashboard .evaluation-progress-group {
+	color: var(--ink);
+	font-size: 14px;
+	font-weight: 600;
 }

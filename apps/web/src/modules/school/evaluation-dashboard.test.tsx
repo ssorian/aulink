@@ -152,13 +152,18 @@ test("progress presents publication and teacher pending with a single period", (
 	for (const text of [
 		"Avance de P1",
 		"1 de 3 calificaciones publicadas",
-		"Publicar 1 borradores",
+		"Publicar 1 borrador",
 		"Sin captura",
 		"por publicar",
 		"Pendientes por docente",
 		"Docente B",
 	])
 		expect(html).toContain(text);
+	expect(html).not.toContain("<h2>Evaluación del ciclo</h2>");
+	expect(html).toContain('aria-label="Evaluación del ciclo"');
+	expect(html).toContain("1 de 1 publicadas");
+	for (const status of ["published", "draft", "missing"])
+		expect(html).toContain(`evaluation-legend-swatch evaluation-bar-${status}`);
 	expect(html).not.toContain("Todos los periodos");
 	expect(renderOperational(operationalFixture(), "Resultados")).toContain(
 		"Todos los periodos",
@@ -169,7 +174,9 @@ test("risk includes failing drafts and explains its criterion", () => {
 	for (const text of [
 		"En riesgo: 2 o más materias con calificación menor a 6.",
 		"Matemáticas 5",
-		"Lengua 4 (borrador)",
+		'Lengua 4 · <span class="evaluation-draft-tag">borrador</span>',
+		"1 alumno en riesgo",
+		"2 evaluados",
 		"Ver expediente",
 	])
 		expect(html).toContain(text);
@@ -179,7 +186,28 @@ test("risk empty state explains other failures", () => {
 	s.grades[1].value = 8;
 	const html = renderOperational(s, "Alumnos en riesgo");
 	expect(html).toContain("Ningún alumno cumple el criterio");
-	expect(html).toContain("1 alumnos tienen al menos una materia reprobada");
+	expect(html).toContain("1 alumno tiene al menos una materia reprobada");
+});
+
+test("risk summary pluralizes risk and evaluated counts", () => {
+	const s = operationalFixture();
+	s.students = s.students.filter((student) => student.id === "s1");
+	const singular = renderOperational(s, "Alumnos en riesgo");
+	expect(singular).toContain("1 alumno en riesgo");
+	expect(singular).toContain("1 evaluado");
+	s.students.push({
+		id: "s3",
+		name: "Ejemplo",
+		matricula: "M3",
+		enrollments: [{ group: "g1", cycle: "c1" }],
+	});
+	s.grades.push(
+		{ ...s.grades[0], id: "m3", student: "s3" },
+		{ ...s.grades[1], id: "l3", student: "s3" },
+	);
+	const plural = renderOperational(s, "Alumnos en riesgo");
+	expect(plural).toContain("2 alumnos en riesgo");
+	expect(plural).toContain("2 evaluados");
 });
 
 test("group and subject charts are primary, with the matrix collapsed below", () => {

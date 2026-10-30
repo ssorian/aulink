@@ -60,8 +60,10 @@ export function EvaluationRisk({
 				</div>
 			</div>
 			<p className="evaluation-risk-summary">
-				{report.students.length} alumnos en riesgo · {report.withFailures} con
-				al menos una materia reprobada · {report.evaluated} evaluados
+				{report.students.length}{" "}
+				{report.students.length === 1 ? "alumno" : "alumnos"} en riesgo ·{" "}
+				{report.withFailures} con al menos una materia reprobada ·{" "}
+				{report.evaluated} {report.evaluated === 1 ? "evaluado" : "evaluados"}
 			</p>
 			{report.students.length ? (
 				<div className="evaluation-risk-table">
@@ -89,7 +91,15 @@ export function EvaluationRisk({
 												// biome-ignore lint/suspicious/noArrayIndexKey: Duplicate subject assignments can produce identical entries.
 												<li key={`${f.subject}-${i}`}>
 													{f.subject} {f.value}
-													{!f.published && " (borrador)"}
+													{!f.published && (
+														<>
+															{" "}
+															·{" "}
+															<span className="evaluation-draft-tag">
+																borrador
+															</span>
+														</>
+													)}
 												</li>
 											))}
 										</ul>
@@ -115,7 +125,7 @@ export function EvaluationRisk({
 					<h3>Ningún alumno cumple el criterio</h3>
 					<p>
 						{report.withFailures > 0
-							? `${report.withFailures} alumnos tienen al menos una materia reprobada.`
+							? `${report.withFailures} ${report.withFailures === 1 ? "alumno tiene" : "alumnos tienen"} al menos una materia reprobada.`
 							: "No hay alumnos que cumplan el criterio en esta selección."}
 					</p>
 				</div>

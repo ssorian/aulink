@@ -31,8 +31,8 @@ function Cell({
 			onClick={() => onOpenGroup(cell.groupId)}
 		>
 			<strong>{label}</strong>
-			<span>
-				{cell.published}/{cell.expected}
+			<span className="evaluation-progress-count">
+				{cell.published} de {cell.expected} publicadas
 			</span>
 			<span className="evaluation-cell-meter" aria-hidden="true">
 				<span
@@ -91,18 +91,16 @@ export function EvaluationProgress({
 									"Las familias verán las calificaciones publicadas.",
 									"Las calificaciones sin capturar no se modifican.",
 								],
-								"Publica los borradores de la selección.",
+								`Se publicarán ${draftIds.length} calificaciones en borrador de ${filters.period} (${scope}). Las familias podrán consultarlas; las calificaciones sin capturar no cambian.`,
 							)
 						}
 					>
-						Publicar {draftIds.length} borradores
+						{draftIds.length
+							? `Publicar ${draftIds.length} ${draftIds.length === 1 ? "borrador" : "borradores"}`
+							: "Sin borradores por publicar"}
 					</button>
-					{(!draftIds.length || !open) && (
-						<small>
-							{!draftIds.length
-								? "No hay borradores para publicar."
-								: "La publicación no está disponible."}
-						</small>
+					{draftIds.length > 0 && !open && (
+						<small>La publicación no está disponible.</small>
 					)}
 				</div>
 			</div>
@@ -118,8 +116,28 @@ export function EvaluationProgress({
 				))}
 			</div>
 			<p className="evaluation-progress-legend">
-				{totals.published} publicadas · {totals.draft} en borrador ·{" "}
-				{totals.missing} sin capturar
+				<span>
+					<span
+						className="evaluation-legend-swatch evaluation-bar-published"
+						aria-hidden="true"
+					/>
+					{totals.published}{" "}
+					{totals.published === 1 ? "publicada" : "publicadas"}
+				</span>
+				<span>
+					<span
+						className="evaluation-legend-swatch evaluation-bar-draft"
+						aria-hidden="true"
+					/>
+					{totals.draft} en borrador
+				</span>
+				<span>
+					<span
+						className="evaluation-legend-swatch evaluation-bar-missing"
+						aria-hidden="true"
+					/>
+					{totals.missing} sin capturar
+				</span>
 			</p>
 			{!report.subjects.length ? (
 				<div className="evaluation-empty">
@@ -148,7 +166,9 @@ export function EvaluationProgress({
 							<tbody>
 								{report.groups.map((group) => (
 									<tr key={group.id}>
-										<th scope="row">{group.name}</th>
+										<th scope="row" className="evaluation-progress-group">
+											{group.name}
+										</th>
 										{report.subjects.map((subject) => (
 											<td key={subject}>
 												{(() => {
@@ -156,7 +176,7 @@ export function EvaluationProgress({
 													return cell ? (
 														<Cell cell={cell} onOpenGroup={onOpenGroup} />
 													) : (
-														"—"
+														<span className="evaluation-progress-na">—</span>
 													);
 												})()}
 											</td>
@@ -191,7 +211,12 @@ export function EvaluationProgress({
 							<li key={t.teacher}>
 								<strong>{t.teacher}</strong>
 								<p>
-									{t.draft} por publicar · {t.missing} sin capturar
+									{[
+										t.draft && `${t.draft} por publicar`,
+										t.missing && `${t.missing} sin capturar`,
+									]
+										.filter(Boolean)
+										.join(" · ")}
 								</p>
 								<ul>
 									{t.cells

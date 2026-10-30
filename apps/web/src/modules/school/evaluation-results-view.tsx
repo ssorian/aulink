@@ -157,7 +157,9 @@ export function EvaluationResultsView({
 						<strong>
 							{overallPass === null ? "—" : percent.format(overallPass)}
 						</strong>
-						<small>Calificaciones de {number.format(rules.passing)} o más</small>
+						<small>
+							Calificaciones de {number.format(rules.passing)} o más
+						</small>
 					</dd>
 				</div>
 				<div>

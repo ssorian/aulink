@@ -174,7 +174,7 @@
 }
 .evaluation-subject-chart {
 	margin-top: 24px;
-	padding-right: 48px;
+	padding-right: 5rem;
 }
 .evaluation-subject-axis {
 	position: relative;
@@ -233,6 +233,8 @@
 .evaluation-subject-value {
 	position: absolute;
 	left: calc(100% + 12px);
+	min-width: max-content;
+	white-space: nowrap;
 	font-size: 14px;
 }
 .evaluation-subject-missing {
@@ -256,7 +258,7 @@
 		padding: 18px 14px;
 	}
 	.evaluation-subject-chart {
-		padding-right: 42px;
+		padding-right: 5rem;
 	}
 	.evaluation-subject-axis {
 		margin-left: 0;

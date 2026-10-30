@@ -53,7 +53,8 @@
 	background: var(--canvas);
 	cursor: not-allowed;
 }
-.evaluation-dashboard button {
+.evaluation-dashboard
+	button:not(:where(.workspace-tabs button, .evaluation-progress-cell)) {
 	min-height: 44px;
 	padding: 8px 12px;
 	color: var(--action);
@@ -62,17 +63,15 @@
 	border-radius: 6px;
 	cursor: pointer;
 }
-.evaluation-dashboard button:hover {
+.evaluation-dashboard
+	button:not(:where(.workspace-tabs button, .evaluation-progress-cell)):hover {
 	background: var(--selection);
 }
 .evaluation-dashboard .evaluation-header {
 	display: flex;
-	align-items: center;
+	align-items: end;
 	justify-content: space-between;
 	gap: 24px;
-}
-.evaluation-dashboard .evaluation-header p {
-	margin-top: 8px;
 }
 .evaluation-dashboard .evaluation-header label {
 	width: min(100%, 320px);
@@ -136,10 +135,21 @@
 	margin: 24px 0;
 }
 .evaluation-dashboard .evaluation-evolution ol {
-	padding-left: 20px;
+	list-style: none;
+	margin: 12px 0 0;
+	padding: 0;
 }
 .evaluation-dashboard .evaluation-evolution li {
-	padding-block: 6px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 2px 16px;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--line);
+	font-size: 14px;
+}
+.evaluation-dashboard .evaluation-evolution li > strong {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }
 @media (max-width: 760px) {
 	.evaluation-dashboard .evaluation-kpis {
@@ -208,6 +218,10 @@
 	color: var(--ink-muted);
 	font-size: 12px;
 	font-weight: 400;
+}
+.evaluation-dashboard .evaluation-evolution li > small {
+	grid-column: 1 / -1;
+	margin-top: 0;
 }
 .evaluation-dashboard .evaluation-group-link {
 	text-align: left;

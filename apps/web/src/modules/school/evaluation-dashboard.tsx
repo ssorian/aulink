@@ -75,12 +75,9 @@ export function EvaluationDashboard({
 	return (
 		<section className="evaluation-dashboard" aria-label="Evaluación del ciclo">
 			<header className="evaluation-header">
-				<div>
-					<h2>Evaluación del ciclo</h2>
-					<p>
-						Seguimiento y coordinación de calificaciones para control escolar.
-					</p>
-				</div>
+				<p>
+					Seguimiento y coordinación de calificaciones para control escolar.
+				</p>
 				<label htmlFor="evaluation-cycle">
 					Ciclo escolar
 					<select
