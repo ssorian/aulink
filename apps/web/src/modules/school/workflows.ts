@@ -144,6 +144,9 @@ const schema = z.object({
 			history,
 		}),
 	),
+	evaluationRules: z
+		.object({ passing: z.number(), riskSubjects: z.number() })
+		.default({ passing: 6, riskSubjects: 2 }),
 	transfers: z
 		.array(
 			z.object({
@@ -234,6 +237,7 @@ export function initialState(legacy = false): State {
 		conduct: [],
 		assignments: [],
 		grades: [],
+		evaluationRules: { passing: 6, riskSubjects: 2 },
 		staff: [],
 		schedules: [],
 		scheduleChanges: [],
@@ -597,6 +601,24 @@ export function apply(state: State, { kind, data: d }: Command): State {
 			if (!x || x.published)
 				throw Error("Selecciona una calificación en borrador.");
 			x.published = true;
+			break;
+		}
+		case "grade-publish-batch": {
+			const ids = new Set(req("ids").split(",").filter(Boolean));
+			const drafts = s.grades.filter((x) => ids.has(x.id) && !x.published);
+			if (!ids.size || drafts.length !== ids.size)
+				throw Error("Solo se pueden publicar calificaciones en borrador.");
+			for (const x of drafts) x.published = true;
+			break;
+		}
+		case "evaluation-rules": {
+			const passing = Number(req("passing")),
+				riskSubjects = Number(req("riskSubjects"));
+			if (!Number.isFinite(passing) || passing < 0)
+				throw Error("La calificación aprobatoria debe ser un número positivo.");
+			if (!Number.isInteger(riskSubjects) || riskSubjects < 1)
+				throw Error("Indica un número entero de materias reprobadas, desde 1.");
+			s.evaluationRules = { passing, riskSubjects };
 			break;
 		}
 		case "staff":
