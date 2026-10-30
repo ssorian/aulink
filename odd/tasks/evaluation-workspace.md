@@ -19,9 +19,9 @@ Rama: `feat/evaluation-workspace`.
 ## Tasks
 
 - T1 — S2, S3 · inline · Modelo demo: reglas de evaluación (aprobatoria, materias para riesgo) con valor por defecto, comandos `evaluation-rules` y `grade-publish-batch`; derivaciones de avance, pendientes por docente y riesgo con pruebas. Commit: 4e53129
-- T2 — S3 · inline · Semilla demo natural con un segundo periodo parcialmente capturado y calificaciones reprobatorias, sin alterar la semilla legacy. Commit: pendiente
-- T3 — S1, S3, S4 · inline · UI: pestañas Avance / En riesgo / Resultados, filtros compartidos, publicación por lote con confirmación, accesos a grupo y expediente, estilos. Pruebas de render. Commit: pendiente
-- T4 — S1–S4 · inline · Verificación: typecheck, lint, pruebas, revisión visual en navegador escritorio/móvil, detector de diseño. Commit: pendiente
+- T2 — S3 · inline · Semilla demo natural con un segundo periodo parcialmente capturado y calificaciones reprobatorias, sin alterar la semilla legacy. Commit: 96ff5ee
+- T3 — S1, S3, S4 · inline · UI: pestañas Avance / En riesgo / Resultados, filtros compartidos, publicación por lote con confirmación, accesos a grupo y expediente, estilos. Pruebas de render. Commit: 051d2ca, 98c68a4
+- T4 — S1–S4 · inline · Verificación: typecheck, lint, pruebas, revisión visual en navegador escritorio/móvil, detector de diseño. Commit: sin cambios de código propios (correcciones en 98c68a4)
 
 ## Log
 
@@ -30,3 +30,4 @@ Rama: `feat/evaluation-workspace`.
 - L3 — Decisiones del orquestador (no pedidas explícitamente, reversibles): valores por defecto aprobatoria 6 y riesgo con 2 o más materias reprobadas; Avance y riesgo trabajan por periodo; riesgo considera valores capturados (publicados y borradores, señalados); Resultados conserva solo publicadas porque es lo que ve la familia. No existe estado "lista" en el modelo, así que no se inventa.
 - L4 — Evidencia T1: `bun test scripts/evaluation-operations.test.ts` RED (módulo inexistente) → 7 pass; suite 216 pass.
 - L5 — Decisión T2: el segundo periodo y las reprobadas se generan en la semilla base ("Periodo 2 · Muestra" → "Segundo trimestre") porque la migración legacy exige correspondencia 1:1 con la semilla natural; las calificaciones con historial de corrección no cambian de valor.
+- L6 — Evidencia T3/T4: suite `bun test scripts apps/web/src` 220 pass / 0 fail; `tsc --noEmit` limpio; biome limpio en archivos de evaluación; `impeccable detect` sin hallazgos. Navegador (Vite :3217, datos demo frescos, 1280px y 390px sin overflow horizontal): Avance 15/62 → "Publicar 21 borradores" → confirmación → 36/62; criterio de riesgo cambiado a 1 y guardado; filtro de periodo cambia la lista de riesgo; "Ver expediente" abre el perfil del alumno. Correcciones visuales tras la revisión: pestañas con estilo compartido, sin H2 redundante, celdas planas, etiquetas de la gráfica por materia sin quiebre, evolución por periodo legible, pluralización.
