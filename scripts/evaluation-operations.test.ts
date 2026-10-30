@@ -2,6 +2,8 @@ import { expect, test } from "bun:test";
 import {
 	buildPeriodProgress,
 	buildRiskReport,
+	groupProgress,
+	riskDistribution,
 } from "../apps/web/src/modules/school/evaluation-operations";
 import {
 	apply,
@@ -49,6 +51,41 @@ function fixture() {
 	];
 	return s;
 }
+
+test("group summaries count only assigned subjects and complete groups", () => {
+	const report = buildPeriodProgress(fixture(), {
+		cycleId: "c1",
+		period: "P1",
+	});
+	expect(groupProgress(report.groups[0])).toEqual({
+		expected: 4,
+		published: 1,
+		draft: 2,
+		missing: 1,
+		complete: false,
+	});
+	expect(groupProgress({ ...report.groups[0], cells: new Map() })).toEqual({
+		expected: 0,
+		published: 0,
+		draft: 0,
+		missing: 0,
+		complete: false,
+	});
+});
+
+test("risk distribution includes zero through three-plus failures and highlights the threshold", () => {
+	expect(riskDistribution([0, 1, 2, 3, 4], 2)).toEqual([
+		{ label: "0", count: 1, risk: false },
+		{ label: "1", count: 1, risk: false },
+		{ label: "2", count: 1, risk: true },
+		{ label: "3+", count: 2, risk: true },
+	]);
+	expect(riskDistribution([], 1).map((bucket) => bucket.count)).toEqual([
+		0, 0, 0, 0,
+	]);
+	expect(riskDistribution([3, 4], 4)[3].risk).toBe(true);
+	expect(riskDistribution([3], 4)[3].risk).toBe(false);
+});
 
 test("evaluation rules default to passing 6 and two failed subjects, and survive restore", () => {
 	const s = initialState();
@@ -171,6 +208,43 @@ test("period progress groups pending work by teacher and honors group and subjec
 	).toEqual({ expected: 2, published: 1, draft: 0, missing: 1 });
 });
 
+test("level filtering scopes groups and teacher totals", () => {
+	const s = fixture();
+	s.groups[1].grade = "1 semestre";
+	const report = buildPeriodProgress(s, {
+		cycleId: "c1",
+		period: "P1",
+		level: "Media superior",
+	});
+	expect(report.groups.map((group) => group.id)).toEqual(["g2"]);
+	expect(report.totals).toEqual({
+		expected: 1,
+		published: 0,
+		draft: 0,
+		missing: 1,
+	});
+});
+
+test("risk orders equal failure counts by lowest grade", () => {
+	const s = fixture();
+	s.grades.push({
+		...s.grades[0],
+		id: "s3-l1",
+		assignment: "l1",
+		student: "s3",
+		value: 2,
+	});
+	const report = buildRiskReport(
+		s,
+		{ passing: 10, riskSubjects: 2 },
+		{ cycleId: "c1", period: "P1" },
+	);
+	expect(report.students.map((student) => student.studentId)).toEqual([
+		"s3",
+		"s1",
+	]);
+});
+
 test("risk lists students reaching the configured failed-subject count, drafts flagged", () => {
 	const s = fixture();
 	const filters = { cycleId: "c1", period: "P1" };
@@ -191,9 +265,13 @@ test("risk lists students reaching the configured failed-subject count, drafts f
 	const strict = buildRiskReport(s, { passing: 10, riskSubjects: 1 }, filters);
 	expect(strict.students.map((x) => x.studentId)).toEqual(["s1", "s3"]);
 	expect(
-		buildRiskReport(s, { passing: 6, riskSubjects: 1 }, {
-			...filters,
-			groupId: "g2",
-		}).students,
+		buildRiskReport(
+			s,
+			{ passing: 6, riskSubjects: 1 },
+			{
+				...filters,
+				groupId: "g2",
+			},
+		).students,
 	).toEqual([]);
 });

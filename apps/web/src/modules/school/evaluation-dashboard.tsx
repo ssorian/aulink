@@ -192,6 +192,7 @@ export function EvaluationDashboard({
 					s={s}
 					filters={{ cycleId, period, groupId, subject }}
 					onOpenStudent={onOpenStudent}
+					onOpenGroup={onOpenGroup}
 					open={open}
 				/>
 			)}

@@ -1,4 +1,13 @@
-import { buildRiskReport, type PeriodFilters } from "./evaluation-operations";
+import { useState } from "react";
+import {
+	buildPeriodProgress,
+	buildRiskReport,
+	type PeriodFilters,
+} from "./evaluation-operations";
+import { educationLevel } from "./evaluation-results";
+
+type Level = "Todos" | "Secundaria" | "Media superior";
+
 import type { ViewProps } from "./view-types";
 import type { State } from "./workflows";
 
@@ -6,15 +15,36 @@ export function EvaluationRisk({
 	s,
 	filters,
 	onOpenStudent,
+	onOpenGroup,
 	open,
 }: {
 	s: State;
 	filters: PeriodFilters;
 	onOpenStudent?: (id: string) => void;
+	onOpenGroup?: (id: string) => void;
 	open?: ViewProps["open"];
 }) {
+	const [selectedLevel, setSelectedLevel] = useState<Level>("Todos");
+	const levels = [
+		...new Set(
+			buildPeriodProgress(s, filters)
+				.groups.filter((group) => group.cells.size)
+				.map((group) =>
+					educationLevel(s.groups.find((item) => item.id === group.id)?.grade),
+				),
+		),
+	];
+	const level =
+		levels.length > 1 &&
+		levels.includes(selectedLevel as Exclude<Level, "Todos">)
+			? selectedLevel
+			: "Todos";
 	const rules = s.evaluationRules;
-	const report = buildRiskReport(s, rules, filters);
+	const report = buildRiskReport(
+		s,
+		rules,
+		level === "Todos" ? filters : { ...filters, level },
+	);
 	return (
 		<section className="evaluation-risk">
 			<div className="evaluation-section-heading">
@@ -25,41 +55,66 @@ export function EvaluationRisk({
 						menor a {rules.passing}.
 					</p>
 				</div>
-				<div>
-					<button
-						type="button"
-						disabled={!open}
-						onClick={() =>
-							open?.(
-								"evaluation-rules",
-								"Criterio de riesgo",
-								[
+				<div className="evaluation-heading-controls">
+					{levels.length > 1 && ( // biome-ignore lint/a11y/useSemanticElements: Pressed buttons form a compact segmented control.
+						<div
+							className="results-segment"
+							role="group"
+							aria-label="Nivel educativo"
+						>
+							{(["Todos", "Secundaria", "Media superior"] as Level[]).map(
+								(item) => (
+									<button
+										type="button"
+										key={item}
+										aria-pressed={level === item}
+										onClick={() => setSelectedLevel(item)}
+									>
+										{item}
+									</button>
+								),
+							)}
+						</div>
+					)}
+					<div>
+						<button
+							type="button"
+							disabled={!open}
+							onClick={() =>
+								open?.(
+									"evaluation-rules",
+									"Criterio de riesgo",
+									[
+										{
+											key: "passing",
+											label: "Calificación mínima aprobatoria",
+											type: "number",
+										},
+										{
+											key: "riskSubjects",
+											label: "Materias reprobadas para considerar riesgo",
+											type: "number",
+										},
+									],
 									{
-										key: "passing",
-										label: "Calificación mínima aprobatoria",
-										type: "number",
+										passing: String(rules.passing),
+										riskSubjects: String(rules.riskSubjects),
 									},
-									{
-										key: "riskSubjects",
-										label: "Materias reprobadas para considerar riesgo",
-										type: "number",
-									},
-								],
-								{
-									passing: String(rules.passing),
-									riskSubjects: String(rules.riskSubjects),
-								},
-								undefined,
-								"Este criterio aplica a todos los grupos y periodos.",
-							)
-						}
-					>
-						Cambiar criterio
-					</button>
-					{!open && <small>La configuración no está disponible.</small>}
+									undefined,
+									"Este criterio aplica a todos los grupos y periodos.",
+								)
+							}
+						>
+							Cambiar criterio
+						</button>
+						{!open && <small>La configuración no está disponible.</small>}
+					</div>
 				</div>
 			</div>
-			<div className="eval-stats evaluation-risk-stats">
+			<dl
+				className="results-kpis evaluation-operation-kpis"
+				aria-label="Resumen de riesgo"
+			>
 				{(
 					[
 						["En riesgo", report.students.length, "danger"],
@@ -67,12 +122,36 @@ export function EvaluationRisk({
 						["Evaluados", report.evaluated, "neutral"],
 					] as const
 				).map(([label, count, tone]) => (
-					<div className="eval-card" key={label}>
-						<span className={`eval-stat-label--${tone}`}>{label}</span>
-						<strong>{count}</strong>
+					<div key={label}>
+						<dt className={`eval-stat-label--${tone}`}>{label}</dt>
+						<dd>
+							<strong>{count}</strong>
+						</dd>
 					</div>
 				))}
-			</div>
+				<div className="evaluation-distribution">
+					<dt>Materias reprobadas</dt>
+					<dd>
+						<div className="evaluation-distribution-bar" aria-hidden="true">
+							{report.distribution.map((bucket) => (
+								<span
+									key={bucket.label}
+									className={bucket.risk ? "is-risk" : ""}
+									style={{ flex: bucket.count }}
+								/>
+							))}
+						</div>
+						<ul>
+							{report.distribution.map((bucket) => (
+								<li key={bucket.label}>
+									<span>{bucket.label}</span>
+									<strong>{bucket.count}</strong>
+								</li>
+							))}
+						</ul>
+					</dd>
+				</div>
+			</dl>
 			<p className="evaluation-risk-summary evaluation-sr-only">
 				{report.students.length}{" "}
 				{report.students.length === 1 ? "alumno" : "alumnos"} en riesgo ·{" "}
@@ -99,7 +178,27 @@ export function EvaluationRisk({
 											{row.name}
 											<small>{row.matricula}</small>
 										</th>
-										<td data-label="Grupo">{row.groupName}</td>
+										<td data-label="Grupo">
+											{onOpenGroup ? (
+												<button
+													type="button"
+													className="evaluation-group-link"
+													onClick={() => onOpenGroup(row.groupId)}
+												>
+													{row.groupName}
+												</button>
+											) : (
+												row.groupName
+											)}
+											{level === "Todos" && levels.length > 1 && (
+												<small>
+													{educationLevel(
+														s.groups.find((group) => group.id === row.groupId)
+															?.grade,
+													)}
+												</small>
+											)}
+										</td>
 										<td data-label="Materias reprobadas">
 											<ul>
 												{row.failed.map((f, i) => (

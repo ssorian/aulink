@@ -153,7 +153,7 @@ test("progress presents publication and teacher pending with a single period", (
 		"Avance de P1",
 		"1 de 3 calificaciones publicadas",
 		"Publicar 1 borrador",
-		"Sin captura",
+		"sin capturar",
 		"por publicar",
 		"Pendientes por docente",
 		"Docente B",
@@ -161,13 +161,47 @@ test("progress presents publication and teacher pending with a single period", (
 		expect(html).toContain(text);
 	expect(html).not.toContain("<h2>Evaluación del ciclo</h2>");
 	expect(html).toContain('aria-label="Evaluación del ciclo"');
-	expect(html).toContain("1 de 1 publicadas");
+	expect(html).toContain("1 publicadas, 0 en borrador, 0 sin capturar de 1");
 	for (const status of ["published", "draft", "missing"])
-		expect(html).toContain(`evaluation-legend-swatch evaluation-bar-${status}`);
+		expect(html).toContain(`evaluation-bar-${status}`);
+	expect(html).not.toContain("<table");
+	expect(html).not.toContain('<th scope="col">Matemáticas</th>');
+	expect(html).toContain("1° A, Matemáticas, Docente A");
+	expect(html).not.toContain("2° B, Matemáticas, Docente A");
+	expect(html).toContain("<details>");
+	expect(html).not.toContain("<details open");
 	expect(html).not.toContain("Todos los periodos");
 	expect(renderOperational(operationalFixture(), "Resultados")).toContain(
 		"Todos los periodos",
 	);
+});
+test("both operational tabs expose level context only for mixed levels", () => {
+	const s = operationalFixture();
+	s.groups[1].grade = "1 semestre";
+	for (const tab of ["Avance del periodo", "Alumnos en riesgo"] as const) {
+		const html = renderOperational(s, tab);
+		expect(html).toContain('aria-label="Nivel educativo"');
+		expect(html).toContain('aria-pressed="true">Todos');
+		expect(html).toContain("Media superior");
+	}
+	expect(renderOperational(operationalFixture())).not.toContain(
+		'aria-label="Nivel educativo"',
+	);
+});
+test("pending teachers are ranked and their assignments are collapsed", () => {
+	const s = operationalFixture();
+	s.students.push({
+		id: "s3",
+		name: "Nuevo",
+		matricula: "M3",
+		enrollments: [{ group: "g1", cycle: "c1" }],
+	});
+	const html = renderOperational(s);
+	expect(html.indexOf("<strong>Docente B</strong>")).toBeLessThan(
+		html.indexOf("<strong>Docente A</strong>"),
+	);
+	expect(html).toContain("<details><summary>");
+	expect(html).not.toContain("<details open");
 });
 test("risk includes failing drafts and explains its criterion", () => {
 	const html = renderOperational(operationalFixture(), "Alumnos en riesgo");
@@ -180,6 +214,10 @@ test("risk includes failing drafts and explains its criterion", () => {
 		"Ver expediente",
 	])
 		expect(html).toContain(text);
+	expect(html).toContain("Materias reprobadas</dt>");
+	expect(html).toContain("<span>0</span><strong>1</strong>");
+	expect(html).toContain("<span>2</span><strong>1</strong>");
+	expect(html).toContain("<span>3+</span><strong>0</strong>");
 });
 test("risk empty state explains other failures", () => {
 	const s = operationalFixture();

@@ -1,3 +1,4 @@
+import { educationLevel } from "./evaluation-results";
 import { enrolledStudents } from "./group-context";
 import type { State } from "./workflows";
 
@@ -7,6 +8,7 @@ export type PeriodFilters = {
 	period: string;
 	groupId?: string;
 	subject?: string;
+	level?: "Secundaria" | "Media superior";
 };
 export type ProgressCounts = {
 	expected: number;
@@ -45,6 +47,28 @@ function addCounts(total: ProgressCounts, item: ProgressCounts) {
 	total.missing += item.missing;
 }
 
+export function groupProgress(group: { cells: Map<string, ProgressCell> }) {
+	const total = empty();
+	for (const cell of group.cells.values()) addCounts(total, cell);
+	return {
+		...total,
+		complete: total.expected > 0 && total.published === total.expected,
+	};
+}
+
+export function riskDistribution(failures: number[], threshold: number) {
+	return [0, 1, 2, 3].map((index) => ({
+		label: index === 3 ? "3+" : String(index),
+		count: failures.filter((count) =>
+			index === 3 ? count >= 3 : count === index,
+		).length,
+		risk:
+			index >= threshold ||
+			(index === 3 &&
+				failures.some((count) => count >= threshold && count >= 3)),
+	}));
+}
+
 /** Periods in the cycle, in the order they were first configured. */
 export function cyclePeriods(s: State, cycleId: string) {
 	const groups = new Set(
@@ -63,7 +87,8 @@ function periodScope(s: State, filters: PeriodFilters) {
 		.filter(
 			(g) =>
 				g.cycle === filters.cycleId &&
-				(!filters.groupId || g.id === filters.groupId),
+				(!filters.groupId || g.id === filters.groupId) &&
+				(!filters.level || educationLevel(g.grade) === filters.level),
 		)
 		.sort((a, b) => compare(a.name, b.name))
 		.map((group) => {
@@ -180,6 +205,10 @@ export function buildRiskReport(
 	for (const row of rows)
 		row.failed.sort((a, b) => compare(a.subject, b.subject));
 	return {
+		distribution: riskDistribution(
+			rows.map((row) => row.failed.length),
+			rules.riskSubjects,
+		),
 		evaluated: rows.length,
 		withFailures: rows.filter((row) => row.failed.length > 0).length,
 		students: rows
@@ -187,6 +216,8 @@ export function buildRiskReport(
 			.sort(
 				(a, b) =>
 					b.failed.length - a.failed.length ||
+					Math.min(...a.failed.map((f) => f.value)) -
+						Math.min(...b.failed.map((f) => f.value)) ||
 					compare(a.groupName, b.groupName) ||
 					compare(a.name, b.name),
 			),

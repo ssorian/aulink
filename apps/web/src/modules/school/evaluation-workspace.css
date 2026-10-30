@@ -10,10 +10,12 @@
 .evaluation-dashboard .evaluation-section-heading p {
 	margin-top: 6px;
 }
-.evaluation-dashboard .evaluation-inline-controls {
+.evaluation-heading-controls {
 	display: flex;
-	gap: 16px;
+	align-items: start;
+	justify-content: end;
 	flex-wrap: wrap;
+	gap: 12px;
 }
 .evaluation-dashboard .evaluation-publish {
 	background: var(--action);
@@ -26,289 +28,6 @@
 .evaluation-dashboard button:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
-}
-.evaluation-progress-bar {
-	display: flex;
-	height: 10px;
-	overflow: hidden;
-	background: var(--surface-muted);
-	border-radius: 5px;
-	margin-top: 24px;
-}
-.evaluation-bar-published {
-	background: var(--success);
-}
-.evaluation-bar-draft {
-	background: var(--warning);
-}
-.evaluation-bar-missing {
-	background: var(--line);
-}
-.evaluation-dashboard .evaluation-progress-legend {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px 16px;
-	margin: 8px 0 24px;
-}
-.evaluation-progress-legend > span {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-}
-.evaluation-legend-swatch {
-	width: 10px;
-	height: 10px;
-	flex: none;
-}
-.evaluation-dashboard .evaluation-progress-table th,
-.evaluation-dashboard .evaluation-progress-table td {
-	text-align: left;
-	padding: 10px;
-}
-.evaluation-dashboard .evaluation-progress-table td {
-	padding: 0;
-}
-.evaluation-progress-na {
-	display: block;
-	padding: 10px;
-}
-.evaluation-dashboard .evaluation-progress-cell {
-	width: 100%;
-	min-height: 44px;
-	padding: 10px;
-	text-align: left;
-	color: var(--ink);
-	background: transparent;
-	border: 0;
-	border-radius: 0;
-	cursor: pointer;
-	display: grid;
-	gap: 4px;
-}
-.evaluation-dashboard .evaluation-progress-cell:hover {
-	background: var(--selection);
-}
-.evaluation-progress-cell strong {
-	font-weight: 600;
-}
-.evaluation-progress-count {
-	color: var(--ink-muted);
-	font-size: 12px;
-}
-.evaluation-progress-cell small {
-	margin: 0;
-}
-.evaluation-cell-meter {
-	height: 4px;
-	background: var(--surface-muted);
-	overflow: hidden;
-}
-.evaluation-cell-meter > span {
-	display: block;
-	height: 100%;
-	background: var(--success);
-}
-.evaluation-progress-mobile {
-	display: none;
-}
-.evaluation-pending {
-	margin-top: 32px;
-	border-top: 1px solid var(--line);
-	padding-top: 20px;
-}
-.evaluation-pending > ul {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-}
-.evaluation-pending > ul > li {
-	padding: 16px 0;
-	border-bottom: 1px solid var(--line);
-}
-.evaluation-pending ul ul {
-	margin: 8px 0 0;
-	padding-left: 20px;
-	color: var(--ink-muted);
-	font-size: 13px;
-}
-.evaluation-dashboard .evaluation-workspace-note {
-	margin-top: 24px;
-}
-.evaluation-dashboard .evaluation-risk-summary {
-	margin: 24px 0 16px;
-}
-.evaluation-risk-table {
-	overflow-x: auto;
-}
-.evaluation-dashboard .evaluation-risk-table th,
-.evaluation-dashboard .evaluation-risk-table td {
-	text-align: left;
-}
-.evaluation-dashboard .evaluation-risk-table tbody th {
-	font-size: 14px;
-	font-weight: 600;
-}
-.evaluation-draft-tag {
-	display: inline-block;
-	padding: 2px 7px;
-	border-radius: 999px;
-	background: var(--surface-muted);
-	color: var(--ink-muted);
-	font-size: 12px;
-}
-.evaluation-risk-table ul {
-	padding: 0;
-	margin: 0;
-	list-style: none;
-}
-@media (max-width: 760px) {
-	.evaluation-dashboard .evaluation-section-heading {
-		flex-direction: column;
-	}
-	.evaluation-progress-mobile {
-		display: block;
-	}
-	.evaluation-progress-mobile section {
-		padding: 16px 0;
-		border-bottom: 1px solid var(--line);
-	}
-	.evaluation-progress-mobile section > div {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: 12px;
-		align-items: center;
-		padding-top: 12px;
-	}
-	.evaluation-risk-table {
-		overflow: visible;
-	}
-	.evaluation-risk-table table,
-	.evaluation-risk-table tbody,
-	.evaluation-risk-table tr,
-	.evaluation-dashboard .evaluation-risk-table td,
-	.evaluation-dashboard .evaluation-risk-table th {
-		display: block;
-		width: 100%;
-	}
-	.evaluation-risk-table thead {
-		display: none;
-	}
-	.evaluation-dashboard .evaluation-risk-table tr {
-		padding: 12px 0;
-		border-bottom: 1px solid var(--line);
-	}
-	.evaluation-dashboard .evaluation-risk-table th,
-	.evaluation-dashboard .evaluation-risk-table td {
-		position: static;
-		min-width: 0;
-		border: 0;
-		padding: 6px 0;
-	}
-	.evaluation-risk-table td::before {
-		content: attr(data-label) ": ";
-		font-weight: 600;
-	}
-}
-.evaluation-dashboard .evaluation-progress-group {
-	color: var(--ink);
-	font-size: 14px;
-	font-weight: 600;
-}
-
-/* Shared evaluation surfaces and status language. */
-.evaluation-dashboard .eval-card,
-.evaluation-dashboard .eval-panel {
-	min-width: 0;
-	background: var(--surface);
-	border: 1px solid var(--line);
-	border-radius: 12px;
-}
-.evaluation-dashboard .eval-card {
-	padding: 16px;
-}
-.evaluation-dashboard .eval-panel {
-	padding: 16px;
-}
-.evaluation-dashboard .eval-stats {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 16px;
-	margin: 24px 0;
-}
-.evaluation-dashboard .eval-card > span,
-.evaluation-dashboard .eval-card dt {
-	display: block;
-	color: var(--ink-muted);
-	font-size: 13px;
-}
-.evaluation-dashboard .eval-card > strong,
-.evaluation-dashboard .evaluation-kpis strong {
-	display: block;
-	margin-top: 8px;
-	font-family: Manrope, sans-serif;
-	font-size: 26px;
-	line-height: 1.2;
-}
-.evaluation-dashboard .eval-meter,
-.evaluation-cell-meter {
-	height: 4px;
-	border-radius: 4px;
-	overflow: hidden;
-	background: var(--surface-muted);
-}
-.evaluation-dashboard .eval-meter {
-	margin-top: 12px;
-}
-.eval-meter > span {
-	display: block;
-	height: 100%;
-}
-.evaluation-bar-missing {
-	background: var(--danger);
-}
-.evaluation-dashboard .eval-pill {
-	display: inline-flex;
-	align-items: center;
-	width: max-content;
-	max-width: 100%;
-	padding: 3px 8px;
-	border-radius: 999px;
-	font-size: 12px;
-	line-height: 1.3;
-	font-weight: 600;
-}
-.eval-pill--success {
-	color: var(--success);
-	background: var(--success-bg);
-}
-.eval-pill--warning {
-	color: var(--warning);
-	background: var(--warning-bg);
-}
-.eval-pill--danger {
-	color: var(--danger);
-	background: var(--danger-bg);
-}
-.eval-pill--neutral {
-	color: var(--ink-muted);
-	background: var(--surface-muted);
-}
-.eval-pill--draft {
-	border: 1px dashed var(--danger);
-	background: transparent;
-}
-.evaluation-risk-table .evaluation-draft-tag {
-	display: inline;
-	padding: 0;
-	background: transparent;
-	color: inherit;
-	font-size: inherit;
-}
-.evaluation-dashboard .eval-stat-label--danger {
-	color: var(--danger);
-}
-.evaluation-dashboard .eval-stat-label--warning {
-	color: var(--warning);
 }
 .evaluation-dashboard .evaluation-header {
 	align-items: center;
@@ -354,44 +73,169 @@
 	min-height: 36px;
 	border: 0;
 }
-.evaluation-dashboard .evaluation-publish {
-	background: var(--action);
-	color: var(--surface);
-	border-color: var(--action);
+.evaluation-dashboard .eval-panel {
+	min-width: 0;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 16px;
+}
+.evaluation-dashboard .evaluation-operation-kpis {
+	margin: 24px 0;
+}
+.evaluation-dashboard .evaluation-operation-kpis dd {
+	margin: 0;
+}
+.evaluation-dashboard .evaluation-operation-kpis strong {
+	display: block;
+}
+.eval-meter {
+	height: 4px;
+	margin-top: 12px;
+	border-radius: 4px;
+	overflow: hidden;
+	background: var(--surface-muted);
+}
+.eval-meter > span {
+	display: block;
+	height: 100%;
+}
+.evaluation-bar-published {
+	background: var(--success);
+}
+.evaluation-bar-draft {
+	background: var(--warning);
+}
+.evaluation-bar-missing {
+	background: var(--danger);
+}
+.evaluation-stack {
+	display: flex;
+	min-width: 0;
+	height: 6px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--surface-muted);
 }
 .evaluation-progress-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	gap: 24px;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+	gap: 16px;
 	align-items: start;
 }
-.evaluation-dashboard .evaluation-progress-table {
-	padding: 0;
+.evaluation-group-panel h4 {
+	color: var(--ink-muted);
+	font-size: 12px;
+	margin: 20px 0 4px;
 }
-.evaluation-dashboard .evaluation-progress-table th,
-.evaluation-dashboard .evaluation-progress-table td {
-	min-width: 200px;
+.evaluation-group-row {
+	padding: 14px 0;
+	border-bottom: 1px solid var(--line);
 }
-.evaluation-dashboard .evaluation-progress-table th:first-child {
-	min-width: 100px;
+.evaluation-group-row:last-child {
+	border-bottom: 0;
 }
-.evaluation-dashboard .evaluation-progress-cell {
-	display: flex;
+.evaluation-group-line {
+	display: grid;
+	grid-template-columns: minmax(85px, 1fr) minmax(60px, 2fr) auto;
 	align-items: center;
-	gap: 8px;
-	min-height: 52px;
+	gap: 12px;
+	font-size: 13px;
+}
+.evaluation-dashboard .evaluation-group-name {
+	min-height: 36px;
+	padding: 4px 0;
+	border: 0;
+	text-align: left;
+	font-weight: 600;
+}
+.evaluation-group-panel-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 16px;
+}
+.evaluation-chip-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.evaluation-subject-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+.evaluation-dashboard .evaluation-subject-chip {
+	min-height: 28px;
+	max-width: 155px;
+	padding: 4px 8px;
+	border: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-size: 12px;
+	font-weight: 600;
 }
-.evaluation-cell-meter {
-	flex: 0 0 48px;
+.evaluation-dashboard .eval-pill {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	padding: 3px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	line-height: 1.3;
+	font-weight: 600;
 }
-.evaluation-pending {
+.evaluation-dashboard .eval-pill--success {
+	color: var(--success);
+	background: var(--success-bg);
+}
+.evaluation-dashboard .eval-pill--warning {
+	color: var(--warning);
+	background: var(--warning-bg);
+}
+.evaluation-dashboard .eval-pill--danger {
+	color: var(--danger);
+	background: var(--danger-bg);
+}
+.evaluation-dashboard .eval-pill--neutral {
+	color: var(--ink-muted);
+	background: var(--surface-muted);
+}
+.evaluation-dashboard .eval-pill--draft {
+	border: 1px dashed var(--danger);
+	background: transparent;
+}
+.evaluation-pending > ul,
+.evaluation-pending ul ul {
+	list-style: none;
+	padding: 0;
 	margin: 0;
 }
-.evaluation-teacher {
+.evaluation-pending > ul > li {
+	border-bottom: 1px solid var(--line);
+}
+.evaluation-pending > ul > li:last-child {
+	border-bottom: 0;
+}
+.evaluation-dashboard .evaluation-pending summary {
 	display: flex;
-	align-items: center;
-	gap: 8px;
+	gap: 10px;
+	align-items: start;
+	padding: 12px 0;
+	color: var(--ink);
+}
+.evaluation-pending summary::after {
+	content: "+";
+	color: var(--ink-muted);
+}
+.evaluation-pending details[open] summary::after {
+	content: "−";
 }
 .evaluation-avatar {
 	display: inline-grid;
@@ -405,21 +249,91 @@
 	font-size: 11px;
 	font-weight: 600;
 }
+.evaluation-teacher-content {
+	display: grid;
+	flex: 1;
+	min-width: 0;
+	gap: 5px;
+}
+.evaluation-teacher-content small {
+	margin: 0;
+}
 .evaluation-pending ul ul {
-	padding-left: 0;
-	list-style: none;
+	padding: 0 0 12px 42px;
+	color: var(--ink-muted);
+	font-size: 12px;
 }
 .evaluation-pending ul ul li + li {
 	margin-top: 4px;
+}
+.evaluation-dashboard .evaluation-workspace-note {
+	margin-top: 24px;
+}
+.evaluation-distribution-bar {
+	display: flex;
+	height: 7px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--surface-muted);
+	margin-top: 12px;
+}
+.evaluation-distribution-bar span {
+	background: var(--line);
+}
+.evaluation-distribution-bar span:nth-child(2) {
+	background: var(--warning);
+}
+.evaluation-distribution-bar span.is-risk {
+	background: var(--danger);
+}
+.evaluation-distribution ul {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	list-style: none;
+	padding: 0;
+	margin: 8px 0 0;
+}
+.evaluation-distribution :where(li) {
+	display: grid;
+	gap: 2px;
+	color: var(--ink-muted);
+	font-size: 11px;
+}
+.evaluation-dashboard .evaluation-distribution li strong {
+	font-size: 13px;
+	color: var(--ink);
 }
 .evaluation-dashboard .evaluation-risk-panel {
 	padding: 0;
 	overflow: hidden;
 }
+.evaluation-risk-table {
+	position: relative;
+	overflow-x: auto;
+}
+.evaluation-dashboard .evaluation-risk-table th,
+.evaluation-dashboard .evaluation-risk-table td {
+	text-align: left;
+}
+.evaluation-dashboard .evaluation-risk-table tbody th {
+	font-size: 14px;
+	font-weight: 600;
+}
 .evaluation-risk-table ul {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 6px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+.evaluation-risk-table .evaluation-draft-tag {
+	display: inline;
+	padding: 0;
+	background: transparent;
+	color: inherit;
+	font-size: inherit;
 }
 .evaluation-dashboard .evaluation-risk-table button {
 	border: 0;
@@ -429,35 +343,20 @@
 	padding: 20px;
 	border: 0;
 }
-.evaluation-dashboard .evaluation-kpis {
-	gap: 16px;
-	padding: 0;
-	border: 0;
-}
-.evaluation-dashboard .evaluation-kpis dd {
-	margin: 0;
-}
-.evaluation-dashboard .evaluation-evolution {
-	padding: 16px;
-}
-.evaluation-evolution-chart {
-	display: block;
-	width: 100%;
-	max-width: 480px;
-	height: 96px;
-	margin-top: 12px;
-	overflow: visible;
-}
-@media (min-width: 1100px) {
-	.evaluation-progress-layout {
-		grid-template-columns: minmax(0, 1fr) 300px;
-	}
+.evaluation-dashboard .evaluation-table-scroll {
+	position: relative;
 }
 @media (max-width: 760px) {
+	.evaluation-dashboard .evaluation-section-heading,
 	.evaluation-dashboard .evaluation-header {
+		flex-direction: column;
 		align-items: start;
 	}
-	.evaluation-dashboard .evaluation-header label {
+	.evaluation-heading-controls {
+		justify-content: start;
+	}
+	.evaluation-dashboard .evaluation-header label,
+	.evaluation-dashboard .evaluation-context label {
 		width: auto;
 	}
 	.evaluation-dashboard .evaluation-context {
@@ -465,47 +364,36 @@
 		flex-wrap: wrap;
 		gap: 8px;
 	}
-	.evaluation-dashboard .evaluation-context label {
-		width: auto;
-	}
-	.evaluation-dashboard .eval-stats,
-	.evaluation-dashboard .evaluation-kpis {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 8px;
-	}
-	.evaluation-dashboard .eval-card {
-		padding: 12px 8px;
-	}
-	.evaluation-dashboard .eval-card > strong,
-	.evaluation-dashboard .evaluation-kpis strong {
-		font-size: 22px;
-	}
-	.evaluation-progress-mobile {
-		background: var(--surface);
-		border: 1px solid var(--line);
-		border-radius: 12px;
-		padding: 0 12px;
-		min-width: 0;
-	}
-	.evaluation-progress-mobile section > div {
+	.evaluation-progress-layout {
 		grid-template-columns: minmax(0, 1fr);
-		gap: 2px;
 	}
-	.evaluation-dashboard .evaluation-progress-cell {
-		flex-wrap: wrap;
-		padding: 6px 0;
+	.evaluation-risk-table {
+		overflow: visible;
+	}
+	.evaluation-risk-table table,
+	.evaluation-risk-table tbody,
+	.evaluation-risk-table tr,
+	.evaluation-dashboard .evaluation-risk-table td,
+	.evaluation-dashboard .evaluation-risk-table th {
+		display: block;
+		width: 100%;
+	}
+	.evaluation-risk-table thead {
+		display: none;
 	}
 	.evaluation-dashboard .evaluation-risk-table tr {
 		padding: 12px;
+		border-bottom: 1px solid var(--line);
 	}
-}
-.evaluation-dashboard .evaluation-inline-controls label {
-	flex-direction: row;
-	align-items: center;
-	gap: 8px;
-	white-space: nowrap;
-}
-.evaluation-dashboard .evaluation-inline-controls select {
-	width: auto;
-	min-height: 36px;
+	.evaluation-dashboard .evaluation-risk-table th,
+	.evaluation-dashboard .evaluation-risk-table td {
+		position: static;
+		min-width: 0;
+		border: 0;
+		padding: 6px 0;
+	}
+	.evaluation-risk-table td::before {
+		content: attr(data-label) ": ";
+		font-weight: 600;
+	}
 }
