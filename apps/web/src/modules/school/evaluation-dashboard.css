@@ -103,9 +103,8 @@
 	flex-shrink: 0;
 }
 .evaluation-dashboard .evaluation-mean {
-	font-size: 36px;
-	line-height: 1.2;
-	letter-spacing: -0.02em;
+	font-size: 18px;
+	line-height: 1.3;
 }
 .evaluation-dashboard .evaluation-summary-context {
 	border-left: 1px solid var(--line);
@@ -114,6 +113,39 @@
 .evaluation-dashboard .evaluation-results {
 	min-width: 0;
 	margin-top: 28px;
+}
+.evaluation-dashboard .evaluation-kpis {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 20px;
+	margin: 24px 0;
+	padding: 20px 0;
+	border-block: 1px solid var(--line);
+}
+.evaluation-dashboard .evaluation-kpis dt {
+	color: var(--ink-muted);
+	font-size: 13px;
+}
+.evaluation-dashboard .evaluation-kpis dd {
+	margin: 8px 0 0;
+}
+.evaluation-dashboard .evaluation-kpis strong {
+	font-size: 18px;
+}
+.evaluation-dashboard .evaluation-evolution {
+	margin: 24px 0;
+}
+.evaluation-dashboard .evaluation-evolution ol {
+	padding-left: 20px;
+}
+.evaluation-dashboard .evaluation-evolution li {
+	padding-block: 6px;
+}
+@media (max-width: 760px) {
+	.evaluation-dashboard .evaluation-kpis {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
 }
 .evaluation-dashboard .evaluation-reset {
 	border-color: transparent;

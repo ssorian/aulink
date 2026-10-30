@@ -71,6 +71,7 @@ function fixture() {
 function render(s: State = fixture(), cycleId = "c1") {
 	return renderToStaticMarkup(
 		<EvaluationDashboard
+			initialTab="Resultados"
 			s={s}
 			cycleId={cycleId}
 			onCycleChange={() => {}}
@@ -79,10 +80,112 @@ function render(s: State = fixture(), cycleId = "c1") {
 	);
 }
 
+function operationalFixture() {
+	const s = initialState();
+	s.assignments = [
+		{
+			id: "m",
+			group: "g1",
+			period: "P1",
+			subject: "Matemáticas",
+			teacher: "Docente A",
+			min: 0,
+			max: 10,
+		},
+		{
+			id: "l",
+			group: "g1",
+			period: "P1",
+			subject: "Lengua",
+			teacher: "Docente B",
+			min: 0,
+			max: 10,
+		},
+		{
+			id: "a",
+			group: "g2",
+			period: "P1",
+			subject: "Arte",
+			teacher: "Docente C",
+			min: 0,
+			max: 10,
+		},
+	];
+	s.grades = [
+		{
+			id: "m1",
+			assignment: "m",
+			student: "s1",
+			value: 5,
+			published: true,
+			history: [],
+		},
+		{
+			id: "l1",
+			assignment: "l",
+			student: "s1",
+			value: 4,
+			published: false,
+			history: [],
+		},
+	];
+	return s;
+}
+function renderOperational(
+	s: State,
+	tab?: "Avance del periodo" | "Alumnos en riesgo" | "Resultados",
+) {
+	return renderToStaticMarkup(
+		<EvaluationDashboard
+			s={s}
+			cycleId="c1"
+			onCycleChange={() => {}}
+			onOpenGroup={() => {}}
+			onOpenStudent={() => {}}
+			open={() => {}}
+			initialTab={tab}
+		/>,
+	);
+}
+test("progress presents publication and teacher pending with a single period", () => {
+	const html = renderOperational(operationalFixture());
+	for (const text of [
+		"Avance de P1",
+		"1 de 3 calificaciones publicadas",
+		"Publicar 1 borradores",
+		"Sin captura",
+		"por publicar",
+		"Pendientes por docente",
+		"Docente B",
+	])
+		expect(html).toContain(text);
+	expect(html).not.toContain("Todos los periodos");
+	expect(renderOperational(operationalFixture(), "Resultados")).toContain(
+		"Todos los periodos",
+	);
+});
+test("risk includes failing drafts and explains its criterion", () => {
+	const html = renderOperational(operationalFixture(), "Alumnos en riesgo");
+	for (const text of [
+		"En riesgo: 2 o más materias con calificación menor a 6.",
+		"Matemáticas 5",
+		"Lengua 4 (borrador)",
+		"Ver expediente",
+	])
+		expect(html).toContain(text);
+});
+test("risk empty state explains other failures", () => {
+	const s = operationalFixture();
+	s.grades[1].value = 8;
+	const html = renderOperational(s, "Alumnos en riesgo");
+	expect(html).toContain("Ningún alumno cumple el criterio");
+	expect(html).toContain("1 alumnos tienen al menos una materia reprobada");
+});
+
 test("group and subject charts are primary, with the matrix collapsed below", () => {
 	const html = render();
 	for (const text of [
-		"Resultados académicos",
+		"Resultados publicados",
 		"Promedio publicado",
 		"Resultados por grupo y materia",
 		"Promedio por grupo",
@@ -110,7 +213,7 @@ test("group and subject charts are primary, with the matrix collapsed below", ()
 test("published zero remains numeric, missing and draft values are dashes", () => {
 	const html = render();
 	expect(html).toContain('class="evaluation-mean">0</strong>');
-	expect(html).toContain("1 calificación publicada");
+	expect(html).toContain("Calificaciones publicadas");
 	expect(html).toContain('aria-hidden="true">—');
 	expect(html).toContain(
 		'class="evaluation-sr-only">Sin resultados publicados',
@@ -149,7 +252,7 @@ test("cycle-specific scales fall back to the available scale only", () => {
 	const html = render(s, "next");
 	expect(html).toContain('class="evaluation-mean">95</strong>');
 	expect(html).not.toContain("Escala 0–10</option>");
-	expect(html).not.toContain("Matemáticas");
+	expect(html).not.toContain('<option value="Matemáticas">');
 });
 
 test("group filter confines all aggregates and matrix cells", () => {

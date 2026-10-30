@@ -463,6 +463,13 @@ export function SchoolApp() {
 										s={s}
 										cycleId={effectiveEvaluationCycle}
 										onCycleChange={setEvaluationCycle}
+										open={open}
+										onOpenStudent={(id) => {
+											setProfileOrigin("");
+											setProfile(id);
+											setPage("Alumnos");
+											window.scrollTo(0, 0);
+										}}
 										onOpenGroup={(id) => {
 											const active = document.activeElement;
 											evaluationPosition.current = {
