@@ -285,11 +285,58 @@ export function buildMockData(legacy = false): State {
 			recipients: [],
 		},
 	];
+	varyEvaluationSample(s);
 	if (!legacy) s = naturalSeed(s);
 	for (const notice of s.notices)
 		if (notice.published)
 			notice.recipients = recipients(s, notice.audience, notice.target);
 	return s;
+}
+
+/**
+ * Current-cycle grades get failing results and a partially captured second
+ * period, so evaluation follow-up has real work to show.
+ */
+function varyEvaluationSample(s: State) {
+	const current = s.groups.filter((g) => g.cycle === s.cycles[0]?.id);
+	const roster = (group: string) =>
+		s.students.filter((x) => x.enrollments.some((e) => e.group === group));
+	for (const [g, group] of current.entries()) {
+		const students = roster(group.id);
+		for (const a of s.assignments.filter((a) => a.group === group.id)) {
+			const math = a.subject === "Matemáticas";
+			// Audited grades keep the value their correction history describes.
+			for (const grade of s.grades.filter(
+				(x) => x.assignment === a.id && !x.history.length,
+			)) {
+				const position = students.findIndex((x) => x.id === grade.student);
+				if (position === 0) grade.value = 6 + g;
+				if (position === 1 + g && g % 2 === 0) grade.value = math ? 5 : 5.5;
+				if (position === 4 - g && g % 2 === 1 && math) grade.value = 5;
+			}
+		}
+	}
+	const first = [...s.assignments];
+	for (const [n, a] of first.entries()) {
+		const g = current.findIndex((group) => group.id === a.group);
+		if (g < 0) continue;
+		const assignment = id("assignment", 100 + n);
+		s.assignments.push({ ...a, id: assignment, period: "Periodo 2 · Muestra" });
+		const math = a.subject === "Matemáticas";
+		// Coverage per group: complete, all drafts, one subject only, half, none.
+		if (g === 4 || (g === 2 && !math)) continue;
+		for (const [position, student] of roster(a.group).entries()) {
+			if (g === 3 && position % 2) continue;
+			s.grades.push({
+				id: id("grade", 1000 + n * 10 + position),
+				assignment,
+				student: student.id,
+				value: position === 1 && g === 0 ? 5 : 6 + ((position + g) % 5),
+				published: g === 1 || g === 3 ? false : position !== 5,
+				history: [],
+			});
+		}
+	}
 }
 
 /** Only transforms freshly generated seed data, never persisted/user-authored strings. */
@@ -327,6 +374,7 @@ function naturalSeed(seed: State): State {
 		"Docente Ejemplo 1": "Gabriel Torres Nájera",
 		"Docente Ejemplo 2": "Elena Cárdenas Solís",
 		"Periodo 1 · Muestra": "Primer trimestre",
+		"Periodo 2 · Muestra": "Segundo trimestre",
 		"Revisión sintética de captura":
 			"Corrección de captura tras cotejar la rúbrica de evaluación",
 		"Acceso principal · Equipo de muestra": "Acceso principal",

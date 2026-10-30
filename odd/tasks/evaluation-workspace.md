@@ -18,7 +18,7 @@ Rama: `feat/evaluation-workspace`.
 
 ## Tasks
 
-- T1 — S2, S3 · inline · Modelo demo: reglas de evaluación (aprobatoria, materias para riesgo) con valor por defecto, comandos `evaluation-rules` y `grade-publish-batch`; derivaciones de avance, pendientes por docente y riesgo con pruebas. Commit: pendiente
+- T1 — S2, S3 · inline · Modelo demo: reglas de evaluación (aprobatoria, materias para riesgo) con valor por defecto, comandos `evaluation-rules` y `grade-publish-batch`; derivaciones de avance, pendientes por docente y riesgo con pruebas. Commit: 4e53129
 - T2 — S3 · inline · Semilla demo natural con un segundo periodo parcialmente capturado y calificaciones reprobatorias, sin alterar la semilla legacy. Commit: pendiente
 - T3 — S1, S3, S4 · inline · UI: pestañas Avance / En riesgo / Resultados, filtros compartidos, publicación por lote con confirmación, accesos a grupo y expediente, estilos. Pruebas de render. Commit: pendiente
 - T4 — S1–S4 · inline · Verificación: typecheck, lint, pruebas, revisión visual en navegador escritorio/móvil, detector de diseño. Commit: pendiente
@@ -28,3 +28,5 @@ Rama: `feat/evaluation-workspace`.
 - L1 — Usuario (pedido original de la implementación): "El rol si es control escolar, las materias reprobadas son configurables, por ahora solo me gustaria la UI que cubriera los casos de uso, y una ui mas pulida y limpia"
 - L2 — Contexto previo: el usuario pidió primero diseñar los casos de uso de la UI de evaluación ("antes de reformularla, realmente me interesa disenar que casos de uso de deberia cubrir en realidad") y luego explorar la app "para delimitar y definir mejor la idea". El explorer mostró que captura, corrección y publicación individual ya viven en Grupo → Calificaciones y las asignaciones en Horario.
 - L3 — Decisiones del orquestador (no pedidas explícitamente, reversibles): valores por defecto aprobatoria 6 y riesgo con 2 o más materias reprobadas; Avance y riesgo trabajan por periodo; riesgo considera valores capturados (publicados y borradores, señalados); Resultados conserva solo publicadas porque es lo que ve la familia. No existe estado "lista" en el modelo, así que no se inventa.
+- L4 — Evidencia T1: `bun test scripts/evaluation-operations.test.ts` RED (módulo inexistente) → 7 pass; suite 216 pass.
+- L5 — Decisión T2: el segundo periodo y las reprobadas se generan en la semilla base ("Periodo 2 · Muestra" → "Segundo trimestre") porque la migración legacy exige correspondencia 1:1 con la semilla natural; las calificaciones con historial de corrección no cambian de valor.
