@@ -1,5 +1,11 @@
 import type { State } from "./workflows";
 
+export function educationLevel(
+	grade?: string,
+): "Secundaria" | "Media superior" {
+	return /semestre/i.test(grade ?? "") ? "Media superior" : "Secundaria";
+}
+
 export type EvaluationScale = {
 	key: string;
 	min: number;
@@ -10,6 +16,7 @@ export type EvaluationAssignment = {
 	id: string;
 	groupId: string;
 	groupName: string;
+	grade?: string;
 	cycleId: string;
 	cycleName: string;
 	subject: string;
@@ -88,6 +95,7 @@ export function buildEvaluationData(s: State): EvaluationData {
 			id: item.id,
 			groupId: group.id,
 			groupName: group.name,
+			grade: group.grade,
 			cycleId: cycle.id,
 			cycleName: cycle.name,
 			subject: item.subject,
@@ -161,6 +169,71 @@ export function buildEvaluationMatrix(report: EvaluationReport) {
 		};
 	});
 	return { subjects, groups, bySubject };
+}
+
+export function filterEvaluationLevel(
+	data: EvaluationData,
+	level: "Todos" | "Secundaria" | "Media superior",
+): EvaluationData {
+	if (level === "Todos") return data;
+	return {
+		...data,
+		assignments: data.assignments.filter(
+			(item) => educationLevel(item.grade) === level,
+		),
+		records: data.records.filter(
+			(item) => educationLevel(item.grade) === level,
+		),
+	};
+}
+
+export function subjectStatistics(
+	report: EvaluationReport,
+	records: EvaluationRecord[],
+	passing: number,
+) {
+	const matrix = buildEvaluationMatrix(report);
+	return matrix.bySubject.map((subject) => {
+		const groupMeans = matrix.groups.flatMap((group) => {
+			const value = group.cells.get(subject.key)?.mean;
+			return value == null ? [] : [value];
+		});
+		const grades = records.filter((record) => record.subject === subject.key);
+		return {
+			subject: subject.key,
+			mean: subject.mean,
+			count: subject.count,
+			minGroupMean: groupMeans.length ? Math.min(...groupMeans) : null,
+			maxGroupMean: groupMeans.length ? Math.max(...groupMeans) : null,
+			failureRate: grades.length
+				? grades.filter((r) => r.value < passing).length / grades.length
+				: null,
+			delta:
+				subject.mean == null || report.mean == null
+					? null
+					: subject.mean - report.mean,
+		};
+	});
+}
+
+export function gradeHistogram(values: number[], passing: number) {
+	const bins = new Map<number, number>();
+	for (const value of values) {
+		const bin = Math.floor(value);
+		bins.set(bin, (bins.get(bin) ?? 0) + 1);
+	}
+	if (!bins.size) return [];
+	const keys = [...bins.keys()];
+	const min = Math.min(...keys);
+	const max = Math.max(...keys);
+	return Array.from({ length: max - min + 1 }, (_, index) => {
+		const value = min + index;
+		return {
+			value,
+			count: bins.get(value) ?? 0,
+			failing: value + 1 <= passing,
+		};
+	});
 }
 
 const compare = new Intl.Collator("es", { numeric: true }).compare;

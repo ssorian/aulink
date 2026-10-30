@@ -210,42 +210,41 @@ test("risk summary pluralizes risk and evaluated counts", () => {
 	expect(plural).toContain("2 evaluados");
 });
 
-test("group and subject charts are primary, with the matrix collapsed below", () => {
+test("results show the KPI strip, ranked subjects, histogram and group map", () => {
 	const html = render();
 	for (const text of [
 		"Resultados publicados",
-		"Promedio publicado",
-		"Resultados por grupo y materia",
-		"Promedio por grupo",
-		"Promedio por materia",
-		"Ver tabla de resultados",
-		"Todos los periodos",
+		"Promedio general",
+		"Aprobación",
+		"Calificaciones reprobatorias",
+		"Brecha entre materias",
+		"Materias",
+		"Distribución de calificaciones",
+		"Mapa por grupo",
+		"No se imparte",
 	])
 		expect(html).toContain(text);
-	for (const id of ["cycle", "scale", "period", "subject", "group", "sort"])
-		expect(html).toContain(`for="evaluation-${id}"`);
-	expect(html).toContain('class="evaluation-charts"');
-	expect(html.indexOf('id="evaluation-group-chart"')).toBeLessThan(
-		html.indexOf('class="evaluation-table-detail"'),
-	);
-	expect(html.indexOf('id="evaluation-subject-chart"')).toBeLessThan(
-		html.indexOf('class="evaluation-table-detail"'),
-	);
-	expect(html).toContain('<details class="evaluation-table-detail">');
 	expect(html).toContain('aria-label="Abrir grupo 1° A"');
-	expect(html).not.toContain("evaluation-track");
-	expect(html).not.toContain('<th scope="col">Acción');
-	expect(html).toContain('id="evaluation-group-chart"');
+	expect(html).toContain("Reprobatorio (&lt; 6)");
+	expect(html).toContain("Cerca del mínimo (&lt; 7)");
+	expect(html).toContain('class="results-neutral">±0.0');
+	expect(html.indexOf("<strong>Matemáticas</strong>")).toBeLessThan(
+		html.indexOf("<strong>Arte</strong>"),
+	);
+	expect(html).not.toContain('aria-label="Nivel educativo"');
+	const s = fixture();
+	s.groups[1].grade = "1° semestre";
+	const mixed = render(s);
+	expect(mixed).toContain('aria-label="Nivel educativo"');
+	expect(mixed).toContain("Media superior");
 });
 
 test("published zero remains numeric, missing and draft values are dashes", () => {
 	const html = render();
-	expect(html).toContain('class="evaluation-mean">0</strong>');
-	expect(html).toContain("Calificaciones publicadas");
-	expect(html).toContain('aria-hidden="true">—');
-	expect(html).toContain(
-		'class="evaluation-sr-only">Sin resultados publicados',
-	);
+	expect(html).toContain('class="evaluation-mean">0.0</strong>');
+	expect(html).toContain("calificación publicada");
+	expect(html).toContain("Sin publicar");
+	expect(html).toContain("No se imparte");
 	expect(html).not.toContain("7.777");
 	expect(html).not.toContain(">95<");
 	expect(html).not.toContain('<th scope="col">Otra escala</th>');
@@ -278,7 +277,7 @@ test("cycle-specific scales fall back to the available scale only", () => {
 	s.groups.push({ id: "next-group", name: "Grupo futuro", cycle: "next" });
 	s.assignments[2].group = "next-group";
 	const html = render(s, "next");
-	expect(html).toContain('class="evaluation-mean">95</strong>');
+	expect(html).toContain('class="evaluation-mean">95.0</strong>');
 	expect(html).not.toContain("Escala 0–10</option>");
 	expect(html).not.toContain('<option value="Matemáticas">');
 });

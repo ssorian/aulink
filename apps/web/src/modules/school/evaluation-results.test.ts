@@ -1,6 +1,13 @@
 // @ts-expect-error Bun runs these tests; browser compilation excludes its types.
 import { expect, test } from "bun:test";
-import { buildEvaluationData, summarizeEvaluation } from "./evaluation-results";
+import {
+	buildEvaluationData,
+	educationLevel,
+	filterEvaluationLevel,
+	gradeHistogram,
+	subjectStatistics,
+	summarizeEvaluation,
+} from "./evaluation-results";
 import { initialState, type State } from "./workflows";
 
 const scaleKey = "[0,10]";
@@ -50,6 +57,41 @@ function fixture(): State {
 	];
 	return s;
 }
+
+test("education level derives from the group grade without case sensitivity", () => {
+	expect(educationLevel("1° Semestre")).toBe("Media superior");
+	expect(educationLevel("TERCER SEMESTRE")).toBe("Media superior");
+	expect(educationLevel("2°")).toBe("Secundaria");
+	expect(educationLevel()).toBe("Secundaria");
+});
+
+test("level filtering and subject statistics weight records and compare group means", () => {
+	const s = fixture();
+	s.groups[1].grade = "1° semestre";
+	const data = buildEvaluationData(s);
+	const filtered = filterEvaluationLevel(data, "Media superior");
+	expect(filtered.assignments.every((a) => a.groupId === "g2")).toBe(true);
+	expect(filtered.records.map((r) => r.value)).toEqual([8]);
+	const report = summarizeEvaluation(data, { cycleId: "c1", scaleKey });
+	const stats = subjectStatistics(
+		report,
+		data.records.filter((r) => r.cycleId === "c1" && r.scaleKey === scaleKey),
+		6,
+	);
+	expect(stats.find((x) => x.subject === "Mate")).toMatchObject({
+		mean: 6,
+		minGroupMean: 5,
+		maxGroupMean: 8,
+		failureRate: 1 / 3,
+		delta: 0,
+	});
+	expect(gradeHistogram([5.9, 6, 8.1], 6.5)).toEqual([
+		{ value: 5, count: 1, failing: true },
+		{ value: 6, count: 1, failing: false },
+		{ value: 7, count: 0, failing: false },
+		{ value: 8, count: 1, failing: false },
+	]);
+});
 
 test("school means weight records, isolate cycle and scale, and preserve zero", () => {
 	const data = buildEvaluationData(fixture());
