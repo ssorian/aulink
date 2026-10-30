@@ -15,6 +15,7 @@ Rama: `feat/evaluation-workspace`.
   - Resultados: promedio con aprobación/distribución, evolución entre periodos cuando existen varios.
   - Fuera: captura y corrección (se quedan en el grupo), asignaciones (Horario), ámbito docente.
 - S4 — Calidad: "una ui mas pulida y limpia".
+- S5 — Rediseño visual con referencias: "Ok la ui ya cubre los casos de uso, pero honestamente la ui es muy fea, usa mobbin para investigar pantallas de referencia"; dirección aprobada ("si avanza"): Avance con tarjetas de estado (Fresha), filtros en chips en una línea (Whop/Browserbase), matriz compacta con pill de estado + "5/6" + barra en una línea (ClickUp/Circle) y panel lateral de pendientes por docente; Riesgo con resumen de distribución (15Five) y fila por alumno con un pill por materia (SchoolAI); Resultados con KPIs dentro de paneles junto a sus gráficas (Fresha) y evolución como mini gráfico de línea. Mantener identidad Aulink (tipografía, violeta, sidebar). Referencias en `.impeccable/refs/eval/`.
 
 ## Tasks
 
@@ -22,6 +23,8 @@ Rama: `feat/evaluation-workspace`.
 - T2 — S3 · inline · Semilla demo natural con un segundo periodo parcialmente capturado y calificaciones reprobatorias, sin alterar la semilla legacy. Commit: 96ff5ee
 - T3 — S1, S3, S4 · inline · UI: pestañas Avance / En riesgo / Resultados, filtros compartidos, publicación por lote con confirmación, accesos a grupo y expediente, estilos. Pruebas de render. Commit: 051d2ca, 98c68a4
 - T4 — S1–S4 · inline · Verificación: typecheck, lint, pruebas, revisión visual en navegador escritorio/móvil, detector de diseño. Commit: sin cambios de código propios (correcciones en 98c68a4)
+
+- T5 — S5 · worker · Rediseño visual de las tres pestañas según referencias Mobbin, sin cambiar comportamiento. Commit: 2dc1960
 
 ## Log
 
@@ -31,3 +34,6 @@ Rama: `feat/evaluation-workspace`.
 - L4 — Evidencia T1: `bun test scripts/evaluation-operations.test.ts` RED (módulo inexistente) → 7 pass; suite 216 pass.
 - L5 — Decisión T2: el segundo periodo y las reprobadas se generan en la semilla base ("Periodo 2 · Muestra" → "Segundo trimestre") porque la migración legacy exige correspondencia 1:1 con la semilla natural; las calificaciones con historial de corrección no cambian de valor.
 - L6 — Evidencia T3/T4: suite `bun test scripts apps/web/src` 220 pass / 0 fail; `tsc --noEmit` limpio; biome limpio en archivos de evaluación; `impeccable detect` sin hallazgos. Navegador (Vite :3217, datos demo frescos, 1280px y 390px sin overflow horizontal): Avance 15/62 → "Publicar 21 borradores" → confirmación → 36/62; criterio de riesgo cambiado a 1 y guardado; filtro de periodo cambia la lista de riesgo; "Ver expediente" abre el perfil del alumno. Correcciones visuales tras la revisión: pestañas con estilo compartido, sin H2 redundante, celdas planas, etiquetas de la gráfica por materia sin quiebre, evolución por periodo legible, pluralización.
+- L7 — Usuario: "Ok la ui ya cubre los casos de uso, pero honestamente la ui es muy fea, usa mobbin para investigar pantallas de referencia"
+- L8 — Usuario tras la propuesta de dirección (tres pestañas o solo Avance primero): "si avanza"
+- L9 — Evidencia T5: rediseño hecho por gentle-ai-worker con referencias Mobbin; correcciones del orquestador tras revisión visual (chips de filtro y selects en una línea, escala del gráfico de evolución). Suite 220 pass / 0 fail, tsc y biome limpios; navegador 1440px y 390px sin overflow horizontal. Commit 2dc1960.
