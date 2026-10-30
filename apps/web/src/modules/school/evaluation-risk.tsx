@@ -59,77 +59,96 @@ export function EvaluationRisk({
 					{!open && <small>La configuración no está disponible.</small>}
 				</div>
 			</div>
-			<p className="evaluation-risk-summary">
+			<div className="eval-stats evaluation-risk-stats">
+				{(
+					[
+						["En riesgo", report.students.length, "danger"],
+						["Con alguna reprobada", report.withFailures, "warning"],
+						["Evaluados", report.evaluated, "neutral"],
+					] as const
+				).map(([label, count, tone]) => (
+					<div className="eval-card" key={label}>
+						<span className={`eval-stat-label--${tone}`}>{label}</span>
+						<strong>{count}</strong>
+					</div>
+				))}
+			</div>
+			<p className="evaluation-risk-summary evaluation-sr-only">
 				{report.students.length}{" "}
 				{report.students.length === 1 ? "alumno" : "alumnos"} en riesgo ·{" "}
 				{report.withFailures} con al menos una materia reprobada ·{" "}
 				{report.evaluated} {report.evaluated === 1 ? "evaluado" : "evaluados"}
 			</p>
-			{report.students.length ? (
-				<div className="evaluation-risk-table">
-					<table>
-						<thead>
-							<tr>
-								<th scope="col">Alumno</th>
-								<th scope="col">Grupo</th>
-								<th scope="col">Materias reprobadas</th>
-								<th scope="col">Sin capturar</th>
-								{onOpenStudent && <th scope="col">Acción</th>}
-							</tr>
-						</thead>
-						<tbody>
-							{report.students.map((row) => (
-								<tr key={row.studentId}>
-									<th scope="row" data-label="Alumno">
-										{row.name}
-										<small>{row.matricula}</small>
-									</th>
-									<td data-label="Grupo">{row.groupName}</td>
-									<td data-label="Materias reprobadas">
-										<ul>
-											{row.failed.map((f, i) => (
-												// biome-ignore lint/suspicious/noArrayIndexKey: Duplicate subject assignments can produce identical entries.
-												<li key={`${f.subject}-${i}`}>
-													{f.subject} {f.value}
-													{!f.published && (
-														<>
-															{" "}
-															·{" "}
-															<span className="evaluation-draft-tag">
-																borrador
-															</span>
-														</>
-													)}
-												</li>
-											))}
-										</ul>
-									</td>
-									<td data-label="Sin capturar">{row.missing}</td>
-									{onOpenStudent && (
-										<td data-label="Acción">
-											<button
-												type="button"
-												onClick={() => onOpenStudent(row.studentId)}
-											>
-												Ver expediente
-											</button>
-										</td>
-									)}
+			<div className="eval-panel evaluation-risk-panel">
+				{report.students.length ? (
+					<div className="evaluation-risk-table">
+						<table>
+							<thead>
+								<tr>
+									<th scope="col">Alumno</th>
+									<th scope="col">Grupo</th>
+									<th scope="col">Materias reprobadas</th>
+									<th scope="col">Sin capturar</th>
+									{onOpenStudent && <th scope="col">Acción</th>}
 								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
-			) : (
-				<div className="evaluation-empty">
-					<h3>Ningún alumno cumple el criterio</h3>
-					<p>
-						{report.withFailures > 0
-							? `${report.withFailures} ${report.withFailures === 1 ? "alumno tiene" : "alumnos tienen"} al menos una materia reprobada.`
-							: "No hay alumnos que cumplan el criterio en esta selección."}
-					</p>
-				</div>
-			)}
+							</thead>
+							<tbody>
+								{report.students.map((row) => (
+									<tr key={row.studentId}>
+										<th scope="row" data-label="Alumno">
+											{row.name}
+											<small>{row.matricula}</small>
+										</th>
+										<td data-label="Grupo">{row.groupName}</td>
+										<td data-label="Materias reprobadas">
+											<ul>
+												{row.failed.map((f, i) => (
+													<li
+														// biome-ignore lint/suspicious/noArrayIndexKey: Duplicate subject assignments can produce identical entries.
+														key={`${f.subject}-${i}`}
+														className={`eval-pill eval-pill--danger${!f.published ? " eval-pill--draft" : ""}`}
+													>
+														{f.subject} {f.value}
+														{!f.published && (
+															<>
+																{" "}
+																·{" "}
+																<span className="evaluation-draft-tag">
+																	borrador
+																</span>
+															</>
+														)}
+													</li>
+												))}
+											</ul>
+										</td>
+										<td data-label="Sin capturar">{row.missing}</td>
+										{onOpenStudent && (
+											<td data-label="Acción">
+												<button
+													type="button"
+													onClick={() => onOpenStudent(row.studentId)}
+												>
+													Ver expediente
+												</button>
+											</td>
+										)}
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				) : (
+					<div className="evaluation-empty">
+						<h3>Ningún alumno cumple el criterio</h3>
+						<p>
+							{report.withFailures > 0
+								? `${report.withFailures} ${report.withFailures === 1 ? "alumno tiene" : "alumnos tienen"} al menos una materia reprobada.`
+								: "No hay alumnos que cumplan el criterio en esta selección."}
+						</p>
+					</div>
+				)}
+			</div>
 			<p className="evaluation-workspace-note">
 				Se incluyen borradores señalados como tales; las familias solo ven
 				calificaciones publicadas.

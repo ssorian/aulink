@@ -93,6 +93,16 @@ export function EvaluationResultsView({
 	];
 	const evolution = report.byPeriod.filter((item) => item.count > 0);
 	const overallPass = passRate();
+	// The line spans the observed range so small changes stay visible.
+	const means = evolution.flatMap((item) =>
+		item.mean == null ? [] : [item.mean],
+	);
+	const low = Math.min(...means) - 1;
+	const span = Math.max(...means) + 1 - low || 1;
+	const evolutionX = (index: number) =>
+		30 + (index * 340) / Math.max(1, evolution.length - 1);
+	const evolutionY = (value: number | null) =>
+		value == null ? 76 : 76 - ((value - low) / span) * 50;
 	return (
 		<section className="evaluation-results" aria-label="Resultados publicados">
 			<header className="evaluation-section-heading">
@@ -138,7 +148,7 @@ export function EvaluationResultsView({
 				aria-label="Resumen de resultados"
 				aria-live="polite"
 			>
-				<div>
+				<div className="eval-card">
 					<dt>Promedio publicado</dt>
 					<dd>
 						<strong className="evaluation-mean">
@@ -151,7 +161,7 @@ export function EvaluationResultsView({
 						</small>
 					</dd>
 				</div>
-				<div>
+				<div className="eval-card">
 					<dt>Aprobación</dt>
 					<dd>
 						<strong>
@@ -162,7 +172,7 @@ export function EvaluationResultsView({
 						</small>
 					</dd>
 				</div>
-				<div>
+				<div className="eval-card">
 					<dt>Calificaciones publicadas</dt>
 					<dd>
 						<strong>{report.count}</strong>
@@ -197,10 +207,46 @@ export function EvaluationResultsView({
 			/>
 			{!period && evolution.length > 1 && (
 				<section
-					className="evaluation-evolution"
+					className="eval-panel evaluation-evolution"
 					aria-labelledby="evaluation-evolution-title"
 				>
 					<h3 id="evaluation-evolution-title">Evolución por periodo</h3>
+					<svg
+						className="evaluation-evolution-chart"
+						viewBox="0 0 400 96"
+						role="img"
+						aria-label="Evolución de promedios publicados por periodo"
+					>
+						<polyline
+							fill="none"
+							stroke="var(--action)"
+							strokeWidth="2"
+							points={evolution
+								.map(
+									(item, index) =>
+										`${evolutionX(index)},${evolutionY(item.mean)}`,
+								)
+								.join(" ")}
+						/>
+						{evolution.map((item, index) => {
+							const x = evolutionX(index);
+							const y = evolutionY(item.mean);
+							return (
+								<g key={item.key}>
+									<circle cx={x} cy={y} r="4" fill="var(--action)" />
+									<text
+										x={x}
+										y={y - 9}
+										textAnchor="middle"
+										fill="var(--ink)"
+										fontSize="11"
+									>
+										{item.mean == null ? "—" : number.format(item.mean)}
+									</text>
+								</g>
+							);
+						})}
+					</svg>
 					<ol>
 						{evolution.map((item, index) => {
 							const previous = evolution[index - 1]?.mean;

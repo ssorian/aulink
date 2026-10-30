@@ -113,7 +113,7 @@ export function EvaluationDashboard({
 			/>
 			<div className="evaluation-context">
 				<label htmlFor="evaluation-period">
-					Periodo
+					Periodo:
 					<select
 						id="evaluation-period"
 						value={period}
@@ -131,7 +131,7 @@ export function EvaluationDashboard({
 					</select>
 				</label>
 				<label htmlFor="evaluation-group">
-					Grupo
+					Grupo:
 					<select
 						id="evaluation-group"
 						value={groupId}
@@ -147,7 +147,7 @@ export function EvaluationDashboard({
 					</select>
 				</label>
 				<label htmlFor="evaluation-subject">
-					Materia
+					Materia:
 					<select
 						id="evaluation-subject"
 						value={subject}
@@ -175,7 +175,7 @@ export function EvaluationDashboard({
 							})
 						}
 					>
-						Restablecer filtros
+						Restablecer
 					</button>
 				)}
 			</div>
