@@ -51,9 +51,9 @@
 	border: 1px solid #9ca3af;
 }
 .group-tables .day-square[data-status="E"] {
-	background: #fff0b3;
-	color: #684500;
-	border-color: #ad8000;
+	background: var(--warning-bg);
+	color: var(--warning);
+	border-color: var(--palette-mustard);
 }
 .group-tables .day-square[data-status="C"] {
 	background: #d8efdf;
@@ -61,9 +61,9 @@
 	border-color: #4b845b;
 }
 .group-tables .day-square[data-status="F"] {
-	background: #fbe0df;
-	color: #892721;
-	border-color: #b55c55;
+	background: var(--danger-bg);
+	color: var(--danger);
+	border-color: var(--palette-brick);
 }
 .group-tables .day-square[aria-pressed="true"] {
 	outline: 2px solid var(--ink);

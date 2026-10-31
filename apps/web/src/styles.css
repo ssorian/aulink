@@ -20,8 +20,8 @@
   gap: 8px 18px;
   padding: 0;
   border: 0;
-  background: #fff;
-  color: #56398a;
+  background: var(--surface);
+  color: var(--ink);
   font-size: 13px;
 }
 .context-bar span + span { border-left: 1px solid var(--line); padding-left: 12px; }
@@ -37,21 +37,21 @@ main { padding-top: 24px; padding-bottom: 32px; }
 .student-directory { padding: 18px 20px; }
 .student-directory .filters { margin-bottom: 12px; }
 .result-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0; }
-.result-toolbar p { color: #563e70; font-size: 13px; }
+.result-toolbar p { color: var(--ink-muted); font-size: 13px; }
 .student-directory .table-scroll { max-height: 65vh; scroll-padding-top: 48px; }
-.student-directory th { position: sticky; top: 0; z-index: 1; color: #604b74; font-weight: 600; }
-.student-directory td { padding: 10px 12px; color: #604b74; }
+.student-directory th { position: sticky; top: 0; z-index: 1; color: var(--ink-muted); font-weight: 600; }
+.student-directory td { padding: 10px 12px; color: var(--ink); }
 .student-directory td p { font-size: 13px; line-height: 1.5; }
-.student-directory tbody tr:hover { background: #faf7fd; }
+.student-directory tbody tr:hover { background: var(--canvas); }
 .student-directory button { min-height: 40px; }
 .attendance-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-.attendance-summary > div { background: #f8f5fc; border: 1px solid #e6dfef; border-radius: 9px; padding: 14px; }
-.attendance-summary dt { color: #604b74; font-size: 13px; }
+.attendance-summary > div { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 14px; }
+.attendance-summary dt { color: var(--ink-muted); font-size: 13px; }
 .attendance-summary dd { margin: 6px 0 0; font-size: 25px; font-weight: 700; }
-.status-badge { display: inline-block; border: 1px solid #d9c7ef; border-radius: 20px; padding: 5px 10px; background: #f4edfc; color: #56398a; font-size: 12px; }
+.status-badge { display: inline-block; border: 1px solid var(--line); border-radius: 20px; padding: 5px 10px; background: var(--surface-muted); color: var(--ink); font-size: 12px; }
 .attendance-event h3 { margin: 0; }
 .attendance-event details { margin: 12px 0; }
-.attendance-event summary { cursor: pointer; color: #56398a; padding: 8px 0; font-size: 14px; }
+.attendance-event summary { cursor: pointer; color: var(--action); padding: 8px 0; font-size: 14px; }
 .attendance-event details p { margin: 8px 0; }
 @media (max-width: 760px) {
   .context-bar { gap: 6px 12px; font-size: 12px; }
@@ -66,29 +66,29 @@ main { padding-top: 24px; padding-bottom: 32px; }
 }
 
 /* Guided workspaces retain the same language across summaries and forms. */
-.skip-link { position: fixed; left: 16px; top: 12px; z-index: 100; padding: 12px 18px; border-radius: 8px; background: #4c2d73; color: #fff; transform: translateY(-160%); }
+.skip-link { position: fixed; left: 16px; top: 12px; z-index: 100; padding: 12px 18px; border-radius: 8px; background: var(--action-hover); color: #fff; transform: translateY(-160%); }
 .skip-link:focus { transform: translateY(0); }
 .sidebar nav button { min-height: 44px; }
 .sidebar nav { scrollbar-width: thin; }
-label:has([aria-invalid="true"]) { color: #972746; }
-[aria-invalid="true"] { border-color: #a33050; background: #fff8fa; }
-.form-field-error { color: #972746; font-size: 13px; line-height: 1.5; font-weight: 500; }
-.form-error-summary { border: 1px solid #d691a5; background: #fff0f4; padding: 14px; border-radius: 8px; }
-.publication-preview { padding: 16px; border: 1px solid #d6c2ed; border-radius: 10px; background: #fcfaff; margin: 14px 0; }
+label:has([aria-invalid="true"]) { color: var(--danger); }
+[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-bg); }
+.form-field-error { color: var(--danger); font-size: 13px; line-height: 1.5; font-weight: 500; }
+.form-error-summary { border: 1px solid var(--danger); background: var(--danger-bg); padding: 14px; border-radius: 8px; }
+.publication-preview { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin: 14px 0; }
 .publication-preview h3 { margin-top: 0; }
 .publication-audience { margin: 12px 0; font-size: 13px; }
-.publication-status { font-size: 12px; color: #604b74; padding: 10px 12px; background: #f8f5fc; border-radius: 8px; }
+.publication-status { font-size: 12px; color: var(--ink-muted); padding: 10px 12px; background: var(--surface-muted); border-radius: 8px; }
 @media (max-width: 760px) {
   button, .student-directory button { min-height: 44px; }
   dialog { max-height: 90dvh; }
 }
 
 /* Secondary text remains readable; placeholders are guidance, not labels. */
-.eyebrow { color: #6c587b; }
-input::placeholder, textarea::placeholder { color: #766681; opacity: 1; }
-footer, .muted, .steps { color: #756481; }
-.nav-number { color: #786388; }
-th { color: #685777; }
+.eyebrow { color: var(--ink-muted); }
+input::placeholder, textarea::placeholder { color: var(--ink-muted); opacity: 1; }
+footer, .muted, .steps { color: var(--ink-muted); }
+.nav-number { color: var(--ink-muted); }
+th { color: var(--ink-muted); }
 main { scroll-margin-top: 110px; }
 
 /* Icons supplement visible labels; they never replace action names. */
@@ -103,32 +103,55 @@ button:has(> .ui-icon) { display: inline-flex; align-items: center; justify-cont
 
 /* Operate: one branded navigation region, quiet cool work surfaces. */
 :root {
-  --canvas: #f3f5f9;
+  /* Brand palette. Raw tones are mid-value: use them for fills, borders and
+     focus rings; text and solid buttons use the deepened semantic tokens below. */
+  --palette-teal: #4A8FA3;
+  --palette-lilac: #A9A3D6;
+  --palette-sky: #9DBDE0;
+  --palette-mustard: #F2C46A;
+  --palette-brick: #B85A55;
+  --palette-brown: #9E6A55;
+  --palette-peach: #E0A774;
+  --palette-lemon: #E8D25A;
+
+  --canvas: #f4f7f9;
   --surface: #ffffff;
-  --surface-muted: #eaf0f6;
-  --ink: #202b3c;
-  --ink-muted: #526176;
-  --line: #cdd6e2;
-  --control-line: #7b899d;
-  --action: #6336a0;
-  --action-hover: #4d267f;
-  --selection: #eee6f7;
-  --sidebar: #281d39;
-  --sidebar-active: #4c3566;
-  --sidebar-text: #f5f0fc;
-  --sidebar-muted: #d0c4df;
+  --surface-muted: #e9f1f4;
+  --ink: #1f2d36;
+  --ink-muted: #4f6170;
+  --line: #cbd8df;
+  --control-line: #74899a;
+  --action: #2f6a7b;
+  --action-hover: #245564;
+  --focus: var(--palette-teal);
+  --selection: #e4e2f3;
+  --sidebar: #1f3b45;
+  --sidebar-hover: #29495a;
+  --sidebar-active: #2f5a68;
+  --sidebar-text: #f2f8fa;
+  --sidebar-muted: #c9dbe2;
   --success: #256044;
   --success-bg: #edf5ef;
-  --warning: #345173;
-  --warning-bg: #eaf1fa;
-  --danger: #9b2540;
-  --danger-bg: #fff1f3;
+  --warning: #7a5420;
+  --warning-bg: #fdf3df;
+  --danger: #9a433f;
+  --danger-bg: #fbeceb;
+
+  /* Tone families: soft fill, raw palette line, AA-safe ink on the fill. */
+  --tone-teal-bg: #e3f0f3; --tone-teal-ink: #245564;
+  --tone-lilac-bg: #ebe9f6; --tone-lilac-ink: #4a4380;
+  --tone-sky-bg: #e6eff9; --tone-sky-ink: #2f5378;
+  --tone-mustard-bg: #fcf0d6; --tone-mustard-ink: #7a5420;
+  --tone-brick-bg: #f6e3e2; --tone-brick-ink: #8a3c38;
+  --tone-brown-bg: #f1e6e1; --tone-brown-ink: #6e4535;
+  --tone-peach-bg: #f9ebde; --tone-peach-ink: #7a4a1e;
+  --tone-lemon-bg: #faf5d3; --tone-lemon-ink: #6b5c10;
   color: var(--ink);
   background: var(--canvas);
   color-scheme: light;
 }
 ::selection { background: var(--selection); color: var(--ink); }
-:focus-visible { outline: 3px solid var(--action); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 input, textarea { caret-color: var(--action); }
 h1, h2, h3 { font-family: inherit; letter-spacing: -.02em; }
 h1 { font-size: 28px; }
@@ -155,18 +178,18 @@ button:disabled { opacity: 1; background: var(--surface-muted); color: var(--ink
 .brand { color: var(--sidebar-text); letter-spacing: -.035em; margin-bottom: 28px; }
 .brand > span:first-child { background: var(--sidebar-active); color: var(--sidebar-text); }
 .brand .brand-dot { color: var(--sidebar-muted); }
-.school-mark { background: transparent; border-color: #62516f; padding: 14px 10px; }
+.school-mark { background: transparent; border-color: var(--sidebar-active); padding: 14px 10px; }
 .school-mark small, .sidebar-note p { color: var(--sidebar-muted); }
 .sidebar .avatar { background: var(--sidebar-active); color: var(--sidebar-text); }
 .sidebar nav button { color: var(--sidebar-muted); border: 1px solid transparent; }
-.sidebar nav button:hover { color: var(--sidebar-text); background: #372747; }
+.sidebar nav button:hover { color: var(--sidebar-text); background: var(--sidebar-hover); }
 .sidebar nav button[aria-current] {
   color: var(--sidebar-text);
   background: var(--sidebar-active);
-  border-color: #aa91c2;
+  border-color: var(--palette-lilac);
   font-weight: 700;
 }
-.sidebar :focus-visible { outline-color: #e2c7ff; }
+.sidebar :focus-visible { outline-color: var(--palette-sky); }
 .sidebar-note strong { color: var(--sidebar-text); }
 .sidebar-note .pill { background: var(--sidebar-active); color: var(--sidebar-text); }
 .sidebar-note { padding-top: 24px; }
@@ -288,8 +311,8 @@ td, .student-directory td { color: var(--ink); border-color: var(--line); }
 .publication-recipients { border-top: 1px solid var(--line); margin-top: 16px; }
 .publication-recipients summary { cursor: pointer; padding: 12px 0; min-height: 44px; color: var(--action); font-size: 13px; font-weight: 600; }
 .publication-recipients ul { padding-left: 24px; margin: 0 0 12px; color: var(--ink-muted); font-size: 13px; line-height: 1.7; }
-dialog { background: var(--surface); color: var(--ink); border: 0; border-radius: 16px; box-shadow: 0 20px 70px #21182d40; }
-dialog::backdrop { background: #21182d80; backdrop-filter: none; }
+dialog { background: var(--surface); color: var(--ink); border: 0; border-radius: 16px; box-shadow: 0 20px 70px #1a2a3340; }
+dialog::backdrop { background: #1a2a3380; backdrop-filter: none; }
 .dialog-head { position: absolute; top: 12px; right: 12px; justify-content: flex-end; }
 .dialog-head button { min-width: 44px; }
 dialog > h2 { margin-top: 0; padding-right: 38px; }
@@ -336,3 +359,54 @@ dialog > h2 { margin-top: 0; padding-right: 38px; }
   .home-card { border-right: 0; border-bottom: 1px solid var(--line); gap: 4px 12px; }
   .home-card:last-child { border-bottom: 0; }
   }
+
+/* Palette accents: every brand tone gets a recurring, recognizable place. */
+.tone-teal { --tone: var(--palette-teal); --tone-bg: var(--tone-teal-bg); --tone-ink: var(--tone-teal-ink); }
+.tone-lilac { --tone: var(--palette-lilac); --tone-bg: var(--tone-lilac-bg); --tone-ink: var(--tone-lilac-ink); }
+.tone-sky { --tone: var(--palette-sky); --tone-bg: var(--tone-sky-bg); --tone-ink: var(--tone-sky-ink); }
+.tone-mustard { --tone: var(--palette-mustard); --tone-bg: var(--tone-mustard-bg); --tone-ink: var(--tone-mustard-ink); }
+.tone-brick { --tone: var(--palette-brick); --tone-bg: var(--tone-brick-bg); --tone-ink: var(--tone-brick-ink); }
+.tone-brown { --tone: var(--palette-brown); --tone-bg: var(--tone-brown-bg); --tone-ink: var(--tone-brown-ink); }
+.tone-peach { --tone: var(--palette-peach); --tone-bg: var(--tone-peach-bg); --tone-ink: var(--tone-peach-ink); }
+.tone-lemon { --tone: var(--palette-lemon); --tone-bg: var(--tone-lemon-bg); --tone-ink: var(--tone-lemon-ink); }
+
+/* Brand mark and an eight-tone signature stripe under the top bar. */
+.brand > span:first-child { background: var(--palette-teal); color: #fff; }
+.brand .brand-dot { color: var(--palette-lemon); }
+.topbar {
+  border-bottom: 4px solid;
+  border-image: linear-gradient(90deg,
+    var(--palette-teal) 0 12.5%, var(--palette-lilac) 0 25%, var(--palette-sky) 0 37.5%, var(--palette-mustard) 0 50%,
+    var(--palette-brick) 0 62.5%, var(--palette-brown) 0 75%, var(--palette-peach) 0 87.5%, var(--palette-lemon) 0) 1;
+}
+
+/* Each navigation section keeps its own icon tone (all >= 3:1 on the sidebar). */
+.sidebar nav button:nth-child(8n+1) .ui-icon { color: var(--palette-sky); }
+.sidebar nav button:nth-child(8n+2) .ui-icon { color: var(--palette-lilac); }
+.sidebar nav button:nth-child(8n+3) .ui-icon { color: var(--palette-mustard); }
+.sidebar nav button:nth-child(8n+4) .ui-icon { color: var(--palette-peach); }
+.sidebar nav button:nth-child(8n+5) .ui-icon { color: var(--palette-lemon); }
+.sidebar nav button:nth-child(8n+6) .ui-icon { color: #7fc0d2; }
+.sidebar nav button:nth-child(8n+7) .ui-icon { color: #d9938f; }
+.sidebar nav button:nth-child(8n+8) .ui-icon { color: #c9a493; }
+.sidebar nav button[aria-current] .ui-icon { color: var(--sidebar-text); }
+
+/* Home summary: one tone per card, as a side stripe and an icon chip. */
+.home-card:nth-child(4n+1) { --tone: var(--palette-teal); --tone-bg: var(--tone-teal-bg); --tone-ink: var(--tone-teal-ink); }
+.home-card:nth-child(4n+2) { --tone: var(--palette-lilac); --tone-bg: var(--tone-lilac-bg); --tone-ink: var(--tone-lilac-ink); }
+.home-card:nth-child(4n+3) { --tone: var(--palette-mustard); --tone-bg: var(--tone-mustard-bg); --tone-ink: var(--tone-mustard-ink); }
+.home-card:nth-child(4n+4) { --tone: var(--palette-peach); --tone-bg: var(--tone-peach-bg); --tone-ink: var(--tone-peach-ink); }
+.home-card { box-shadow: inset 4px 0 0 var(--tone, transparent); }
+.home-card h2 { align-items: center; gap: 10px; }
+.home-card h2 .ui-icon { width: 28px; height: 28px; padding: 5px; border-radius: 8px; background: var(--tone-bg, transparent); color: var(--tone-ink, var(--ink-muted)); }
+.home-task:nth-child(4n+1) { --tone-bg: var(--tone-sky-bg); --tone-ink: var(--tone-sky-ink); }
+.home-task:nth-child(4n+2) { --tone-bg: var(--tone-lemon-bg); --tone-ink: var(--tone-lemon-ink); }
+.home-task:nth-child(4n+3) { --tone-bg: var(--tone-lilac-bg); --tone-ink: var(--tone-lilac-ink); }
+.home-task:nth-child(4n+4) { --tone-bg: var(--tone-peach-bg); --tone-ink: var(--tone-peach-ink); }
+.home-task p .ui-icon { width: 26px; height: 26px; padding: 5px; border-radius: 7px; background: var(--tone-bg); color: var(--tone-ink); }
+
+/* Small labels borrow the softer tones. */
+.status-badge { background: var(--tone-lilac-bg); color: var(--tone-lilac-ink); border-color: var(--palette-lilac); }
+.topbar .pill, .pill { background: var(--tone-sky-bg); color: var(--tone-sky-ink); }
+.task-icon { background: var(--tone-lilac-bg); color: var(--tone-lilac-ink); }
+.sidebar-note .pill { background: var(--sidebar-active); color: var(--sidebar-text); }

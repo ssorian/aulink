@@ -197,13 +197,13 @@
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	border-left: 1px dashed #a76a24;
+	border-left: 1px dashed var(--palette-brown);
 }
 .results-range {
 	position: absolute;
 	top: 10px;
 	height: 3px;
-	background: #9f8cbe;
+	background: var(--palette-lilac);
 }
 .results-dot {
 	position: absolute;
@@ -218,7 +218,7 @@
 	color: var(--muted, #596779);
 }
 .results-negative {
-	color: #a33340;
+	color: var(--danger);
 }
 .results-positive {
 	color: #35644e;
@@ -247,7 +247,7 @@
 	border-radius: 3px 3px 0 0;
 }
 .results-histogram > div > span.failing {
-	background: #bf5963;
+	background: var(--palette-brick);
 }
 .results-evolution svg {
 	display: block;
@@ -292,13 +292,13 @@
 	border-radius: 3px;
 }
 .results-swatch.fail {
-	background: #f6cdd1;
+	background: #f3d6d4;
 }
 .results-swatch.near {
-	background: #fbf1d9;
+	background: var(--warning-bg);
 }
 .results-swatch.good {
-	background: #f0ecf8;
+	background: var(--selection);
 }
 .results-map-block {
 	margin-top: 16px;
@@ -350,16 +350,16 @@
 	border-radius: 5px;
 }
 .results-cell.fail {
-	background: #f6cdd1;
-	color: #78222d;
+	background: #f3d6d4;
+	color: #7c3531;
 }
 .results-cell.near {
-	background: #fbf1d9;
+	background: var(--warning-bg);
 	color: #79511d;
 }
 .results-cell.good {
-	background: #f8f7fb;
-	color: #48316a;
+	background: var(--canvas);
+	color: var(--ink);
 }
 .results-cell.missing {
 	color: #7a8290;
@@ -370,7 +370,7 @@
 	width: 70px;
 	height: 3px;
 	margin: 5px auto 0;
-	background: #e8e6ed;
+	background: var(--surface-muted);
 }
 .results-total i {
 	display: block;

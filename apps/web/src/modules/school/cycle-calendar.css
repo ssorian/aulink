@@ -278,7 +278,7 @@
 	}
 }
 
-.cycle-day-holiday { color: #805215; }
-.cycle-day-holiday .cycle-event-dot { background: #805215; border-radius: 0; }
-.cycle-day-notice { color: #176a63; }
-.cycle-day-notice .cycle-event-dot { background: #176a63; }
+.cycle-day-holiday { color: #7e513f; }
+.cycle-day-holiday .cycle-event-dot { background: #7e513f; border-radius: 0; }
+.cycle-day-notice { color: var(--action); }
+.cycle-day-notice .cycle-event-dot { background: var(--action); }
