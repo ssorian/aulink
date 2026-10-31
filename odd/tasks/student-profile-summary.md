@@ -18,10 +18,10 @@ dar a Asistencia, Calificaciones y Conducta un modo propio de alumno y homogenei
 
 ## Tasks
 
-- T1 [S1–S6, S10] Encabezado + Resumen (inline) — commit: —
-- T2 [S7, S9, S10] Asistencia y Conducta en modo alumno (inline) — commit: —
-- T3 [S8] Calificaciones como tabla (inline) — commit: —
-- T4 Verificación visual + detector + suite completa (inline) — commit: —
+- T1 [S1–S6, S10] Encabezado + Resumen (inline) — commit: 5495166
+- T2 [S7, S9, S10] Asistencia y Conducta en modo alumno (inline) — commit: 91aefbd
+- T3 [S8] Calificaciones como tabla (inline) — commit: f4534fe
+- T4 Verificación visual + detector + suite completa (inline) — commit: (verificación, sin código)
 
 Risk: item 3 parcial: `ConductView` se comparte con Grupos › Seguimiento, así que hay que probar que esa vista no cambie.
 
@@ -29,5 +29,8 @@ Risk: item 3 parcial: `ConductView` se comparte con Grupos › Seguimiento, así
 
 - L1 (usuario): "Necesito que cheques el detalle de alumnos y sus pestanas, necesito que juzgues la UI, cheques si hay pestanas que se pueden unificar en una nueva llamada resumen, necesito que veas inconsistencias, cosas feas, areas donde pueda mejorar y proponme algo."
 - L2 (usuario): "tutor es el padre de familia, si vas a implementar commitea los cambios actuales"
-- L3: Cambios previos commiteados: 49e26d6 (directorio de alumnos), ea8e931 (directorio de personal + chip-tooltip).
+- L3: Cambios previos commiteados: 49e26d6 (directorio de alumnos), 1c62c57 (directorio de personal + chip-tooltip).
 - L4: Decisión: las acciones van como botones en el encabezado, igual que en Grupo, sin menú desplegable; la pestaña no va en la URL porque la app navega por estado y no por rutas. Los cambios de grupo no tienen fecha en el modelo, así que no se inventa.
+- L5: Evidencia T2: el diferencial de `ConductView` en modo grupo contra 5495166 dio markup idéntico con 2 registros y con 0.
+- L6: Evidencia T4: `bun test src` 93 pass / 0 fail; `tsc --noEmit` OK; `impeccable detect` → []; capturas a 1480px y 390px de las cuatro pestañas en un server de verificación en :3100 (el de :3000 respondía 500 por falta de memoria). El diálogo de conducta desde la ficha ya no pide el alumno. Quedan 4 warnings de biome por orden de especificidad en student-profile.css; no hay errores.
+- L7: Fuera de alcance, sin tocar: botones pegados ("Agregar seguimiento" y "Revisar publicación") en la tarjeta de conducta, compartida con Grupos; las tarjetas de métricas de asistencia; la pestaña en la URL.
