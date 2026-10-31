@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../components/ui/icon";
-import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
 import { CommunicationsView } from "./communications-view";
 import { EvaluationDashboard } from "./evaluation-dashboard";
 import { filterDirectory } from "./experience";
@@ -9,9 +8,15 @@ import { GroupFollowupView } from "./group-followup-view";
 import { GroupDirectory, GroupWorkspace } from "./group-workspace";
 import { HomeView } from "./home-view";
 import { buildMockData, mergeMockData } from "./mock-data";
-import { type SchoolPage, schoolNavigation, sectionFor } from "./navigation";
+import {
+	type EvaluationPage,
+	isEvaluationPage,
+	type SchoolPage,
+	sectionFor,
+} from "./navigation";
 import { migrateLegacySeed } from "./seed-migration";
 import { SetupView } from "./setup-view";
+import { SidebarNav } from "./sidebar-nav";
 import { StaffView } from "./staff-view";
 import { StudentProfile } from "./student-profile";
 import { StudentsView } from "./students-view";
@@ -45,6 +50,8 @@ export function SchoolApp() {
 	const directoryPosition = useRef({ x: 0, y: 0, top: 0, left: 0 });
 	const groupPosition = useRef({ x: 0, y: 0 });
 	const [evaluationVisited, setEvaluationVisited] = useState(false);
+	const [evaluationPage, setEvaluationPage] =
+		useState<EvaluationPage>("Avance del periodo");
 	const evaluationContainer = useRef<HTMLDivElement>(null);
 	const evaluationPosition = useRef<{
 		x: number;
@@ -52,8 +59,9 @@ export function SchoolApp() {
 		trigger: HTMLElement | null;
 	} | null>(null);
 	useEffect(() => {
-		if (page !== "Calificaciones") return;
+		if (!isEvaluationPage(page)) return;
 		setEvaluationVisited(true);
+		setEvaluationPage(page);
 		const position = evaluationPosition.current;
 		if (!position) return;
 		const frame = requestAnimationFrame(() => {
@@ -155,7 +163,7 @@ export function SchoolApp() {
 	);
 	const contextCycle =
 		contextGroup?.cycle ||
-		(page === "Calificaciones"
+		(isEvaluationPage(page)
 			? effectiveEvaluationCycle
 			: page === "Alumnos" && !profile
 				? cycleFilter
@@ -246,22 +254,13 @@ export function SchoolApp() {
 						<strong>{schoolLabel}</strong>
 					</div>
 				</div>
-				<nav aria-label="Administración escolar">
-					{schoolNavigation.map((item) => (
-						<button
-							type="button"
-							key={item.label}
-							aria-current={section === item ? "page" : undefined}
-							onClick={() => {
-								setPage(item.pages[0]);
-								setMessage("");
-							}}
-						>
-							<Icon name={item.icon} size={20} />
-							{item.label}
-						</button>
-					))}
-				</nav>
+				<SidebarNav
+					page={page}
+					onNavigate={(destination) => {
+						setPage(destination);
+						setMessage("");
+					}}
+				/>
 			</aside>
 			<div className="main-shell">
 				<header className="topbar">
@@ -293,20 +292,9 @@ export function SchoolApp() {
 					)}
 					<div className="page-heading">
 						<div>
-							<h1>{section.label}</h1>
+							<h1>{section.pages.length > 1 ? page : section.label}</h1>
 						</div>
 					</div>
-					{section.pages.length > 1 && (
-						<WorkspaceTabs
-							label={section.label}
-							items={section.pages}
-							value={page}
-							onChange={(destination) => {
-								setPage(destination);
-								setMessage("");
-							}}
-						/>
-					)}
 					{storageError && (
 						<div className="notice error" role="alert">
 							{storage}
@@ -463,14 +451,12 @@ export function SchoolApp() {
 								</>
 							)}
 							{page === "Personal" && <StaffView s={s} open={open} />}
-							{(evaluationVisited || page === "Calificaciones") && (
-								<div
-									ref={evaluationContainer}
-									hidden={page !== "Calificaciones"}
-								>
+							{(evaluationVisited || isEvaluationPage(page)) && (
+								<div ref={evaluationContainer} hidden={!isEvaluationPage(page)}>
 									<EvaluationDashboard
 										s={s}
 										cycleId={effectiveEvaluationCycle}
+										tab={isEvaluationPage(page) ? page : evaluationPage}
 										onCycleChange={setEvaluationCycle}
 										open={open}
 										onOpenStudent={(id) => {

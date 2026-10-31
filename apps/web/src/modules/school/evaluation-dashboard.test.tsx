@@ -402,3 +402,21 @@ test("diagnostics remain explicit about global exclusions and retained duplicate
 	expect(html).toContain("1 duplicados válidos contados por separado");
 	expect(html).toContain("no representan alumnos ni cobertura");
 });
+
+test("a controlled tab selects the section and hides the in-page tabs", () => {
+	const s = operationalFixture();
+	const html = renderToStaticMarkup(
+		<EvaluationDashboard
+			s={s}
+			cycleId="c1"
+			onCycleChange={() => {}}
+			onOpenGroup={() => {}}
+			tab="Resultados"
+		/>,
+	);
+	expect(html).not.toContain('aria-label="Secciones de evaluación"');
+	expect(html).toContain("Resultados publicados");
+	expect(renderOperational(s)).toContain(
+		'aria-label="Secciones de evaluación"',
+	);
+});

@@ -6,12 +6,21 @@ export type SchoolPage =
 	| "Personal"
 	| "Grupos"
 	| "Ciclos y calendario"
-	| "Calificaciones"
+	| EvaluationPage
 	| "Comunicados"
 	| "Asistencia"
 	| "Conducta"
 	| "Configuración"
 	| "Terminales";
+export const evaluationPages = [
+	"Avance del periodo",
+	"Alumnos en riesgo",
+	"Resultados",
+] as const;
+export type EvaluationPage = (typeof evaluationPages)[number];
+export const isEvaluationPage = (page: SchoolPage): page is EvaluationPage =>
+	(evaluationPages as readonly string[]).includes(page);
+
 type NavigationSection = {
 	label: string;
 	icon: IconName;
@@ -38,7 +47,7 @@ export const schoolNavigation: NavigationSection[] = [
 		label: "Evaluación",
 		icon: "book",
 		description: "Consulta, captura y revisa las calificaciones de cada grupo.",
-		pages: ["Calificaciones"],
+		pages: [...evaluationPages],
 	},
 	{
 		label: "Vida escolar",

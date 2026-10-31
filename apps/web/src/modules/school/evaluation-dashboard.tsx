@@ -5,13 +5,13 @@ import { EvaluationProgress } from "./evaluation-progress";
 import { buildEvaluationData } from "./evaluation-results";
 import { EvaluationResultsView } from "./evaluation-results-view";
 import { EvaluationRisk } from "./evaluation-risk";
+import { type EvaluationPage, evaluationPages } from "./navigation";
 import type { ViewProps } from "./view-types";
 import type { State } from "./workflows";
 import "./evaluation-dashboard.css";
 import "./evaluation-workspace.css";
 
-const tabs = ["Avance del periodo", "Alumnos en riesgo", "Resultados"] as const;
-type Tab = (typeof tabs)[number];
+type Tab = EvaluationPage;
 type Props = {
 	s: State;
 	cycleId: string;
@@ -20,6 +20,8 @@ type Props = {
 	onOpenStudent?: (id: string) => void;
 	open?: ViewProps["open"];
 	initialTab?: Tab;
+	/** Controlled from the sidebar; hides the in-page tabs when set. */
+	tab?: Tab;
 };
 export function EvaluationDashboard({
 	s,
@@ -29,8 +31,10 @@ export function EvaluationDashboard({
 	onOpenStudent,
 	open,
 	initialTab = "Avance del periodo",
+	tab: controlledTab,
 }: Props) {
-	const [tab, setTab] = useState<Tab>(initialTab);
+	const [ownTab, setTab] = useState<Tab>(initialTab);
+	const tab = controlledTab ?? ownTab;
 	const [selection, setSelection] = useState({
 		cycle: cycleId,
 		period: "",
@@ -105,12 +109,14 @@ export function EvaluationDashboard({
 					</select>
 				</label>
 			</header>
-			<WorkspaceTabs
-				label="Secciones de evaluación"
-				items={tabs}
-				value={tab}
-				onChange={setTab}
-			/>
+			{!controlledTab && (
+				<WorkspaceTabs
+					label="Secciones de evaluación"
+					items={evaluationPages}
+					value={tab}
+					onChange={setTab}
+				/>
+			)}
 			<div className="evaluation-context">
 				<label htmlFor="evaluation-period">
 					Periodo:
