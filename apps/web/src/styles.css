@@ -113,6 +113,9 @@ button:has(> .ui-icon) { display: inline-flex; align-items: center; justify-cont
   --palette-brown: #9E6A55;
   --palette-peach: #E0A774;
   --palette-lemon: #E8D25A;
+  --palette-stripe: linear-gradient(90deg,
+    var(--palette-teal) 0 12.5%, var(--palette-lilac) 0 25%, var(--palette-sky) 0 37.5%, var(--palette-mustard) 0 50%,
+    var(--palette-brick) 0 62.5%, var(--palette-brown) 0 75%, var(--palette-peach) 0 87.5%, var(--palette-lemon) 0);
 
   --canvas: #f4f7f9;
   --surface: #ffffff;
@@ -375,9 +378,18 @@ dialog > h2 { margin-top: 0; padding-right: 38px; }
 .brand .brand-dot { color: var(--palette-lemon); }
 .topbar {
   border-bottom: 4px solid;
-  border-image: linear-gradient(90deg,
-    var(--palette-teal) 0 12.5%, var(--palette-lilac) 0 25%, var(--palette-sky) 0 37.5%, var(--palette-mustard) 0 50%,
-    var(--palette-brick) 0 62.5%, var(--palette-brown) 0 75%, var(--palette-peach) 0 87.5%, var(--palette-lemon) 0) 1;
+  border-image: var(--palette-stripe) 1;
+}
+
+/* Border preset: the signature stripe along the bottom edge, keeping the element's
+   radius and fill. Set --stripe-fill to the element's background. */
+.stripe-border,
+.stripe-border:hover {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background:
+    linear-gradient(var(--stripe-fill, var(--surface-muted)), var(--stripe-fill, var(--surface-muted))) padding-box,
+    var(--palette-stripe) border-box;
 }
 
 /* Each navigation section keeps its own icon tone (all >= 3:1 on the sidebar). */

@@ -42,27 +42,11 @@
 	width: 1%;
 }
 
-.staff-directory .staff-change {
-	white-space: nowrap;
-	border-color: transparent;
-	background: transparent;
-	color: var(--action);
-}
-
-.staff-directory .staff-change:hover {
-	background: var(--surface-muted);
-	border-color: var(--line);
-}
-
-.staff-directory summary {
-	width: fit-content;
-	min-height: 44px;
-	white-space: nowrap;
-}
-
-.staff-directory .staff-no-history {
+.staff-directory .staff-history-count {
+	margin-left: 8px;
 	color: var(--ink-muted);
 	font-size: 12px;
+	white-space: nowrap;
 }
 
 .staff-directory .ui-table-scroll-hint {

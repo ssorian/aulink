@@ -1,13 +1,15 @@
 import { useState } from "react";
-import {
-	DirectoryHeader,
-	DirectorySearch,
-	DirectoryIdentity,
-	DirectoryFilterChip,
-} from "./directory-components";
 import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
+import {
+	DirectoryFilterChip,
+	DirectoryHeader,
+	DirectoryIdentity,
+	DirectorySearch,
+} from "./directory-components";
 import "./staff-view.css";
 import { Icon } from "../../components/ui/icon";
+import { ChipTooltip } from "./chip-tooltip";
+import { cycleStartYear } from "./experience";
 import { field, options, reason, roles } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 export function filterStaff(
@@ -27,6 +29,42 @@ export function filterStaff(
 			normalize(person.name).includes(normalize(query)),
 	);
 }
+const minutes = (time: string) => {
+	const [h, m] = time.split(":").map(Number);
+	return h * 60 + m;
+};
+
+/** Subjects, groups and weekly hours a teacher has in the latest cycle, matched by name. */
+export function staffWorkload(s: ViewProps["s"], teacher: string) {
+	const latest = s.cycles.reduce<(typeof s.cycles)[number] | undefined>(
+		(best, c) =>
+			!best ||
+			(cycleStartYear(s, c.id) ?? 0) > (cycleStartYear(s, best.id) ?? 0)
+				? c
+				: best,
+		undefined,
+	);
+	const groupOf = (id: string) => s.groups.find((g) => g.id === id);
+	const own = s.assignments.filter(
+		(a) => a.teacher === teacher && groupOf(a.group)?.cycle === latest?.id,
+	);
+	// The same lesson repeats across evaluation periods; count each weekly block once.
+	const blocks = new Map<string, number>();
+	for (const h of s.schedules) {
+		const a = own.find((x) => x.id === h.assignment);
+		if (a)
+			blocks.set(
+				`${a.group}|${a.subject}|${h.day}|${h.start}`,
+				minutes(h.end) - minutes(h.start),
+			);
+	}
+	return {
+		subjects: [...new Set(own.map((a) => a.subject))],
+		groups: [...new Set(own.map((a) => groupOf(a.group)?.name ?? a.group))],
+		hours: [...blocks.values()].reduce((sum, m) => sum + m, 0) / 60,
+	};
+}
+
 export function StaffRoleAction({
 	person,
 	open,
@@ -36,19 +74,25 @@ export function StaffRoleAction({
 }) {
 	return (
 		<button
-			className="staff-change"
-			aria-label={`Cambiar responsabilidad de ${person.name}`}
 			type="button"
+			className="directory-open"
+			aria-label={`Cambiar responsabilidad de ${person.name}`}
 			onClick={() =>
 				open(
 					"staff-role",
 					`Cambiar responsabilidad de ${person.name}`,
 					[options("role", "Nueva responsabilidad", roles), reason],
 					{ id: person.id },
+					undefined,
+					person.history.length
+						? `Historial: ${person.history
+								.map((h) => `${h.value} · ${h.reason} · ${h.author}`)
+								.join("; ")}.`
+						: "Sin cambios registrados.",
 				)
 			}
 		>
-			Cambiar responsabilidad
+			<Icon name="arrow" size={16} />
 		</button>
 	);
 }
@@ -58,10 +102,7 @@ export function StaffView({ s, open }: Pick<ViewProps, "s" | "open">) {
 	const [role, setRole] = useState("");
 	const visible = filterStaff(s.staff, query, role);
 	return (
-		<section
-			className="staff-directory"
-			aria-label="Personal de la escuela"
-		>
+		<section className="staff-directory" aria-label="Personal de la escuela">
 			<DirectoryHeader
 				title="Personal de la escuela"
 				count={`${visible.length} de ${s.staff.length} registros`}
@@ -147,46 +188,49 @@ export function StaffView({ s, open }: Pick<ViewProps, "s" | "open">) {
 					<tr>
 						<th scope="col">Nombre</th>
 						<th scope="col">Responsabilidad</th>
-						<th scope="col">Historial</th>
+						<th scope="col">Materias</th>
+						<th scope="col">Grupos</th>
+						<th scope="col">Horas/semana</th>
 						<th scope="col">Acciones</th>
 					</tr>
 				</thead>
 				<tbody>
-					{visible.map((x) => (
-						<tr key={x.id}>
-							<th scope="row">
-								<DirectoryIdentity name={x.name} />
-							</th>
-							<td>
-								<span className="directory-group">{x.role}</span>
-							</td>
-							<td>
-								{x.history.length ? (
-									<details>
-										<summary
-											aria-label={`Ver historial de ${x.name}, ${x.history.length} cambios`}
-										>
-											Ver historial ({x.history.length})
-										</summary>
-										{x.history.map((h) => (
-											<p key={h.id}>
-												{h.value} · {h.reason} · {h.author}
-											</p>
-										))}
-									</details>
-								) : (
-									<span className="staff-no-history">
-										Sin cambios registrados
-									</span>
-								)}
-							</td>
-							<td>
-								<StaffRoleAction person={x} open={open} />
-							</td>
-						</tr>
-					))}
+					{visible.map((x) => {
+						const load = staffWorkload(s, x.name);
+						return (
+							<tr key={x.id}>
+								<th scope="row">
+									<DirectoryIdentity name={x.name} />
+								</th>
+								<td>
+									<span className="directory-group">{x.role}</span>
+									{x.history.length > 0 && (
+										<span className="staff-history-count">
+											{x.history.length === 1
+												? "1 cambio"
+												: `${x.history.length} cambios`}
+										</span>
+									)}
+								</td>
+								<td>
+									<ChipTooltip
+										items={load.subjects}
+										one="materia"
+										many="materias"
+									/>
+								</td>
+								<td>
+									<ChipTooltip items={load.groups} one="grupo" many="grupos" />
+								</td>
+								<td>{load.hours ? load.hours.toLocaleString("es-MX") : "—"}</td>
+								<td>
+									<StaffRoleAction person={x} open={open} />
+								</td>
+							</tr>
+						);
+					})}
 					{!visible.length && (
-						<EmptyTableRow columns={4}>
+						<EmptyTableRow columns={6}>
 							{s.staff.length
 								? "No se encontró personal. Limpia los filtros para ver todos los registros."
 								: "Agrega docentes y personal administrativo para organizar tu comunidad."}
