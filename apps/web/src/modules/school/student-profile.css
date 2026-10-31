@@ -224,6 +224,51 @@
 	color: var(--tone-sky-ink);
 }
 
+.profile-grades-scroll {
+	margin-top: 16px;
+}
+.profile-grade-value {
+	font-variant-numeric: tabular-nums;
+}
+.profile-grade-scale {
+	margin-left: 6px;
+	color: var(--ink-muted);
+	font-size: 12px;
+	font-weight: 400;
+	white-space: nowrap;
+}
+.profile-grades td,
+.profile-grades th[scope="row"] {
+	padding-block: 10px;
+	vertical-align: top;
+}
+.actions.profile-grade-actions {
+	flex-wrap: nowrap;
+	gap: 6px;
+	margin: 0;
+}
+.profile-grade-actions button {
+	padding: 6px 10px;
+	white-space: nowrap;
+}
+.profile-grades .profile-history {
+	margin-top: 4px;
+}
+
+.profile-date-filter {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px;
+	margin: 18px 0;
+}
+.profile-date-filter label {
+	width: min(100%, 220px);
+}
+.profile-section-title {
+	margin-bottom: 14px;
+}
+
 @media (max-width: 900px) {
 	.profile-summary {
 		grid-template-columns: minmax(0, 1fr);
@@ -234,4 +279,13 @@
 	.link-button {
 		min-height: 44px;
 	}
+}
+
+/* Content-sized columns so both grade actions stay visible. */
+.profile-grades .ui-data-table {
+	table-layout: auto;
+}
+.profile-grades .ui-data-table :is(th, td):last-child {
+	width: 1%;
+	white-space: nowrap;
 }

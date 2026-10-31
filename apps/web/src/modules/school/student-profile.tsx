@@ -6,8 +6,8 @@ import { WorkspaceTabs } from "../../components/ui/workspace-tabs";
 import { AttendanceView } from "./attendance-view";
 import { ConductView } from "./conduct-view";
 import { cycleStartYear } from "./experience";
-import { GradeRecords } from "./grades-view";
 import { ProfileBadge } from "./profile-badge";
+import { StudentGrades } from "./student-grades";
 import { field, options, reason } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 import { activeGroup, isVerifiedGuardian, type State } from "./workflows";
@@ -170,11 +170,7 @@ export function StudentProfile({
 			)}
 			{tab === "Asistencia" && <AttendanceView s={individual} open={open} />}
 			{tab === "Calificaciones" && (
-				<GradeRecords
-					s={individual}
-					open={open}
-					studentName={() => selected.name}
-				/>
+				<StudentGrades s={individual} open={open} studentName={selected.name} />
 			)}
 			{tab === "Conducta" && (
 				<ConductView

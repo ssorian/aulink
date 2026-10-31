@@ -27,12 +27,7 @@ export function AttendanceView({ s, open }: Pick<ViewProps, "s" | "open">) {
 					<dd>{summary.unchanged}</dd>
 				</div>
 			</dl>
-			<div className="actions">
-				<button type="button" onClick={() => setDate("")}>
-					Ver todas las fechas
-				</button>
-			</div>
-			<div className="filters">
+			<div className="profile-date-filter">
 				<label>
 					Día
 					<input
@@ -41,6 +36,9 @@ export function AttendanceView({ s, open }: Pick<ViewProps, "s" | "open">) {
 						onChange={(e) => setDate(e.target.value)}
 					/>
 				</label>
+				<button type="button" disabled={!date} onClick={() => setDate("")}>
+					Ver todas las fechas
+				</button>
 			</div>
 			<p className="notice">Sin registro no significa ausencia.</p>
 			{events.map((e) => (

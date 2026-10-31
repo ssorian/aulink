@@ -16,7 +16,7 @@ export function ConductView({
 }) {
 	return (
 		<>
-			{studentId && <h2>Conducta</h2>}
+			{studentId && <h2 className="profile-section-title">Conducta</h2>}
 			{!hideCreate && (
 				<button
 					className="primary"
