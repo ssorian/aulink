@@ -290,6 +290,16 @@ export function SchoolApp() {
 							Volver a Grupos
 						</button>
 					)}
+					{page === "Alumnos" && profile && (
+						<button
+							type="button"
+							className="group-back"
+							onClick={returnFromProfile}
+						>
+							<Icon name="back" size={18} />
+							{profileOrigin ? "Volver al grupo de origen" : "Volver a Alumnos"}
+						</button>
+					)}
 					<div className="page-heading">
 						<div>
 							<h1>{section.pages.length > 1 ? page : section.label}</h1>
@@ -336,12 +346,6 @@ export function SchoolApp() {
 										s={s}
 										open={open}
 										studentId={profile}
-										onBack={returnFromProfile}
-										backLabel={
-											profileOrigin
-												? "Volver al grupo de origen"
-												: "Volver a Alumnos"
-										}
 										onGroup={(id) => {
 											setGroupId(id);
 											setPage("Grupos");

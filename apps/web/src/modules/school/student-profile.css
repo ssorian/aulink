@@ -1,0 +1,237 @@
+/* Student profile: heading, Resumen layout and the shared status badge. */
+.student-heading h2 {
+	font-weight: 700;
+}
+.student-heading p {
+	margin-top: 4px;
+	font-variant-numeric: tabular-nums;
+}
+
+.profile-summary {
+	display: grid;
+	grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+	grid-template-areas:
+		"pending pending"
+		"enrollment guardians"
+		"enrollment credential";
+	gap: 20px;
+	align-items: start;
+}
+.profile-summary > .panel {
+	margin: 0;
+}
+.profile-summary > .profile-pending {
+	grid-area: pending;
+}
+.profile-summary > .panel:nth-child(2) {
+	grid-area: enrollment;
+}
+.profile-summary > .panel:nth-child(3) {
+	grid-area: guardians;
+}
+.profile-summary > .panel:nth-child(4) {
+	grid-area: credential;
+}
+
+.profile-pending {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 8px 20px;
+	padding: 14px 20px;
+	background: var(--tone-mustard-bg);
+	border-radius: 12px;
+}
+.profile-pending h2 {
+	font-size: 15px;
+	color: var(--tone-mustard-ink);
+}
+.profile-pending p {
+	color: var(--tone-mustard-ink);
+}
+.profile-pending ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 20px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.profile-pending .link-button {
+	color: var(--tone-mustard-ink);
+}
+
+/* Inline navigation that reads as text, not as a boxed control. */
+.link-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 32px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--action);
+	font-size: 14px;
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+.link-button:hover {
+	background: transparent;
+	color: var(--action-hover);
+	text-decoration-thickness: 2px;
+}
+
+.profile-cycle + .profile-cycle {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid var(--line);
+}
+.profile-cycle > header,
+.profile-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+}
+.panel .profile-cycle h3 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.profile-facts {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	gap: 6px 16px;
+	margin: 12px 0 0;
+}
+.profile-facts > div {
+	display: contents;
+}
+.profile-facts dt {
+	color: var(--ink-muted);
+	font-size: 13px;
+	line-height: 32px;
+}
+.profile-facts dd {
+	margin: 0;
+	color: var(--ink);
+	font-size: 14px;
+	line-height: 32px;
+}
+.profile-transfers dd {
+	line-height: 1.6;
+	padding-top: 6px;
+}
+.profile-transfers dt {
+	line-height: 1.6;
+	padding-top: 6px;
+}
+
+.profile-transfers {
+	margin: 16px 0 0;
+	padding: 14px 16px;
+	list-style: none;
+	background: var(--surface-muted);
+	border-radius: 10px;
+}
+.profile-transfers li + li {
+	margin-top: 12px;
+}
+.profile-transfers strong {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--ink);
+}
+.profile-transfers .profile-facts {
+	margin-top: 4px;
+}
+
+.profile-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.profile-list > li {
+	padding: 12px 0;
+	border-bottom: 1px solid var(--line);
+}
+.profile-list > li:first-child {
+	padding-top: 0;
+}
+.profile-guardian {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 8px 12px;
+}
+.profile-guardian > button {
+	font-size: 12px;
+	padding: 6px 12px;
+}
+.profile-credential p {
+	margin-top: 6px;
+}
+
+.profile-history {
+	margin-top: 12px;
+}
+.profile-history > summary {
+	cursor: pointer;
+	color: var(--action);
+	font-size: 13px;
+	font-weight: 600;
+	padding: 6px 0;
+}
+.profile-history > summary:hover {
+	color: var(--action-hover);
+}
+.profile-history ul {
+	margin: 6px 0 0;
+	padding-left: 18px;
+	color: var(--ink-muted);
+	font-size: 13px;
+	line-height: 1.7;
+}
+.profile-history > .profile-cycle {
+	margin-top: 12px;
+}
+
+.profile-badge {
+	display: inline-block;
+	padding: 2px 9px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+.profile-badge--ok {
+	background: var(--tone-teal-bg);
+	color: var(--tone-teal-ink);
+}
+.profile-badge--warn {
+	background: var(--tone-mustard-bg);
+	color: var(--tone-mustard-ink);
+}
+.profile-badge--off {
+	background: var(--tone-brick-bg);
+	color: var(--tone-brick-ink);
+}
+.profile-badge--current {
+	background: var(--tone-sky-bg);
+	color: var(--tone-sky-ink);
+}
+
+@media (max-width: 900px) {
+	.profile-summary {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "pending" "enrollment" "guardians" "credential";
+	}
+}
+@media (pointer: coarse) {
+	.link-button {
+		min-height: 44px;
+	}
+}
