@@ -1,3 +1,4 @@
+import { ProfileBadge } from "./profile-badge";
 import { Empty, field, options, reason } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 export function ConductView({
@@ -6,51 +7,81 @@ export function ConductView({
 	students,
 	studentName,
 	hideCreate = false,
+	studentId,
+	groupId,
 }: Pick<ViewProps, "s" | "open" | "students" | "studentName"> & {
 	hideCreate?: boolean;
+	studentId?: string;
+	groupId?: string;
 }) {
 	return (
 		<>
+			{studentId && <h2>Conducta</h2>}
 			{!hideCreate && (
 				<button
 					className="primary"
 					type="button"
+					disabled={studentId ? !groupId : undefined}
 					onClick={() =>
-						open("conduct", "Registrar acompañamiento", [
-							students,
-							options("kind", "Tipo", [
-								{ id: "Reconocimiento", name: "Reconocimiento" },
-								{ id: "Incidente", name: "Incidente" },
-							]),
-							field("text", "Contenido del reporte", "textarea"),
-							{
-								...field(
-									"internal",
-									"Notas internas (no compartidas)",
-									"textarea",
-								),
-								optional: true,
-							},
-							field("followup", "Seguimiento acordado", "textarea"),
-							options("shared", "Visibilidad", [
-								{ id: "Interno", name: "Solo interno" },
+						open(
+							"conduct",
+							"Registrar acompañamiento",
+							[
+								...(!studentId ? [students] : []),
+								options("kind", "Tipo", [
+									{ id: "Reconocimiento", name: "Reconocimiento" },
+									{ id: "Incidente", name: "Incidente" },
+								]),
+								field("text", "Contenido del reporte", "textarea"),
 								{
-									id: "Compartido",
-									name: "Contenido público",
+									...field(
+										"internal",
+										"Notas internas (no compartidas)",
+										"textarea",
+									),
+									optional: true,
 								},
-							]),
-						])
+								field("followup", "Seguimiento acordado", "textarea"),
+								options("shared", "Visibilidad", [
+									{ id: "Interno", name: "Solo interno" },
+									{
+										id: "Compartido",
+										name: "Contenido público",
+									},
+								]),
+							],
+							studentId && groupId
+								? { student: studentId, group: groupId }
+								: undefined,
+						)
 					}
 				>
-					Registrar reconocimiento / incidente
+					{studentId
+						? "Registrar reconocimiento o incidente"
+						: "Registrar reconocimiento / incidente"}
 				</button>
+			)}
+			{studentId && !groupId && (
+				<p>Se necesita un grupo activo para registrar conducta.</p>
 			)}
 			{s.conduct.map((c) => (
 				<section className="panel" key={c.id}>
-					<span className="pill">{c.published ? "Publicado" : "Borrador"}</span>
-					<h2>
-						{c.kind} · {studentName(c.student)}
-					</h2>
+					{studentId ? (
+						<ProfileBadge tone={c.published ? "ok" : "warn"}>
+							{c.published ? "Publicado" : "Borrador"}
+						</ProfileBadge>
+					) : (
+						<span className="pill">
+							{c.published ? "Publicado" : "Borrador"}
+						</span>
+					)}
+					{studentId ? (
+						<h3>{c.kind}</h3>
+					) : (
+						<h2>
+							{c.kind} · {studentName(c.student)}
+						</h2>
+					)}
 					<p>
 						{c.shared}: {c.text}
 					</p>
@@ -100,7 +131,13 @@ export function ConductView({
 				</section>
 			))}
 			{!s.conduct.length && (
-				<Empty text="Registra un reconocimiento o incidente con seguimiento concreto." />
+				<Empty
+					text={
+						studentId && !groupId
+							? "No hay registros de conducta."
+							: "Registra un reconocimiento o incidente con seguimiento concreto."
+					}
+				/>
 			)}
 		</>
 	);

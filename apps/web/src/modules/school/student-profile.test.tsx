@@ -1,7 +1,11 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, test } from "bun:test";
+import { Children, isValidElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { ConductView } from "./conduct-view";
 import { buildMockData } from "./mock-data";
+import { options } from "./view-helpers";
+import { activeGroup } from "./workflows";
 import { StudentProfile } from "./student-profile";
 
 function setup() {
@@ -137,4 +141,112 @@ test("pending work says so when everything is published", () => {
 	expect(text(render(s, student.id))).toContain(
 		"Sin pendientes de publicación",
 	);
+});
+
+test("attendance profile omits redundant controls and identity", () => {
+	const { s, student } = setup();
+	const html = render(s, student.id, "Asistencia");
+	expect(html).toContain("<h2>Evidencia de asistencia</h2>");
+	expect(html).not.toContain("<select");
+	expect(html).not.toContain("Ver jornada de muestra");
+	expect(html).not.toContain("expediente individual");
+	expect(html).toContain("Sin registro no significa ausencia.");
+	const headings = [...html.matchAll(/<h3>(.*?)<\/h3>/g)];
+	expect(headings.length).toBeGreaterThan(0);
+	for (const heading of headings)
+		expect(heading[1]).not.toContain(student.name);
+	expect(html).toContain("Ver evidencia original");
+	expect(html).toContain("profile-badge");
+});
+
+test("conduct profile offers registration and omits repeated identity", () => {
+	const { s, student } = setup();
+	const html = render(s, student.id, "Conducta");
+	expect(html).toContain("<h2>Conducta</h2>");
+	expect(html).toContain(">Registrar reconocimiento o incidente</button>");
+	expect(html).not.toContain(`<h2>Reconocimiento · ${student.name}</h2>`);
+});
+
+test("conduct profile empty state refers to its available action", () => {
+	const { s, student } = setup();
+	s.conduct = [];
+	const html = render(s, student.id, "Conducta");
+	expect(html).toContain(">Registrar reconocimiento o incidente</button>");
+	expect(html).toContain(
+		"Registra un reconocimiento o incidente con seguimiento concreto.",
+	);
+});
+
+test("conduct registration fixes the student and current active group", () => {
+	const { s, student } = setup();
+	const group = s.groups.find(
+		(g) =>
+			g.name === "1° B" &&
+			g.cycle ===
+				student.enrollments.find(
+					(e) => activeGroup(s, student.id, e.cycle) === g.id,
+				)?.cycle,
+	);
+	if (!group) throw Error("active group missing");
+	const calls: unknown[][] = [];
+	const view = ConductView({
+		s,
+		studentId: student.id,
+		groupId: group.id,
+		open: (...args) => calls.push(args),
+		students: options("student", "Alumno", [student]),
+		studentName: () => student.name,
+	});
+	const button = Children.toArray(view.props.children).find(
+		(child) => isValidElement(child) && child.type === "button",
+	) as ReactElement<{ onClick: () => void }>;
+	button.props.onClick();
+	expect(calls[0][0]).toBe("conduct");
+	expect(calls[0][3]).toEqual({ student: student.id, group: group.id });
+	expect(
+		(calls[0][2] as { key: string }[]).some((f) => f.key === "student"),
+	).toBe(false);
+});
+
+test("group conduct keeps its original registration button", () => {
+	const { s } = setup();
+	const html = renderToStaticMarkup(
+		<ConductView
+			s={s}
+			open={() => {}}
+			students={options("student", "Alumno del grupo", s.students)}
+			studentName={(id) => s.students.find((x) => x.id === id)?.name || id}
+		/>,
+	);
+	expect(html).toContain(">Registrar reconocimiento / incidente</button>");
+	const calls: unknown[][] = [];
+	const view = ConductView({
+		s,
+		open: (...args) => calls.push(args),
+		students: options("student", "Alumno del grupo", s.students),
+		studentName: (id) => id,
+	});
+	const button = Children.toArray(view.props.children).find(
+		(child) => isValidElement(child) && child.type === "button",
+	) as ReactElement<{ onClick: () => void }>;
+	button.props.onClick();
+	expect(
+		(calls[0][2] as { key: string }[]).some((f) => f.key === "student"),
+	).toBe(true);
+});
+
+test("profile buttons avoid slash labels", () => {
+	for (const tab of [
+		"Resumen",
+		"Asistencia",
+		"Calificaciones",
+		"Conducta",
+	] as const) {
+		const labels = [
+			...render(undefined, undefined, tab).matchAll(
+				/<button[^>]*>([^<]*)<\/button>/g,
+			),
+		].map((m) => m[1]);
+		expect(labels.filter((l) => l.includes(" / "))).toEqual([]);
+	}
 });

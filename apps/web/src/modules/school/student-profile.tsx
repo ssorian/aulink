@@ -7,6 +7,7 @@ import { AttendanceView } from "./attendance-view";
 import { ConductView } from "./conduct-view";
 import { cycleStartYear } from "./experience";
 import { GradeRecords } from "./grades-view";
+import { ProfileBadge } from "./profile-badge";
 import { field, options, reason } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 import { activeGroup, isVerifiedGuardian, type State } from "./workflows";
@@ -16,19 +17,6 @@ export type ProfileTab = (typeof tabs)[number];
 
 const plural = (n: number, one: string, many: string) =>
 	`${n} ${n === 1 ? one : many}`;
-
-/** One status vocabulary for the whole profile: ok, warn, off or current. */
-export function ProfileBadge({
-	tone,
-	children,
-}: {
-	tone: "ok" | "warn" | "off" | "current";
-	children: string;
-}) {
-	return (
-		<span className={`profile-badge profile-badge--${tone}`}>{children}</span>
-	);
-}
 
 const guardianTone = (status: string) =>
 	isVerifiedGuardian(status) ? "ok" : status === "Revocado" ? "off" : "warn";
@@ -180,13 +168,7 @@ export function StudentProfile({
 					<Credential s={s} open={open} student={selected} />
 				</div>
 			)}
-			{tab === "Asistencia" && (
-				<AttendanceView
-					s={individual}
-					open={open}
-					studentName={() => selected.name}
-				/>
-			)}
+			{tab === "Asistencia" && <AttendanceView s={individual} open={open} />}
 			{tab === "Calificaciones" && (
 				<GradeRecords
 					s={individual}
@@ -200,7 +182,8 @@ export function StudentProfile({
 					open={open}
 					students={options("student", "Alumno", [selected])}
 					studentName={() => selected.name}
-					hideCreate
+					studentId={studentId}
+					groupId={currentGroup}
 				/>
 			)}
 		</>

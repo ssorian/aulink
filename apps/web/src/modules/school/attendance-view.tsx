@@ -1,18 +1,11 @@
 import { useState } from "react";
 import { summarizeAttendance } from "./experience";
-import { SAMPLE_DATE } from "./mock-data";
+import { ProfileBadge } from "./profile-badge";
 import { field, reason } from "./view-helpers";
 import type { ViewProps } from "./view-types";
-export function AttendanceView({
-	s,
-	open,
-	studentName,
-}: Pick<ViewProps, "s" | "open" | "studentName">) {
+export function AttendanceView({ s, open }: Pick<ViewProps, "s" | "open">) {
 	const [date, setDate] = useState("");
-	const [student, setStudent] = useState("");
-	const events = s.events.filter(
-		(e) => (!date || e.date === date) && (!student || e.student === student),
-	);
+	const events = s.events.filter((e) => !date || e.date === date);
 	const summary = summarizeAttendance(events, s.adjustments);
 	return (
 		<section className="panel">
@@ -35,9 +28,6 @@ export function AttendanceView({
 				</div>
 			</dl>
 			<div className="actions">
-				<button type="button" onClick={() => setDate(SAMPLE_DATE)}>
-					Ver jornada de muestra · {SAMPLE_DATE}
-				</button>
 				<button type="button" onClick={() => setDate("")}>
 					Ver todas las fechas
 				</button>
@@ -51,33 +41,21 @@ export function AttendanceView({
 						onChange={(e) => setDate(e.target.value)}
 					/>
 				</label>
-				<label>
-					Alumno
-					<select value={student} onChange={(e) => setStudent(e.target.value)}>
-						<option value="">Todos</option>
-						{s.students.map((x) => (
-							<option key={x.id} value={x.id}>
-								{x.name}
-							</option>
-						))}
-					</select>
-				</label>
 			</div>
-			<p className="notice">
-				Sin registro no significa ausencia. Historial sin grupo conocido solo
-				aparece en el expediente individual.
-			</p>
+			<p className="notice">Sin registro no significa ausencia.</p>
 			{events.map((e) => (
 				<article className="list-row attendance-event" key={e.id}>
 					<div className="result-toolbar">
 						<h3>
-							{studentName(e.student)} · {e.date} · {e.time} · {e.kind}
+							{e.date} · {e.time} · {e.kind}
 						</h3>
-						<span className="status-badge">
+						<ProfileBadge
+							tone={s.adjustments.some((a) => a.event === e.id) ? "warn" : "ok"}
+						>
 							{s.adjustments.some((a) => a.event === e.id)
 								? "Con ajuste"
 								: "Sin ajuste"}
-						</span>
+						</ProfileBadge>
 					</div>
 					<details>
 						<summary>Ver evidencia original</summary>
@@ -96,13 +74,13 @@ export function AttendanceView({
 						onClick={() =>
 							open(
 								"adjust",
-								`Justificar / corregir ${e.id}`,
+								`Justificar o corregir ${e.id}`,
 								[field("value", "Resultado del ajuste"), reason],
 								{ event: e.id },
 							)
 						}
 					>
-						Justificar / corregir
+						Justificar o corregir
 					</button>
 					{s.adjustments
 						.filter((a) => a.event === e.id)
