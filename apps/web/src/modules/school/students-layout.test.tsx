@@ -2,6 +2,7 @@
 import { expect, test } from "bun:test";
 import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { studentPlacement } from "./experience";
 import { StudentsView } from "./students-view";
 import { initialState, previewCSV } from "./workflows";
 
@@ -73,22 +74,72 @@ test("selected cycle keeps rows focused and the name opens the profile", () => {
 	expect(body).not.toContain("Histórico");
 	expect(body).not.toContain("2025–2026");
 	expect(body).not.toContain("2026–2027");
-	expect(body).toMatch(/Ana Ejemplo<\/button><span[^>]*>DEMO-001<\/span>/);
-	expect(html).not.toContain('<th scope="col">Matrícula</th>');
+	expect(body).toMatch(/Ana Ejemplo<\/button><\/span><\/td><td>DEMO-001<\/td>/);
+	expect(body).not.toContain('class="directory-matricula"');
 	expect(html).toContain('id="student-s1"');
 	expect(html).toContain('aria-label="Abrir Ana Ejemplo"');
 	expect(html).not.toContain('<th scope="col">Expediente</th>');
 	expect(html).toContain(
 		'tabindex="0" aria-label="Resultados de alumnos, desplazamiento horizontal"',
 	);
-	expect(html).toContain("Alumnos y grupos históricos por ciclo escolar");
+	expect(html).toContain("Alumnos con grado, grupo y generación");
 });
 
-test("all cycles explicitly preserves historical enrollments", () => {
-	const body = render({ cycleFilter: "" }).split("<tbody>")[1];
-	expect(body).toContain("Histórico");
-	expect(body).toContain("2026–2027");
-	expect(body).toContain("2025–2026");
+test("table shows grade, group and generation columns", () => {
+	const html = render();
+	for (const label of [
+		"Alumno",
+		"Matrícula",
+		"Grado",
+		"Grupo",
+		"Generación",
+		"Acciones",
+	])
+		expect(html).toContain(`<th scope="col">${label}</th>`);
+	const row = html.split("<tbody>")[1].split("</tr>")[0];
+	expect(row).toMatch(/<td>1°<\/td><td>A<\/td><td>2025–2028<\/td>/);
+});
+
+test("all cycles shows the latest cycle placement", () => {
+	const row = render({ cycleFilter: "" }).split("<tbody>")[1].split("</tr>")[0];
+	expect(row).toMatch(/<td>1°<\/td><td>A<\/td><td>2025–2028<\/td>/);
+	expect(row).not.toContain("Histórico");
+});
+
+test("past cycle filter shows that cycle's grade and group", () => {
+	const row = render({ cycleFilter: "past" })
+		.split("<tbody>")[1]
+		.split("</tr>")[0];
+	expect(row).toMatch(/<td>1°<\/td><td>Histórico<\/td><td>2025–2028<\/td>/);
+});
+
+test("generation counts elapsed years from grade and semester", () => {
+	const s = initialState();
+	s.cycles = [
+		{ id: "c", name: "x", startDate: "2026-08-20", endDate: "2027-07-10" },
+	];
+	s.groups = [
+		{ id: "sec", name: "3° C", cycle: "c", grade: "3°" },
+		{ id: "bach", name: "3° Semestre A", cycle: "c", grade: "3° semestre" },
+		{ id: "none", name: "Taller", cycle: "c" },
+	];
+	const place = (group: string) =>
+		studentPlacement(s, { id: "x", enrollments: [{ group, cycle: "c" }] }, "");
+	expect(place("sec")).toEqual({
+		grade: "3°",
+		group: "C",
+		generation: "2024–2027",
+	});
+	expect(place("bach")).toEqual({
+		grade: "3° semestre",
+		group: "A",
+		generation: "2025–2028",
+	});
+	expect(place("none")).toEqual({
+		grade: "—",
+		group: "Taller",
+		generation: "—",
+	});
 });
 
 test("active filters are individually removable and search can be cleared", () => {
@@ -132,9 +183,18 @@ test("only the student table is a card, including empty recovery", () => {
 	const card = html.split('<div class="ui-table-card">')[1];
 	expect(card).toBeDefined();
 	expect(card).toContain('class="ui-table-scroll table-scroll"');
-	expect(card).toContain('<td colSpan="2" class="ui-table-empty">No se encontraron alumnos.');
+	expect(card).toContain(
+		'<td colSpan="6" class="ui-table-empty">No se encontraron alumnos.',
+	);
 	expect(card).not.toContain("<h2>");
 	expect(card).not.toContain('class="directory-filters"');
 	expect(card).not.toContain("Limpiar filtros");
 	expect(html.match(/No se encontraron alumnos/g)).toHaveLength(1);
+});
+
+test("each row has a brick open button with an icon", () => {
+	const row = render().split("<tbody>")[1].split("</tr>")[0];
+	expect(row).toMatch(
+		/<button type="button" class="directory-open" aria-label="Abrir expediente de Ana Ejemplo"><svg[^>]*aria-hidden="true"[\s\S]*?<\/svg><\/button>/,
+	);
 });

@@ -179,3 +179,27 @@
 		min-height: var(--directory-control-size);
 	}
 }
+
+.ui-data-table .directory-open {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 32px;
+	min-height: 32px;
+	padding: 0;
+	background: var(--palette-brick);
+	border-color: var(--palette-brick);
+	color: #fff;
+}
+
+.ui-data-table .directory-open:hover {
+	background: var(--tone-brick-ink);
+	border-color: var(--tone-brick-ink);
+}
+
+@media (pointer: coarse) {
+	.ui-data-table .directory-open {
+		min-width: 44px;
+		min-height: 44px;
+	}
+}

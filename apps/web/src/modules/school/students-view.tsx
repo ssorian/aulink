@@ -1,14 +1,14 @@
 import "./students-view.css";
 import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
-import {
-	DirectoryHeader,
-	DirectorySearch,
-	DirectoryIdentity,
-	DirectoryFilterChip,
-} from "./directory-components";
 import { Icon } from "../../components/ui/icon";
+import {
+	DirectoryFilterChip,
+	DirectoryHeader,
+	DirectoryIdentity,
+	DirectorySearch,
+} from "./directory-components";
+import { studentPlacement } from "./experience";
 import type { ViewProps } from "./view-types";
-import { activeGroup } from "./workflows";
 export function StudentsView({
 	s,
 	open,
@@ -53,11 +53,10 @@ export function StudentsView({
 	| "visible"
 	| "addStudent"
 >) {
+	const shownCycle =
+		cycleFilter || s.groups.find((g) => g.id === groupFilter)?.cycle || "";
 	return (
-		<section
-			className="student-directory"
-			aria-label="Directorio de alumnos"
-		>
+		<section className="student-directory" aria-label="Directorio de alumnos">
 			<DirectoryHeader
 				title="Directorio de alumnos"
 				count={`${visible.length} de ${s.students.length} alumnos`}
@@ -187,7 +186,7 @@ export function StudentsView({
 				)}
 			</div>
 			<DataTable
-				caption="Alumnos y grupos históricos por ciclo escolar"
+				caption="Alumnos con grado, grupo y generación"
 				variant="card"
 				scrollClassName="table-scroll"
 				scrollLabel="Resultados de alumnos, desplazamiento horizontal"
@@ -195,45 +194,52 @@ export function StudentsView({
 				<thead>
 					<tr>
 						<th scope="col">Alumno</th>
-						<th scope="col">{cycleFilter ? "Grupo" : "Grupos por ciclo"}</th>
+						<th scope="col">Matrícula</th>
+						<th scope="col">Grado</th>
+						<th scope="col">Grupo</th>
+						<th scope="col">Generación</th>
+						<th scope="col">Acciones</th>
 					</tr>
 				</thead>
 				<tbody>
-					{visible.map((x) => (
-						<tr key={x.id}>
-							<td>
-								<DirectoryIdentity
-									name={
-										<button
-											id={`student-${x.id}`}
-											className="directory-profile"
-											aria-label={`Abrir ${x.name}`}
-											type="button"
-											onClick={() => setProfile(x.id)}
-										>
-											{x.name}
-										</button>
-									}
-									secondary={x.matricula}
-								/>
-							</td>
-							<td>
-								{x.enrollments
-									.filter((e) => !cycleFilter || e.cycle === cycleFilter)
-									.map((e) => (
-										<p className="directory-enrollment" key={e.cycle}>
-											<span className="directory-group">
-												{groupName(activeGroup(s, x.id, e.cycle))}
-											</span>{" "}
-											{!cycleFilter &&
-												s.cycles.find((c) => c.id === e.cycle)?.name}
-										</p>
-									))}
-							</td>
-						</tr>
-					))}
+					{visible.map((x) => {
+						const place = studentPlacement(s, x, shownCycle);
+						return (
+							<tr key={x.id}>
+								<td>
+									<DirectoryIdentity
+										name={
+											<button
+												id={`student-${x.id}`}
+												className="directory-profile"
+												aria-label={`Abrir ${x.name}`}
+												type="button"
+												onClick={() => setProfile(x.id)}
+											>
+												{x.name}
+											</button>
+										}
+									/>
+								</td>
+								<td>{x.matricula}</td>
+								<td>{place.grade}</td>
+								<td>{place.group}</td>
+								<td>{place.generation}</td>
+								<td>
+									<button
+										type="button"
+										className="directory-open"
+										aria-label={`Abrir expediente de ${x.name}`}
+										onClick={() => setProfile(x.id)}
+									>
+										<Icon name="arrow" size={16} />
+									</button>
+								</td>
+							</tr>
+						);
+					})}
 					{!visible.length && (
-						<EmptyTableRow columns={2}>
+						<EmptyTableRow columns={6}>
 							No se encontraron alumnos. Limpia los filtros o inscribe uno.
 						</EmptyTableRow>
 					)}

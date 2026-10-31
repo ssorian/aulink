@@ -27,19 +27,6 @@
 	margin: 0 0 8px;
 }
 
-.student-directory td .directory-enrollment {
-	display: flex;
-	align-items: baseline;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin: 0;
-	color: var(--ink-muted);
-}
-
-.student-directory td .directory-enrollment + .directory-enrollment {
-	margin-top: 4px;
-}
-
 .student-directory .directory-profile {
 	display: block;
 	min-height: 32px;
@@ -58,6 +45,10 @@
 
 .student-directory .directory-profile:hover {
 	text-decoration-color: currentColor;
+}
+
+.student-directory td:last-child {
+	width: 1%;
 }
 
 .directory-import {
