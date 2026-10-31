@@ -17,14 +17,12 @@ export function GroupWorkspace({
 	s,
 	open,
 	groupId,
-	onBack,
 	onStudent,
 	onNotice,
 	tab,
 	setTab,
 }: Pick<ViewProps, "s" | "open"> & {
 	groupId: string;
-	onBack: () => void;
 	onStudent: (id: string) => void;
 	onNotice: (id: string) => void;
 	tab: string;
@@ -53,9 +51,6 @@ export function GroupWorkspace({
 		);
 	return (
 		<>
-			<button type="button" onClick={onBack}>
-				← Volver a Grupos
-			</button>
 			<section className="workspace-heading">
 				<div>
 					<h2>{g.name}</h2>
@@ -99,116 +94,121 @@ export function GroupWorkspace({
 				onChange={setTab}
 			/>
 			{tab === "Alumnos" && (
-				<section className="panel">
-					<h2>Alumnos de este grupo y ciclo</h2>
-					<div className="actions">
-						<button
-							className="primary"
-							type="button"
-							onClick={() =>
-								contextualOpen("enroll", "Inscribir alumno existente", [
-									options(
-										"student",
-										"Alumno sin inscripción en este ciclo",
-										s.students.filter(
-											(x) => !x.enrollments.some((e) => e.cycle === g.cycle),
-										),
-									),
-								])
-							}
-						>
-							Inscribir alumno existente
-						</button>
-						<button
-							type="button"
-							onClick={() => {
-								const c = registrationContext(s, g.id);
-								contextualOpen(
-									"student",
-									"Registrar alumno en este grupo",
-									c.fields,
-									c.values,
-									c.preview,
-								);
-							}}
-						>
-							Registrar nuevo alumno
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								contextualOpen(
-									"transfer",
-									"Cambiar de grupo",
-									[
+				<section className="group-students" aria-label="Alumnos del grupo">
+					<header className="group-students-header">
+						<div>
+							<h3>Alumnos de este grupo y ciclo</h3>
+							<p>
+								{scoped.students.length}{" "}
+								{scoped.students.length === 1 ? "alumno" : "alumnos"} en {cycle}
+							</p>
+						</div>
+						<div className="actions">
+							<button
+								className="primary"
+								type="button"
+								onClick={() =>
+									contextualOpen("enroll", "Inscribir alumno existente", [
 										options(
 											"student",
-											"Alumno de otro grupo del mismo ciclo",
+											"Alumno sin inscripción en este ciclo",
 											s.students.filter(
-												(x) =>
-													activeGroup(s, x.id, g.cycle) &&
-													activeGroup(s, x.id, g.cycle) !== g.id,
+												(x) => !x.enrollments.some((e) => e.cycle === g.cycle),
 											),
 										),
-										reason,
-									],
-									{},
-									[
-										"Traslado al grupo mostrado. No duplica inscripción ni modifica evidencia anterior.",
-									],
-								)
-							}
-						>
-							Cambiar de grupo
-						</button>
-					</div>
-					<section
-						className="group-table-scroll"
-						// biome-ignore lint/a11y/noNoninteractiveTabindex: El contenedor de tabla necesita foco para desplazamiento horizontal y vertical con teclado.
-						tabIndex={0}
-						aria-label="Alumnos del grupo"
+									])
+								}
+							>
+								Inscribir alumno existente
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									const c = registrationContext(s, g.id);
+									contextualOpen(
+										"student",
+										"Registrar alumno en este grupo",
+										c.fields,
+										c.values,
+										c.preview,
+									);
+								}}
+							>
+								Registrar nuevo alumno
+							</button>
+							<button
+								type="button"
+								onClick={() =>
+									contextualOpen(
+										"transfer",
+										"Cambiar de grupo",
+										[
+											options(
+												"student",
+												"Alumno de otro grupo del mismo ciclo",
+												s.students.filter(
+													(x) =>
+														activeGroup(s, x.id, g.cycle) &&
+														activeGroup(s, x.id, g.cycle) !== g.id,
+												),
+											),
+											reason,
+										],
+										{},
+										[
+											"Traslado al grupo mostrado. No duplica inscripción ni modifica evidencia anterior.",
+										],
+									)
+								}
+							>
+								Cambiar de grupo
+							</button>
+						</div>
+					</header>
+					<DataTable
+						caption={`Alumnos de ${context}`}
+						variant="card"
+						scrollLabel="Alumnos del grupo, desplazamiento horizontal"
 					>
-						<table>
-							<caption>Alumnos de este grupo y ciclo</caption>
-							<thead>
-								<tr>
-									<th scope="col">Alumno</th>
-									<th scope="col">Matrícula</th>
-									<th scope="col">Inscripción</th>
-									<th scope="col">Expediente</th>
+						<thead>
+							<tr>
+								<th scope="col">Alumno</th>
+								<th scope="col">Matrícula</th>
+								<th scope="col">Inscripción</th>
+								<th scope="col">Expediente</th>
+							</tr>
+						</thead>
+						<tbody>
+							{scoped.students.map((x) => (
+								<tr key={x.id}>
+									<th scope="row">{x.name}</th>
+									<td>{x.matricula}</td>
+									<td>
+										{activeGroup(s, x.id, g.cycle) === g.id
+											? "Inscripción activa en este grupo"
+											: "Histórico · trasladado a otro grupo del ciclo"}
+									</td>
+									<td>
+										<button
+											id={`group-${groupId}-student-${x.id}`}
+											type="button"
+											className="group-open"
+											aria-label={`Abrir expediente de ${x.name}`}
+											onClick={() => onStudent(x.id)}
+										>
+											Abrir expediente
+										</button>
+									</td>
 								</tr>
-							</thead>
-							<tbody>
-								{scoped.students.map((x) => (
-									<tr key={x.id}>
-										<th scope="row">{x.name}</th>
-										<td>{x.matricula}</td>
-										<td>
-											{activeGroup(s, x.id, g.cycle) === g.id
-												? "Inscripción activa en este grupo"
-												: "Histórico · trasladado a otro grupo del ciclo"}
-										</td>
-										<td>
-											<button
-												id={`group-${groupId}-student-${x.id}`}
-												type="button"
-												aria-label={`Abrir expediente de ${x.name}`}
-												onClick={() => onStudent(x.id)}
-											>
-												Abrir expediente
-											</button>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</section>
-					{!scoped.students.length && (
-						<p>
-							Sin alumnos. Inscribe un registro existente o registra uno nuevo
-							en este grupo.
-						</p>
-					)}
+							))}
+							{!scoped.students.length && (
+								<EmptyTableRow columns={4}>
+									Sin alumnos. Inscribe un registro existente o registra uno
+									nuevo en este grupo.
+								</EmptyTableRow>
+							)}
+						</tbody>
+					</DataTable>
 				</section>
 			)}
 			{tab === "Horario" && (

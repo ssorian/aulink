@@ -281,6 +281,16 @@ export function SchoolApp() {
 					</section>
 				</header>
 				<main id="main" tabIndex={-1}>
+					{page === "Grupos" && groupId && (
+						<button
+							type="button"
+							className="group-back"
+							onClick={() => setGroupId("")}
+						>
+							<Icon name="back" size={18} />
+							Volver a Grupos
+						</button>
+					)}
 					<div className="page-heading">
 						<div>
 							<h1>{section.label}</h1>
@@ -394,7 +404,6 @@ export function SchoolApp() {
 										setTab={(tab) =>
 											setGroupTabs({ ...groupTabs, [groupId]: tab })
 										}
-										onBack={() => setGroupId("")}
 										onStudent={(id) => {
 											groupPosition.current = {
 												x: window.scrollX,

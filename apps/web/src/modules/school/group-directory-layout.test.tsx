@@ -1,7 +1,7 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { GroupDirectory } from "./group-workspace";
+import { GroupDirectory, GroupWorkspace } from "./group-workspace";
 import { initialState } from "./workflows";
 
 function render(s = initialState()) {
@@ -130,7 +130,37 @@ test("group card contains the table but not directory controls", () => {
 	const card = html.slice(html.indexOf('class="ui-table-card"'));
 	expect(html).toContain('class="ui-table-card"');
 	expect(card).toContain("<table");
-	for (const outside of ["<header", "<select", "group-filters", "Crear grupo"]) {
+	for (const outside of [
+		"<header",
+		"<select",
+		"group-filters",
+		"Crear grupo",
+	]) {
 		expect(card).not.toContain(outside);
 	}
+});
+
+test("group students use the shared card table without a panel or inline back button", () => {
+	const s = initialState();
+	const g = s.groups[0];
+	const html = renderToStaticMarkup(
+		<GroupWorkspace
+			s={s}
+			open={() => {}}
+			groupId={g.id}
+			onStudent={() => {}}
+			onNotice={() => {}}
+			tab="Alumnos"
+			setTab={() => {}}
+		/>,
+	);
+	expect(html).not.toContain('class="panel"');
+	expect(html).not.toContain("Volver a Grupos");
+	expect(html).toContain('<section class="group-students"');
+	expect(html).toContain("<h3>Alumnos de este grupo y ciclo</h3>");
+	expect(html).toContain('class="ui-table-card"');
+	expect(html).toContain('class="ui-data-table"');
+	for (const name of ["Alumno", "Matrícula", "Inscripción", "Expediente"])
+		expect(html).toContain(`<th scope="col">${name}</th>`);
+	expect(html).toContain('class="group-open"');
 });
