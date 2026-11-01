@@ -143,20 +143,76 @@ test("pending work says so when everything is published", () => {
 	);
 });
 
-test("attendance profile omits redundant controls and identity", () => {
+test("attendance shows campus percent, subject table and absences to justify", () => {
 	const { s, student } = setup();
 	const html = render(s, student.id, "Asistencia");
-	expect(html).toContain("<h2>Evidencia de asistencia</h2>");
-	expect(html).not.toContain("<select");
-	expect(html).not.toContain("Ver jornada de muestra");
-	expect(html).not.toContain("expediente individual");
-	expect(html).toContain("Sin registro no significa ausencia.");
-	const headings = [...html.matchAll(/<h3>(.*?)<\/h3>/g)];
-	expect(headings.length).toBeGreaterThan(0);
-	for (const heading of headings)
-		expect(heading[1]).not.toContain(student.name);
-	expect(html).toContain("Ver evidencia original");
-	expect(html).toContain("profile-badge");
+	const plain = text(html);
+	// Three separate blocks.
+	const headings = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map((m) =>
+		text(m[1]).trim(),
+	);
+	expect(headings).toEqual([
+		"Alba Mendoza Ruiz",
+		"Asistencia a la escuela",
+		"Asistencia por materia",
+		"Faltas por justificar 6",
+	]);
+	expect(plain).toContain("Datos de muestra");
+	expect(plain).toContain(
+		"Días de clase transcurridos al viernes, 23 de octubre de 2026",
+	);
+	// General percent comes from campus entries over elapsed school days.
+	expect(plain).toContain(
+		"Asistencia a la escuela Entradas registradas por la terminal del plantel 97 % 43 de 44 días de clase con entrada",
+	);
+	// Per-subject table states the rules and flags the subject under the minimum.
+	expect(plain).toContain(
+		"Mínimo para acreditar: 80 % · 3 retardos cuentan como 1 falta",
+	);
+	const headers = [
+		...(html.match(/<thead>[\s\S]*?<\/thead>/)?.[0] ?? "").matchAll(
+			/<th[^>]*>([^<]+)<\/th>/g,
+		),
+	].map((m) => m[1]);
+	expect(headers).toEqual([
+		"Materia",
+		"Clases asistidas",
+		"Faltas",
+		"Retardos",
+		"Asistencia",
+		"Estado",
+	]);
+	const artes = html.match(/<tr class="is-risk">[\s\S]*?<\/tr>/g) ?? [];
+	expect(artes).toHaveLength(1);
+	expect(text(artes[0] ?? "")).toContain(
+		"Artes 13 de 18 5 0 72 % Riesgo de extraordinario",
+	);
+	expect(plain).toContain("Historia 35 de 35 0 0 100 % Acredita");
+	// One row per day with unjustified absences, its classes merged.
+	expect(plain).toContain(
+		"Faltas por justificar 6 Al justificar, la falta cuenta como asistencia.",
+	);
+	expect(plain).toContain(
+		"Sin entrada a la escuela · faltó a todas sus clases",
+	);
+	expect(html.match(/>Justificar<\/button>/g)).toHaveLength(6);
+	// The table sits on the page in its own card; the list keeps its panel.
+	expect(html.match(/class="panel ui-panel"/g)).toHaveLength(1);
+	expect(html).toContain('class="panel attendance-pending-panel"');
+	expect(html.match(/class="ui-table-card"/g)).toHaveLength(1);
+	expect(html.match(/class="attendance-pending-item"/g)).toHaveLength(6);
+	expect(html).toContain(
+		'aria-label="Justificar falta del lunes, 19 de octubre de 2026"',
+	);
+	expect(plain).toContain("Ver faltas justificadas (1)");
+	expect(plain).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+	// The day-by-day access log and the day pager are gone from this tab.
+	for (const gone of [
+		"Todos los días con registro",
+		"Ver registro original",
+		"Docente",
+	])
+		expect(plain).not.toContain(gone);
 });
 
 test("conduct profile offers registration and omits repeated identity", () => {

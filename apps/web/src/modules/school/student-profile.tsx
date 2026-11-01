@@ -168,7 +168,7 @@ export function StudentProfile({
 					<Credential s={s} open={open} student={selected} />
 				</div>
 			)}
-			{tab === "Asistencia" && <AttendanceView s={individual} open={open} />}
+			{tab === "Asistencia" && <AttendanceView />}
 			{tab === "Calificaciones" && (
 				<StudentGrades s={individual} open={open} studentName={selected.name} />
 			)}

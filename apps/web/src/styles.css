@@ -44,24 +44,13 @@ main { padding-top: 24px; padding-bottom: 32px; }
 .student-directory td p { font-size: 13px; line-height: 1.5; }
 .student-directory tbody tr:hover { background: var(--canvas); }
 .student-directory button { min-height: 40px; }
-.attendance-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-.attendance-summary > div { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 14px; }
-.attendance-summary dt { color: var(--ink-muted); font-size: 13px; }
-.attendance-summary dd { margin: 6px 0 0; font-size: 25px; font-weight: 700; }
 .status-badge { display: inline-block; border: 1px solid var(--line); border-radius: 20px; padding: 5px 10px; background: var(--surface-muted); color: var(--ink); font-size: 12px; }
-.attendance-event h3 { margin: 0; }
-.attendance-event details { margin: 12px 0; }
-.attendance-event summary { cursor: pointer; color: var(--action); padding: 8px 0; font-size: 14px; }
-.attendance-event details p { margin: 8px 0; }
 @media (max-width: 760px) {
   .context-bar { gap: 6px 12px; font-size: 12px; }
   .context-school { display: block; }
   .context-bar strong { flex-basis: 100%; }
   .context-bar span + span { padding-left: 0; border-left: 0; }
   .student-directory { padding: 15px; }
-  .attendance-summary { grid-template-columns: 1fr; gap: 8px; }
-  .attendance-summary > div { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; }
-  .attendance-summary dd { margin: 0; font-size: 22px; }
   .result-toolbar button { min-height: 44px; }
 }
 
@@ -294,11 +283,7 @@ td, .student-directory td { color: var(--ink); border-color: var(--line); }
 .student-directory button { min-height: 44px; }
 .result-toolbar p { color: var(--ink-muted); }
 .list-row, footer { border-color: var(--line); }
-.attendance-summary > div { background: var(--surface); border-color: var(--line); border-radius: 12px; }
-.attendance-summary dt { color: var(--ink-muted); }
-.attendance-summary dd { font-variant-numeric: tabular-nums; }
 .status-badge { background: var(--surface-muted); color: var(--ink); border-color: var(--line); border-radius: 6px; }
-.attendance-event summary { color: var(--action); min-height: 44px; }
 .profile { border-top-color: var(--line); border-top-width: 1px; }
 .credential { background: var(--surface-muted); border-color: var(--line); }
 .internal { background: var(--surface-muted); border-left: 1px solid var(--line); }
