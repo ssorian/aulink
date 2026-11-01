@@ -4,6 +4,7 @@ import { Children, isValidElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConductView } from "./conduct-view";
 import { buildMockData } from "./mock-data";
+import { StudentGrades } from "./student-grades";
 import { StudentProfile } from "./student-profile";
 import { options } from "./view-helpers";
 import { activeGroup } from "./workflows";
@@ -293,110 +294,104 @@ test("group conduct keeps its original registration button", () => {
 
 test("grade tables group cycles, sort rows and show statuses and actions", () => {
 	const { s, student } = setup();
-	const grades = s.grades.filter((g) => g.student === student.id);
-	const original = grades[0];
-	const assignment = s.assignments.find((a) => a.id === original.assignment);
-	const previous = student.enrollments.find(
-		(e) => e.cycle !== s.groups.find((g) => g.id === assignment?.group)?.cycle,
+	const second = s.grades.filter(
+		(g) =>
+			g.student === student.id &&
+			s.assignments.find((a) => a.id === g.assignment)?.period ===
+				"Segundo trimestre",
 	);
-	if (!assignment || !previous)
-		throw Error("sample grades or earlier enrollment missing");
-	s.assignments.push({
-		...assignment,
-		id: "previous-assignment",
-		group: previous.group,
-		subject: "Historia",
-		period: "Periodo anterior",
-	});
-	s.grades.push({
-		...original,
-		id: "previous-grade",
-		assignment: "previous-assignment",
-		published: true,
-		history: [],
-	});
+	if (second.length < 2) throw Error("sample grades missing");
+	second[0].value = 5;
+	s.grades = s.grades.filter((g) => g.id !== second[1].id);
 	const html = render(s, student.id, "Calificaciones");
-	const tables = [...html.matchAll(/<table[\s\S]*?<\/table>/g)].map(
-		(m) => m[0],
+	for (const label of [
+		"Materia",
+		"Docente",
+		"Calificación",
+		"Situación",
+		"Acciones",
+	])
+		expect(html).toContain(`<th scope="col">${label}</th>`);
+	expect(text(html)).toContain("Datos de muestra");
+	expect(text(html)).toContain("Segundo trimestre");
+	expect(text(html)).toContain("Abierto hasta el 13 nov");
+	// Passing subjects stay plain text; only failing ones get a badge.
+	expect(html).not.toMatch(/profile-badge[^"]*">Aprueba</);
+	expect(text(html)).toContain("Sin calificación del docente");
+	expect(html).toContain("—");
+	expect(html).toContain("Aprueba");
+	expect(html).toContain("Reprueba");
+	const final = renderToStaticMarkup(
+		<StudentGrades
+			s={{
+				...s,
+				students: [student],
+				grades: s.grades.filter((g) => g.student === student.id),
+			}}
+			open={() => {}}
+			studentName={student.name}
+			initialPeriod="Final"
+		/>,
 	);
-	expect(html).toContain("<h2>Calificaciones</h2>");
-	expect(tables.length).toBe(2);
-	expect(tables[0]).toContain(
-		s.cycles.find(
-			(c) => c.id === s.groups.find((g) => g.id === assignment.group)?.cycle,
-		)?.name,
-	);
-	expect(tables[1]).toContain(
-		s.cycles.find((c) => c.id === previous.cycle)?.name,
-	);
-	for (const table of tables) {
-		for (const label of [
-			"Materia",
-			"Evaluación",
-			"Calificación",
-			"Estado",
-			"Acciones",
-		])
-			expect(table).toContain(`<th scope="col">${label}</th>`);
-		expect(table).not.toContain(student.name);
-		expect(table).toContain('<th scope="row">');
-	}
-	const allGrades = s.grades.filter((g) => g.student === student.id);
-	expect((html.match(/profile-badge--ok">Publicado/g) ?? []).length).toBe(
-		allGrades.filter((g) => g.published).length,
-	);
-	expect((html.match(/profile-badge--warn">Borrador/g) ?? []).length).toBe(
-		allGrades.filter((g) => !g.published).length,
-	);
-	for (const grade of allGrades) {
-		const a = s.assignments.find((item) => item.id === grade.assignment);
-		if (!a) throw Error("assignment missing");
-		const group = s.groups.find((g) => g.id === a.group);
-		const cycle = s.cycles.find((c) => c.id === group?.cycle);
-		const table =
-			tables.find((item) => item.includes(cycle?.name ?? "missing")) ?? "";
-		const subject = a.subject.replace(/&/g, "&amp;");
-		const period = a.period.replace(/&/g, "&amp;");
-		const row =
-			[...table.matchAll(/<tr>[\s\S]*?<\/tr>/g)]
-				.map((m) => m[0])
-				.find((item) =>
-					item.includes(
-						`aria-label="Corregir calificación de ${subject} · ${period}"`,
-					),
-				) ?? "";
-		expect(row).toContain(
-			`aria-label="Corregir calificación de ${subject} · ${period}"`,
-		);
-		expect(row).toContain(
-			`aria-label="Revisar publicación de ${subject} · ${period}"`,
-		);
-		if (grade.published)
-			expect(row).toMatch(/<button[^>]*disabled=""[^>]*>Revisar publicación/);
-	}
-	const ordered = [
-		...tables[0].matchAll(/<th scope="row">([^<]*)<\/th><td>([^<]*)<\/td>/g),
-	].map((m) => `${m[1]} · ${m[2]}`);
-	expect(ordered).toEqual(
-		[...ordered].sort((a, b) => a.localeCompare(b, "es")),
-	);
+	expect(final).toContain("Promedio");
+	const subject = s.assignments.find(
+		(a) => a.id === second[0].assignment,
+	)?.subject;
+	const firstValue = s.grades.find(
+		(g) =>
+			g.student === student.id &&
+			s.assignments.find(
+				(a) =>
+					a.id === g.assignment &&
+					a.subject === subject &&
+					a.period === "Primer trimestre",
+			),
+	)?.value;
+	if (firstValue === undefined || !subject)
+		throw Error("first period grade missing");
+	const expected = ((firstValue + 5) / 2).toLocaleString("es-MX", {
+		minimumFractionDigits: 1,
+		maximumFractionDigits: 1,
+	});
+	const row = [...final.matchAll(/<tr>[\s\S]*?<\/tr>/g)]
+		.map((m) => m[0])
+		.find((r) => r.includes(`>${subject}</th>`));
+	expect(row).toContain(`>${expected}</td>`);
+	expect(final).not.toContain("Ver historial");
+	expect(html).not.toContain("Publicado");
+	expect(html).not.toContain("Revisar publicación");
+	expect(html).toContain("Ver historial");
 });
 
 test("grade history is disclosed and empty grades have a passive message", () => {
 	const { s, student } = setup();
-	const grade = s.grades.find((g) => g.student === student.id);
-	if (!grade) throw Error("sample grade missing");
-	grade.history = [
-		{
-			id: "history-test",
-			value: "6 → 7",
-			reason: "Corrección",
-			author: "Docente",
-		},
+	const first = s.grades.find(
+		(g) =>
+			g.student === student.id &&
+			s.assignments.find((a) => a.id === g.assignment)?.period ===
+				"Primer trimestre",
+	);
+	if (!first) throw Error("sample grade missing");
+	first.history = [
+		{ id: "test", value: "6 → 7", reason: "Corrección", author: "Docente" },
 	];
-	const html = render(s, student.id, "Calificaciones");
-	expect(html).toContain("<summary>Historial (1)</summary>");
-	expect(text(html)).toContain("6 → 7 · Corrección · Docente");
+	const closed = renderToStaticMarkup(
+		<StudentGrades
+			s={{
+				...s,
+				students: [student],
+				grades: s.grades.filter((g) => g.student === student.id),
+			}}
+			open={() => {}}
+			studentName={student.name}
+			initialPeriod="Primer trimestre"
+		/>,
+	);
+	expect(text(closed)).toContain("Cerrado el 2 oct");
+	expect(text(closed)).toContain("Periodo cerrado el 2 oct");
+	expect(text(closed)).toContain("Valor original: 6");
+	expect(text(closed)).toContain("6 → 7 · Corrección · Docente");
+	expect(text(closed)).toContain("Sin correcciones");
 	s.grades = s.grades.filter((g) => g.student !== student.id);
 	const empty = render(s, student.id, "Calificaciones");
 	expect(empty).toContain("Sin calificaciones capturadas para este alumno.");
