@@ -1,23 +1,31 @@
-import { useId, useRef, useState } from "react";
-import type { ViewProps } from "./view-types";
-import type { State } from "./workflows";
-import { field, options, reason } from "./view-helpers";
+import { useCallback, useState } from "react";
+import {
+	ClassMenu,
+	type GridColumn,
+	type GridItem,
+	type MenuAction,
+	ScheduleGrid,
+} from "./schedule-grid";
 import {
 	addDays,
+	clock,
 	dayWindow,
 	minutes,
+	type Occurrence,
 	occurrences,
 	schoolToday,
 	validDate,
 	weekday,
 	weekdays,
-	type Occurrence,
 } from "./schedule-helpers";
+import { field, options, reason } from "./view-helpers";
+import type { ViewProps } from "./view-types";
+import type { State } from "./workflows";
 import "./schedule-calendar.css";
 
 const disclaimer =
 	"Solo simulación local; no se comunica a terminales ni autoriza entrega de menores";
-const hourHeight = 56;
+const schoolWeek = [...weekdays.slice(1), weekdays[0]];
 const displayDate = (date: string, full = false) =>
 	new Intl.DateTimeFormat("es-MX", {
 		day: "numeric",
@@ -33,25 +41,31 @@ const statusLabels = {
 	move: "Reagendada · origen",
 	moved: "Reagendada · destino",
 };
+const coverLabels = { substitute: "Suplente", teacher: "Cubre" };
+const coverRoles = [
+	{ id: "substitute", name: "Asignar suplente" },
+	{ id: "teacher", name: "Asignar otro docente" },
+	{ id: "titular", name: "Volver al docente titular" },
+];
+type Slot = State["schedules"][number];
+type Menu =
+	| { kind: "occurrence"; item: Occurrence; key: string; anchor: HTMLElement }
+	| { kind: "slot"; slot: Slot; key: string; anchor: HTMLElement };
+
 export function ScheduleCalendar({
 	s,
 	groupId,
 	open,
+	initialView = "dates",
 }: {
 	s: State;
 	groupId: string;
 	open: ViewProps["open"];
+	initialView?: "dates" | "structure";
 }) {
-	const headingId = useId();
-	const detailId = `${headingId}-detail`;
-	const detailRefs = useRef(new Map<string, HTMLElement>());
-	const [selectedKey, setSelectedKey] = useState("");
-	function inspectClass(item: Occurrence) {
-		const key = occurrenceKey(item);
-		setSelectedDate(item.date);
-		setSelectedKey(key);
-		requestAnimationFrame(() => detailRefs.current.get(key)?.focus());
-	}
+	const [view, setView] = useState(initialView);
+	const [menu, setMenu] = useState<Menu | null>(null);
+	const closeMenu = useCallback(() => setMenu(null), []);
 	const today = schoolToday(s.school.timezone);
 	const [selectedDate, setSelectedDate] = useState(today);
 	const monday = addDays(
@@ -63,88 +77,120 @@ export function ScheduleCalendar({
 	const slots = s.schedules.filter((slot) =>
 		assignments.some((a) => a.id === slot.assignment),
 	);
-	const days = dates.map((date) => ({
-		date,
-		items: occurrences(s, groupId, date),
-		holiday: s.exceptions.find((e) => e.date === date),
-	}));
-	const all = days.flatMap((day) => day.items);
-	const startHour = Math.min(
-		7,
-		...all.map((o) => Math.floor(minutes(o.start) / 60)),
-	);
-	const endHour = Math.max(
-		15,
-		...all.map((o) => Math.ceil(minutes(o.end) / 60)),
-	);
-	const hours = Array.from(
-		{ length: endHour - startHour + 1 },
-		(_, i) => startHour + i,
-	);
-	const selected = days.find((day) => day.date === selectedDate) ?? {
-		date: selectedDate,
-		items: occurrences(s, groupId, selectedDate),
-		holiday: s.exceptions.find((exception) => exception.date === selectedDate),
-	};
-	const config = s.scheduleWindows.find((w) => w.group === groupId) || {
-		before: 0,
-		after: 0,
-	};
 	const name = (id: string) =>
 		assignments.find((a) => a.id === id)?.subject || "Materia";
+	const titular = (id: string) =>
+		assignments.find((a) => a.id === id)?.teacher || "";
 	const tone = (id: string) =>
 		Math.max(
 			assignments.findIndex((a) => a.id === id),
 			0,
 		) % 5;
-	function schedule(slot?: State["schedules"][number]) {
+	const teachers = [
+		...new Set([
+			...s.staff.filter((x) => x.role === "Docente").map((x) => x.name),
+			...s.assignments.map((a) => a.teacher),
+		]),
+	]
+		.filter(Boolean)
+		.sort((a, b) => a.localeCompare(b, "es"))
+		.map((teacher) => ({ id: teacher, name: teacher }));
+
+	function schedule(slot?: Slot, draft: Partial<Slot> = {}) {
+		const moving = Boolean(slot && (draft.day || draft.start));
+		const values = { ...slot, ...draft };
+		const subject = slot ? name(slot.assignment) : "";
 		open(
 			"schedule",
-			slot ? "Editar recurrencia semanal" : "Agendar clase semanal",
+			moving
+				? `Mover ${subject} a ${values.day} ${values.start}`
+				: slot
+					? `Editar clase semanal · ${subject}`
+					: draft.day
+						? `Agendar clase · ${draft.day} ${draft.start}`
+						: "Agendar clase semanal",
 			[
 				options(
 					"assignment",
-					"Materia / asignación",
+					"Materia",
 					assignments.map((a) => ({
 						id: a.id,
 						name: `${a.subject} · ${a.teacher} · ${a.period}`,
 					})),
 				),
+				...(slot
+					? [
+							{
+								...options(
+									"teacher",
+									"Nuevo docente titular (opcional)",
+									teachers,
+								),
+								optional: true,
+							},
+						]
+					: []),
 				options(
 					"day",
 					"Día de la semana",
-					[...weekdays.slice(1), weekdays[0]].map((day) => ({
-						id: day,
-						name: day,
-					})),
+					schoolWeek.map((day) => ({ id: day, name: day })),
 				),
 				field("start", "Inicio", "time"),
 				field("end", "Fin", "time"),
 			],
 			{
 				group: groupId,
-				assignment: slot?.assignment || assignments[0]?.id || "",
-				day: slot?.day || "Lunes",
-				start: slot?.start || "08:00",
-				end: slot?.end || "09:00",
+				assignment: values.assignment || assignments[0]?.id || "",
+				day: values.day || "Lunes",
+				start: values.start || "08:00",
+				end: values.end || "09:00",
 				...(slot ? { id: slot.id } : {}),
 			},
 			[
-				"Se repetirá cada semana. No se permiten cruces de medianoche ni clases superpuestas.",
+				"Se repite cada semana. No se permiten cruces de medianoche ni clases superpuestas.",
+				...(slot
+					? [
+							"El docente titular cambia para la materia en todas sus clases. Para una sola fecha, usa Editar en la vista Por fechas.",
+						]
+					: []),
 			],
-			"Una serie con excepciones registradas se conserva: usa Reagendar clase para cambiar una fecha.",
+			"Una serie con cancelaciones o reagendas registradas conserva su día y hora: cambia cada fecha desde la vista Por fechas.",
 		);
 	}
-	function occurrence(item: Occurrence, action: "cancel" | "move" | "restore") {
+	function removeSlot(slot: Slot) {
+		const subject = name(slot.assignment);
+		open(
+			"schedule-delete",
+			`Eliminar clase semanal · ${subject} · ${slot.day} ${slot.start}`,
+			[],
+			{ group: groupId, id: slot.id },
+			[
+				`${subject} deja de repetirse los ${slot.day.toLowerCase()} de ${slot.start} a ${slot.end}.`,
+				"La materia y sus calificaciones se conservan.",
+			],
+			"Una serie con cancelaciones, reagendas o suplencias registradas no se puede eliminar, para conservar su historial.",
+		);
+	}
+	function occurrence(
+		item: Occurrence,
+		action: "cancel" | "move" | "restore",
+		target?: { date: string; start: string },
+	) {
+		const subject = name(item.assignment);
+		const end = target
+			? clock(minutes(target.start) + minutes(item.end) - minutes(item.start))
+			: item.end;
 		const title =
 			action === "cancel"
-				? "Cancelar clase"
-				: action === "move"
-					? "Reagendar clase"
-					: "Restaurar ocurrencia";
+				? `Cancelar clase · ${subject} · ${item.originDate}`
+				: action === "restore"
+					? `Restaurar clase · ${subject} · ${item.originDate}`
+					: target
+						? `Reagendar ${subject} al ${displayDate(target.date)} ${target.start}`
+						: `Reagendar clase · ${subject} · ${item.originDate}`;
 		open(
 			"schedule-occurrence",
-			`${title} · ${name(item.assignment)} · ${item.originDate}`,
+			title,
 			[
 				...(action === "move"
 					? [
@@ -160,15 +206,41 @@ export function ScheduleCalendar({
 				schedule: item.schedule,
 				date: item.originDate,
 				action,
-				targetDate: item.date,
-				start: item.start,
-				end: item.end,
+				targetDate: target?.date || item.date,
+				start: target?.start || item.start,
+				end,
 			},
 			[
-				`Ocurrencia original: ${item.originDate}. Solo cambia esta fecha; las semanas siguientes se conservan.`,
+				`Fecha original: ${displayDate(item.originDate, true)}. Solo cambia esta fecha; las demás semanas se conservan.`,
 				disclaimer,
 			],
-			"El motivo y el horario original quedan en el historial local. La ventana se recalcula en las fechas afectadas.",
+			"El motivo y el horario original quedan en el historial local. El fin de jornada se recalcula en las fechas afectadas.",
+		);
+	}
+	function staffing(item: Occurrence) {
+		const subject = name(item.assignment);
+		open(
+			"schedule-staffing",
+			`Editar clase · ${subject} · ${item.originDate}`,
+			[
+				options("role", "Cambio", coverRoles),
+				{
+					...options("teacher", "Docente para esta fecha", teachers),
+					optional: true,
+				},
+				reason,
+			],
+			{
+				group: groupId,
+				schedule: item.schedule,
+				date: item.originDate,
+				role: item.coverRole || "substitute",
+				teacher: item.coverRole ? item.teacher : "",
+			},
+			[
+				`Solo cambia la clase del ${displayDate(item.date, true)}. ${titular(item.assignment)} sigue como titular en las demás semanas.`,
+			],
+			"Para volver al titular elige «Volver al docente titular»; el docente indicado se ignora.",
 		);
 	}
 	function windowText(date: string) {
@@ -182,14 +254,146 @@ export function ScheduleCalendar({
 			return "Ventana fuera del día: revisa los minutos configurados";
 		}
 	}
+
+	const byKey = new Map<string, Occurrence>();
+	const dayItems = dates.map((date) => occurrences(s, groupId, date));
+	const dated: { columns: GridColumn[]; items: GridItem[] } = {
+		columns: dates.map((date) => {
+			const holiday = s.exceptions.find((e) => e.date === date);
+			return {
+				key: date,
+				date,
+				label: weekday(date),
+				day: date.slice(8),
+				today: date === today,
+				note: holiday ? "Día inhábil" : windowText(date),
+				noteTitle: holiday?.reason,
+				off: Boolean(holiday),
+			};
+		}),
+		items: dayItems.flatMap((items) =>
+			items.map((item) => {
+				const key = occurrenceKey(item);
+				byKey.set(key, item);
+				const ghost = item.status === "cancel" || item.status === "move";
+				const shared = items.some(
+					(other) =>
+						other !== item &&
+						(other.status === "cancel" || other.status === "move") &&
+						other.start < item.end &&
+						other.end > item.start,
+				);
+				const cover = item.coverRole
+					? `${coverLabels[item.coverRole]}: ${item.teacher}`
+					: "";
+				return {
+					key,
+					column: item.date,
+					start: item.start,
+					end: item.end,
+					title: name(item.assignment),
+					detail: ghost || !cover ? statusLabels[item.status] : cover,
+					covered: !ghost && Boolean(cover),
+					status: item.status,
+					tone: tone(item.assignment),
+					draggable: !ghost,
+					side: ghost ? "right" : shared ? "left" : "full",
+					label: `${name(item.assignment)} · ${displayDate(item.date, true)} · ${item.start}–${item.end} · ${statusLabels[item.status]}${cover ? ` · ${cover}` : ""}. Abrir opciones`,
+					hint: `${name(item.assignment)} · ${item.start}–${item.end} · ${item.teacher}${ghost ? "" : " · Arrastra para reagendar"}`,
+				} satisfies GridItem;
+			}),
+		),
+	};
+	const structure: { columns: GridColumn[]; items: GridItem[] } = {
+		columns: schoolWeek.map((day) => {
+			const daySlots = slots.filter((slot) => slot.day === day);
+			const last = daySlots.reduce(
+				(end, slot) => (slot.end > end ? slot.end : end),
+				"",
+			);
+			return {
+				key: day,
+				label: day,
+				note: daySlots.length
+					? `${daySlots.length} ${daySlots.length === 1 ? "clase" : "clases"} · fin ${last}`
+					: "Sin clases",
+			};
+		}),
+		items: slots.map((slot) => ({
+			key: slot.id,
+			column: slot.day,
+			start: slot.start,
+			end: slot.end,
+			title: name(slot.assignment),
+			detail: titular(slot.assignment),
+			status: "active",
+			tone: tone(slot.assignment),
+			draggable: true,
+			side: "full",
+			label: `${name(slot.assignment)} · cada ${slot.day} · ${slot.start}–${slot.end} · ${titular(slot.assignment)}. Abrir opciones`,
+			hint: `${name(slot.assignment)} · ${slot.start}–${slot.end} · Arrastra para cambiar día u hora`,
+		})),
+	};
+
+	const menuContent = (() => {
+		if (!menu) return null;
+		if (menu.kind === "slot") {
+			const { slot } = menu;
+			return {
+				title: name(slot.assignment),
+				lines: [
+					`Cada ${slot.day.toLowerCase()} · ${slot.start}–${slot.end}`,
+					`Titular: ${titular(slot.assignment) || "Sin docente"}`,
+				],
+				actions: [
+					{ label: "Editar", run: () => schedule(slot) },
+					{ label: "Eliminar", run: () => removeSlot(slot), tone: "danger" },
+				] satisfies MenuAction[],
+			};
+		}
+		const { item } = menu;
+		const live = item.status === "active" || item.status === "moved";
+		return {
+			title: name(item.assignment),
+			lines: [
+				`${weekday(item.date)} ${displayDate(item.date, true)} · ${item.start}–${item.end}`,
+				item.coverRole
+					? `${coverLabels[item.coverRole]}: ${item.teacher} (titular: ${titular(item.assignment)})`
+					: `Docente: ${item.teacher || "Sin docente"}`,
+				`${statusLabels[item.status]}${item.reason ? ` · ${item.reason}` : ""}${item.status === "moved" ? ` · desde ${displayDate(item.originDate)}` : ""}`,
+			],
+			actions: [
+				...(live
+					? [
+							{ label: "Editar", run: () => staffing(item) },
+							{ label: "Reagendar", run: () => occurrence(item, "move") },
+							{
+								label: "Cancelar clase",
+								run: () => occurrence(item, "cancel"),
+								tone: "danger" as const,
+							},
+						]
+					: []),
+				...(item.status !== "active"
+					? [{ label: "Restaurar", run: () => occurrence(item, "restore") }]
+					: []),
+			] satisfies MenuAction[],
+		};
+	})();
+	const grid = view === "dates" ? dated : structure;
+
 	return (
-		<section className="schedule-calendar" aria-labelledby={headingId}>
+		<section
+			className="schedule-calendar"
+			aria-labelledby="schedule-calendar-heading"
+		>
 			<header className="schedule-header">
 				<div>
-					<h2 id={headingId}>Horario semanal</h2>
+					<h2 id="schedule-calendar-heading">Horario semanal</h2>
 					<p>
-						Selecciona una clase o un día para consultar su detalle y gestionar
-						el horario.
+						{view === "dates"
+							? "Arrastra una clase para reagendarla. Haz clic en ella para editarla o cancelarla solo en esa fecha."
+							: "Define las clases que se repiten cada semana. Arrastra para cambiar día u hora, o haz clic en un hueco para agregar una clase."}
 					</p>
 				</div>
 				<div className="schedule-controls">
@@ -231,331 +435,163 @@ export function ScheduleCalendar({
 					su recurrencia.
 				</p>
 			)}
-			<div className="schedule-toolbar">
-				<div className="schedule-week" aria-live="polite">
-					<h3>
-						{displayDate(dates[0])} – {displayDate(dates[6], true)}
-					</h3>
-					<p>Hora local · {s.school.timezone}</p>
-				</div>
-				<div
-					className="schedule-controls"
-					role="group"
-					aria-label="Navegar semanas"
-				>
-					<button
-						type="button"
-						aria-label="Semana anterior"
-						disabled={monday <= "1900-01-08"}
-						onClick={() => setSelectedDate(addDays(selectedDate, -7))}
-					>
-						Anterior
-					</button>
-					<button type="button" onClick={() => setSelectedDate(today)}>
-						Hoy
-					</button>
-					<button
-						type="button"
-						aria-label="Semana siguiente"
-						disabled={monday >= "9999-12-20"}
-						onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-					>
-						Siguiente
-					</button>
-				</div>
-				<label>
-					Ir a fecha
-					<input
-						type="date"
-						min="1900-01-08"
-						max="9999-12-20"
-						value={selectedDate}
-						onChange={(e) => {
-							if (
-								validDate(e.target.value) &&
-								e.target.value >= "1900-01-08" &&
-								e.target.value <= "9999-12-20"
-							)
-								setSelectedDate(e.target.value);
-						}}
-					/>
-				</label>
+			<div className="schedule-toolbar" data-view={view}>
+				<fieldset className="schedule-views">
+					<legend className="schedule-hidden">Vista del horario</legend>
+					{(
+						[
+							["dates", "Por fechas"],
+							["structure", "Estructura semanal"],
+						] as const
+					).map(([id, text]) => (
+						<button
+							type="button"
+							key={id}
+							aria-pressed={view === id}
+							onClick={() => {
+								setMenu(null);
+								setView(id);
+							}}
+						>
+							{text}
+						</button>
+					))}
+				</fieldset>
+				{view === "dates" ? (
+					<>
+						<div className="schedule-week" aria-live="polite">
+							<h3>
+								{displayDate(dates[0])} – {displayDate(dates[6], true)}
+							</h3>
+							<p>Hora local · {s.school.timezone}</p>
+						</div>
+						<fieldset className="schedule-controls schedule-nav">
+							<legend className="schedule-hidden">Navegar semanas</legend>
+							<button
+								type="button"
+								aria-label="Semana anterior"
+								disabled={monday <= "1900-01-08"}
+								onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+							>
+								Anterior
+							</button>
+							<button type="button" onClick={() => setSelectedDate(today)}>
+								Hoy
+							</button>
+							<button
+								type="button"
+								aria-label="Semana siguiente"
+								disabled={monday >= "9999-12-20"}
+								onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+							>
+								Siguiente
+							</button>
+						</fieldset>
+						<label>
+							Ir a fecha
+							<input
+								type="date"
+								min="1900-01-08"
+								max="9999-12-20"
+								value={selectedDate}
+								onChange={(e) => {
+									if (
+										validDate(e.target.value) &&
+										e.target.value >= "1900-01-08" &&
+										e.target.value <= "9999-12-20"
+									)
+										setSelectedDate(e.target.value);
+								}}
+							/>
+						</label>
+					</>
+				) : (
+					<div className="schedule-week">
+						<h3>Plantilla de cada semana</h3>
+						<p>
+							{slots.length} {slots.length === 1 ? "clase" : "clases"} ·
+							Cancelaciones y reagendas se hacen en Por fechas
+						</p>
+					</div>
+				)}
 			</div>
-			<div className="schedule-legend" aria-label="Estados de las clases">
-				<span data-status="active">Programada</span>
-				<span data-status="cancel">Cancelada</span>
-				<span data-status="move">Reagendada</span>
+			<div className="schedule-legend">
+				<span className="schedule-hidden">Estados de las clases:</span>
+				{view === "dates" ? (
+					<>
+						<span data-status="active">Programada</span>
+						<span data-status="cancel">Cancelada</span>
+						<span data-status="move">Reagendada</span>
+						<span data-status="cover">Suplencia</span>
+					</>
+				) : (
+					<span data-status="active">Clase semanal</span>
+				)}
 				<p className="schedule-scroll-hint">
 					Desliza horizontalmente para ver toda la semana.
 				</p>
 			</div>
-			<section
-				className="schedule-scroll"
-				aria-label="Calendario semanal con desplazamiento horizontal y vertical"
-				// biome-ignore lint/a11y/noNoninteractiveTabindex: El calendario necesita foco para desplazamiento horizontal y vertical con teclado.
-				tabIndex={0}
-			>
-				<div className="schedule-grid">
-					<div className="schedule-corner">Hora</div>
-					{days.map((day) => (
-						<div
-							className="schedule-day-heading"
-							key={day.date}
-							data-today={day.date === today}
-						>
-							<button
-								type="button"
-								aria-pressed={selectedDate === day.date}
-								onClick={() => {
-									setSelectedDate(day.date);
-									setSelectedKey("");
-								}}
-							>
-								<span>
-									{weekday(day.date)}
-									{day.date === today && <small>Hoy</small>}
-								</span>
-								<time dateTime={day.date}>{day.date.slice(8)}</time>
-							</button>
-							<p title={day.holiday?.reason}>
-								{day.holiday ? "Día inhábil" : windowText(day.date)}
-							</p>
-						</div>
-					))}
-					<div
-						className="schedule-axis"
-						style={{ height: (endHour - startHour) * hourHeight }}
-					>
-						{hours.map((hour) => (
-							<span key={hour} style={{ top: (hour - startHour) * hourHeight }}>
-								{String(hour).padStart(2, "0")}:00
-							</span>
-						))}
-					</div>
-					{days.map((day) => (
-						<section
-							key={day.date}
-							className={`schedule-day ${day.holiday ? "schedule-day-off" : ""}`}
-							data-selected={day.date === selectedDate}
-							style={{ height: (endHour - startHour) * hourHeight }}
-							aria-label={`${weekday(day.date)} ${day.date}`}
-						>
-							{hours.map((hour) => (
-								<div
-									key={hour}
-									className="schedule-hour-line"
-									style={{ top: (hour - startHour) * hourHeight }}
-								/>
-							))}
-							{day.items.map((item, index) => (
-								<button
-									type="button"
-									key={occurrenceKey(item)}
-									className={`schedule-block schedule-${item.status} ${minutes(item.end) - minutes(item.start) < 60 ? "schedule-short" : ""}`}
-									data-tone={tone(item.assignment)}
-									aria-controls={detailId}
-									aria-pressed={
-										selectedKey === occurrenceKey(item) &&
-										selectedDate === item.date
-									}
-									aria-label={`${name(item.assignment)} · ${displayDate(item.date, true)} · ${item.start}–${item.end} · ${statusLabels[item.status]}. Ver detalle`}
-									onClick={() => inspectClass(item)}
-									style={{
-										top:
-											((minutes(item.start) - startHour * 60) * hourHeight) /
-											60,
-										height:
-											((minutes(item.end) - minutes(item.start)) * hourHeight) /
-											60,
-										left:
-											item.status === "cancel" || item.status === "move"
-												? "50%"
-												: 4,
-										right:
-											item.status === "cancel" || item.status === "move"
-												? 4
-												: day.items.some(
-															(other) =>
-																other !== item &&
-																(other.status === "cancel" ||
-																	other.status === "move") &&
-																other.start < item.end &&
-																other.end > item.start,
-														)
-													? "50%"
-													: 4,
-										zIndex: index + 1,
-									}}
-									title={`${name(item.assignment)} · ${item.start}–${item.end} · ${statusLabels[item.status]} · ${item.reason}`}
-								>
-									<strong>{name(item.assignment)}</strong>
-									<span>
-										{item.start}–{item.end}
-									</span>
-									<span className="schedule-block-status">
-										{statusLabels[item.status]}
-									</span>
-								</button>
-							))}
-						</section>
-					))}
-				</div>
-			</section>
-			<section
-				className="schedule-detail"
-				id={detailId}
-				aria-label="Clases del día seleccionado"
-			>
-				<div className="schedule-detail-heading">
-					<h3>
-						{weekday(selectedDate)} · {displayDate(selectedDate, true)}
-					</h3>
-					<span>
-						{selected.items.length}{" "}
-						{selected.items.length === 1 ? "clase" : "clases"}
-					</span>
-				</div>
-				<p className="schedule-window">
-					{selected.holiday
-						? `Día inhábil: ${selected.holiday.reason}. Sin clases efectivas ni ventana.`
-						: windowText(selectedDate)}
-				</p>
-				{!selected.items.length && (
-					<p>
-						No hay clases para esta fecha. Agenda una recurrencia o reagenda una
-						clase desde otro día.
-					</p>
-				)}
-				{selected.items.map((item) => (
-					<article
-						className="schedule-occurrence"
-						key={occurrenceKey(item)}
-						tabIndex={-1}
-						data-selected={selectedKey === occurrenceKey(item)}
-						ref={(node) => {
-							if (node) detailRefs.current.set(occurrenceKey(item), node);
-							else detailRefs.current.delete(occurrenceKey(item));
-						}}
-					>
-						<h4>
-							{name(item.assignment)} · {item.start}–{item.end}
-						</h4>
-						<p className="schedule-occurrence-status" data-status={item.status}>
-							{statusLabels[item.status]}
-							{item.reason ? ` · Motivo: ${item.reason}` : ""}
-							{item.status === "moved" ? ` · Desde ${item.originDate}` : ""}
-						</p>
-						<p>{assignments.find((a) => a.id === item.assignment)?.teacher}</p>
-						<div className="schedule-controls">
-							{(item.status === "active" || item.status === "moved") && (
-								<>
-									<button
-										type="button"
-										onClick={() => occurrence(item, "cancel")}
-									>
-										Cancelar clase
-									</button>
-									<button
-										type="button"
-										onClick={() => occurrence(item, "move")}
-									>
-										Reagendar clase
-									</button>
-								</>
-							)}
-							{item.status !== "active" && (
-								<button
-									type="button"
-									onClick={() => occurrence(item, "restore")}
-								>
-									Restaurar ocurrencia
-								</button>
-							)}
-						</div>
-						<details>
-							<summary>Horario original e historial</summary>
-							<p>
-								Serie: {slots.find((slot) => slot.id === item.schedule)?.day} ·{" "}
-								{slots.find((slot) => slot.id === item.schedule)?.start}–
-								{slots.find((slot) => slot.id === item.schedule)?.end}. Fecha
-								original: {item.originDate}.
-							</p>
-							{s.scheduleChanges
-								.filter(
-									(change) =>
-										change.schedule === item.schedule &&
-										change.date === item.originDate,
-								)
-								.map((change) => (
-									<p key={change.id}>
-										{change.recordedAt} · {change.author} ·{" "}
-										{change.action === "move"
-											? `Reagendada a ${change.targetDate} ${change.start}–${change.end}`
-											: change.action === "cancel"
-												? "Cancelada"
-												: "Restaurada"}{" "}
-										· {change.reason}
-									</p>
-								))}
-						</details>
-					</article>
-				))}
-			</section>
-			<details className="schedule-settings">
-				<summary>Ventana de fin de jornada del grupo</summary>
-				<p>
-					{config.before} minutos antes y {config.after} después del fin de la
-					última clase efectiva. No se calcula una ventana por clase. Los días
-					sin clases o inhábiles no tienen ventana.
-				</p>
-				<button
-					type="button"
-					onClick={() =>
-						open(
-							"schedule-window",
-							"Configurar ventana del grupo",
-							[
-								field("before", "Minutos antes (0–120, enteros)", "number"),
-								field("after", "Minutos después (0–120, enteros)", "number"),
-							],
-							{
-								group: groupId,
-								before: String(config.before),
-								after: String(config.after),
-							},
-							[disclaimer],
-							"La configuración afecta solo a este grupo. Las cancelaciones y reagendas recalculan el fin de jornada.",
-						)
+			<ScheduleGrid
+				key={view}
+				columns={grid.columns}
+				items={grid.items}
+				activeKey={menu?.key}
+				label={
+					view === "dates"
+						? "Calendario semanal por fechas con desplazamiento horizontal y vertical"
+						: "Estructura semanal con desplazamiento horizontal y vertical"
+				}
+				onSelect={(item, anchor) => {
+					if (menu?.key === item.key) return setMenu(null);
+					if (view === "structure") {
+						const slot = slots.find((x) => x.id === item.key);
+						if (slot) setMenu({ kind: "slot", slot, key: item.key, anchor });
+						return;
 					}
+					const found = byKey.get(item.key);
+					if (found)
+						setMenu({ kind: "occurrence", item: found, key: item.key, anchor });
+				}}
+				onMove={(item, column, start) => {
+					setMenu(null);
+					if (view === "structure") {
+						const slot = slots.find((x) => x.id === item.key);
+						if (slot)
+							schedule(slot, {
+								day: column,
+								start,
+								end: clock(
+									minutes(start) + minutes(slot.end) - minutes(slot.start),
+								),
+							});
+						return;
+					}
+					const found = byKey.get(item.key);
+					if (found) occurrence(found, "move", { date: column, start });
+				}}
+				onCreate={
+					view === "structure" && assignments.length
+						? (day, start) =>
+								schedule(undefined, {
+									day,
+									start,
+									end: clock(Math.min(minutes(start) + 60, 23 * 60 + 59)),
+								})
+						: undefined
+				}
+			/>
+			{menu && menuContent && (
+				<ClassMenu
+					anchor={menu.anchor}
+					title={menuContent.title}
+					actions={menuContent.actions}
+					onClose={closeMenu}
 				>
-					Configurar minutos
-				</button>
-			</details>
-			<details className="schedule-series">
-				<summary>Materias y recurrencias ({slots.length})</summary>
-				{assignments.map((assignment) => (
-					<div className="schedule-occurrence" key={assignment.id}>
-						<h4>
-							{assignment.subject} · {assignment.teacher}
-						</h4>
-						<p>
-							{assignment.period} · Escala {assignment.min}–{assignment.max}
-						</p>
-						{slots
-							.filter((slot) => slot.assignment === assignment.id)
-							.map((slot) => (
-								<div className="schedule-controls" key={slot.id}>
-									<span>
-										{slot.day} {slot.start}–{slot.end}
-									</span>
-									<button type="button" onClick={() => schedule(slot)}>
-										Editar recurrencia de {assignment.subject}
-									</button>
-								</div>
-							))}
-					</div>
-				))}
-			</details>
+					{menuContent.lines.map((line) => (
+						<p key={line}>{line}</p>
+					))}
+				</ClassMenu>
+			)}
 		</section>
 	);
 }
