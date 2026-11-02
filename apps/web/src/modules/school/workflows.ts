@@ -4,16 +4,16 @@ import {
 	calendarEventsSchema,
 	calendarHolidaysSchema,
 } from "./calendar-workflows";
+import { cycleDates, cycleSchema } from "./cycle-dates";
 import {
 	applySchedule,
 	assertDate,
 	scheduleChangesSchema,
 	scheduleWindowsSchema,
+	schoolToday,
 } from "./schedule-helpers";
 
-import { cycleDates, cycleSchema } from "./cycle-dates";
-
- const enrollment = z.object({ group: z.string(), cycle: z.string() });
+const enrollment = z.object({ group: z.string(), cycle: z.string() });
 const history = z.array(
 	z.object({
 		id: z.string(),
@@ -57,6 +57,9 @@ const schema = z.object({
 			id: z.string(),
 			student: z.string(),
 			name: z.string(),
+			relation: z.string().optional(),
+			phone: z.string().optional(),
+			email: z.string().optional(),
 			status: z.string(),
 			history,
 		}),
@@ -121,6 +124,9 @@ const schema = z.object({
 			followup: z.string(),
 			shared: z.string(),
 			published: z.boolean(),
+			/** ISO yyyy-mm-dd in the school's calendar; absent on records saved before it existed. */
+			date: z.string().optional(),
+			author: z.string().optional(),
 		}),
 	),
 	assignments: z.array(
@@ -155,6 +161,17 @@ const schema = z.object({
 				cycle: z.string(),
 				from: z.string(),
 				to: z.string(),
+				reason: z.string(),
+				author: z.string(),
+			}),
+		)
+		.default([]),
+	withdrawals: z
+		.array(
+			z.object({
+				id: z.string(),
+				student: z.string(),
+				cycle: z.string(),
 				reason: z.string(),
 				author: z.string(),
 			}),
@@ -243,6 +260,7 @@ export function initialState(legacy = false): State {
 		scheduleChanges: [],
 		scheduleWindows: [],
 		transfers: [],
+		withdrawals: [],
 	};
 	if (!legacy) {
 		state.school.name = "Instituto Aurora";
@@ -252,6 +270,9 @@ export function initialState(legacy = false): State {
 		state.students[1].matricula = "AUR-26002";
 		state.links[0].name = "Mariana Ruiz Salcedo";
 		state.links[0].status = "Verificado";
+		state.links[0].relation = "Madre";
+		state.links[0].phone = "5551234567";
+		state.links[0].email = "mariana.ruiz@example.com";
 		state.events[0].kind = "Entrada";
 		state.events[0].date = "2026-10-19";
 	}
@@ -267,6 +288,8 @@ export function restore(raw: string): State | null {
 	}
 }
 export function activeGroup(s: State, student: string, cycle: string) {
+	if (s.withdrawals.some((w) => w.student === student && w.cycle === cycle))
+		return undefined;
 	return (
 		s.transfers.filter((t) => t.student === student && t.cycle === cycle).at(-1)
 			?.to ||
@@ -313,6 +336,11 @@ export function recipients(s: State, audience: string, target: string) {
 				.map((l) => l.name),
 		),
 	];
+}
+/** Local copy of experience.ts's year lookup; importing it would be circular. */
+function startYear(s: State, cycle: string) {
+	const c = s.cycles.find((x) => x.id === cycle);
+	return Number((c?.startDate || c?.name || "").match(/\d{4}/)?.[0] ?? 0);
 }
 function required(value: string | undefined, label: string) {
 	if (!value?.trim()) throw Error(`Completa ${label}.`);
@@ -433,6 +461,23 @@ export function apply(state: State, { kind, data: d }: Command): State {
 			});
 			break;
 		}
+		case "withdraw": {
+			const x = student();
+			const cycle = x.enrollments
+				.map((e) => e.cycle)
+				.sort((a, b) => startYear(s, b) - startYear(s, a))[0];
+			if (!cycle) throw Error("El alumno no tiene inscripción activa.");
+			if (s.withdrawals.some((w) => w.student === x.id && w.cycle === cycle))
+				throw Error("El alumno ya está dado de baja en este ciclo.");
+			s.withdrawals.push({
+				id,
+				student: x.id,
+				cycle,
+				reason: reason(),
+				author: "Patricia Salgado Méndez",
+			});
+			break;
+		}
 		case "guardian":
 			student();
 			if (
@@ -452,6 +497,15 @@ export function apply(state: State, { kind, data: d }: Command): State {
 				history: [entry("Verificado")],
 			});
 			break;
+		case "guardian-edit": {
+			const x = s.links.find((x) => x.id === d.id);
+			if (!x) throw Error("Vínculo no encontrado.");
+			x.name = req("name");
+			x.relation = d.relation?.trim() || undefined;
+			x.phone = d.phone?.trim() || undefined;
+			x.email = d.email?.trim() || undefined;
+			break;
+		}
 		case "guardian-status": {
 			const x = s.links.find((x) => x.id === d.id);
 			if (!x) throw Error("Vínculo no encontrado.");
@@ -540,6 +594,8 @@ export function apply(state: State, { kind, data: d }: Command): State {
 				cycle: d.group ? group().cycle : undefined,
 				shared: req("shared"),
 				published: false,
+				date: schoolToday(s.school.timezone),
+				author: "Patricia Salgado Méndez",
 			});
 			break;
 		case "conduct-followup": {

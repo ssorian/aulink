@@ -28,6 +28,25 @@ const audit = (n: number, value: string, reason: string) => ({
 	author: "Personal de ejemplo",
 });
 
+const conductAuthors = [
+	"Patricia Salgado Méndez",
+	"Adriana Beltrán Ríos",
+	"Roberto Aguilar Téllez",
+];
+const conductDates = [
+	"2026-08-26",
+	"2026-09-09",
+	"2026-09-23",
+	"2026-10-07",
+	"2026-10-14",
+	"2026-10-19",
+];
+/** Current-cycle reports fall in Aug–Oct 2026; the historical cycle ends before. */
+const conductDate = (i: number, cycle: string) =>
+	cycle === id("cycle", 2)
+		? `2026-0${3 + ((i / 3) % 3)}-${String(10 + (i % 15)).padStart(2, "0")}`
+		: conductDates[(i / 3) % conductDates.length];
+
 /** Deterministic, synthetic records. IDs and registrations are stable across reloads. */
 export function buildMockData(legacy = false): State {
 	let s = initialState(true);
@@ -162,6 +181,13 @@ export function buildMockData(legacy = false): State {
 				followup: "Revisar el acuerdo en la siguiente sesión de muestra.",
 				shared: i % 2 ? "Interno" : "Compartido",
 				published: i % 4 === 0,
+				// Legacy seeds predate these fields so unedited stored rows still migrate.
+				...(legacy
+					? {}
+					: {
+							date: conductDate(i, group.cycle),
+							author: conductAuthors[(i / 3) % conductAuthors.length],
+						}),
 			});
 	}
 	// Historical enrollment and same-cycle transfer demonstrate different concepts.
@@ -635,10 +661,31 @@ function naturalSeed(seed: State): State {
 	}
 	for (const group of seed.groups)
 		replacements[group.name] = group.name.replace(" · Muestra", "");
+	const contact = new Map<string, { phone?: string; email?: string }>();
+	for (const [i, link] of seed.links.entries()) {
+		// Every third guardian has no contact data so "Sin registrar" is exercised.
+		contact.set(link.id, {
+			phone:
+				i % 3 === 2
+					? undefined
+					: `55${String(30000000 + i * 137).padStart(8, "0")}`,
+			email: i % 3 === 0 ? `tutor${i + 1}@example.com` : undefined,
+		});
+	}
 	// Exact value mapping is confined to this freshly constructed dataset.
 	const s: State = JSON.parse(JSON.stringify(seed), (_key, value: unknown) =>
 		typeof value === "string" ? (replacements[value] ?? value) : value,
 	);
+	for (const link of s.links) {
+		link.relation = link.name.startsWith("Javier") ? "Padre" : "Madre";
+		Object.assign(link, contact.get(link.id));
+	}
+	// The first sample guardian is the documented example with full contact data.
+	const first = s.links.find((l) => l.name === "Mariana Ruiz Salcedo");
+	if (first) {
+		first.phone = "5551234567";
+		first.email = "mariana.ruiz@example.com";
+	}
 	return s;
 }
 
