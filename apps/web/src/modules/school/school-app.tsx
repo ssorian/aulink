@@ -280,29 +280,39 @@ export function SchoolApp() {
 					</section>
 				</header>
 				<main id="main" tabIndex={-1}>
-					{page === "Grupos" && groupId && (
-						<button
-							type="button"
-							className="group-back"
-							onClick={() => setGroupId("")}
-						>
-							<Icon name="back" size={18} />
-							Volver a Grupos
-						</button>
-					)}
-					{page === "Alumnos" && profile && (
-						<button
-							type="button"
-							className="group-back"
-							onClick={returnFromProfile}
-						>
-							<Icon name="back" size={18} />
-							{profileOrigin ? "Volver al grupo de origen" : "Volver a Alumnos"}
-						</button>
-					)}
-					<div className="page-heading">
-						<div>
-							<h1>{section.pages.length > 1 ? page : section.label}</h1>
+					<div
+						className={
+							(page === "Grupos" && groupId) || (page === "Alumnos" && profile)
+								? "detail-nav"
+								: undefined
+						}
+					>
+						{page === "Grupos" && groupId && (
+							<button
+								type="button"
+								className="group-back"
+								onClick={() => setGroupId("")}
+							>
+								<Icon name="back" size={18} />
+								Volver a Grupos
+							</button>
+						)}
+						{page === "Alumnos" && profile && (
+							<button
+								type="button"
+								className="group-back"
+								onClick={returnFromProfile}
+							>
+								<Icon name="back" size={18} />
+								{profileOrigin
+									? "Volver al grupo de origen"
+									: "Volver a Alumnos"}
+							</button>
+						)}
+						<div className="page-heading">
+							<div>
+								<h1>{section.pages.length > 1 ? page : section.label}</h1>
+							</div>
 						</div>
 					</div>
 					{storageError && (

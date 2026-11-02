@@ -437,3 +437,10 @@ dialog > h2 { margin-top: 0; padding-right: 38px; }
 .topbar .pill, .pill { background: var(--tone-sky-bg); color: var(--tone-sky-ink); }
 .task-icon { background: var(--tone-lilac-bg); color: var(--tone-lilac-ink); }
 .sidebar-note .pill { background: var(--sidebar-active); color: var(--sidebar-text); }
+
+/* Detail views: a quiet back link and the page title demoted to a breadcrumb label. */
+button.group-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--action); font-size: 14px; font-weight: 600; }
+button.group-back:hover { background: transparent; color: var(--action-hover); text-decoration: underline; text-underline-offset: 3px; }
+.detail-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; margin-bottom: 8px; }
+/* The back link already names the section; keep the h1 for assistive tech only. */
+.detail-nav .page-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
