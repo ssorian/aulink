@@ -34,6 +34,21 @@ export const scheduleChangesSchema = z
 			),
 	)
 	.default([]);
+export const scheduleStaffingSchema = z
+	.array(
+		z.object({
+			id: z.string(),
+			schedule: z.string(),
+			/** Original date of the occurrence; follows it when it is rescheduled. */
+			date: z.string().refine(validDate),
+			role: z.enum(["substitute", "teacher", "titular"]),
+			teacher: z.string(),
+			reason: z.string(),
+			author: z.string(),
+			recordedAt: z.string(),
+		}),
+	)
+	.default([]);
 export const scheduleWindowsSchema = z
 	.array(
 		z.object({
@@ -98,7 +113,18 @@ export type Occurrence = {
 	end: string;
 	status: "active" | "cancel" | "move" | "moved";
 	reason: string;
+	/** Teacher for this date: the titular unless a per-date record overrides it. */
+	teacher: string;
+	coverRole: "substitute" | "teacher" | null;
 };
+function cover(s: State, schedule: string, date: string, titular: string) {
+	const record = s.scheduleStaffing
+		.filter((x) => x.schedule === schedule && x.date === date)
+		.at(-1);
+	return record && record.role !== "titular"
+		? { teacher: record.teacher, coverRole: record.role }
+		: { teacher: titular, coverRole: null };
+}
 export function occurrences(
 	s: State,
 	group: string,
@@ -110,6 +136,8 @@ export function occurrences(
 	);
 	const result: Occurrence[] = [];
 	for (const slot of slots) {
+		const titular =
+			s.assignments.find((a) => a.id === slot.assignment)?.teacher || "";
 		const latest = new Map<string, State["scheduleChanges"][number]>();
 		for (const change of s.scheduleChanges.filter(
 			(c) => c.schedule === slot.id,
@@ -127,6 +155,7 @@ export function occurrences(
 				status:
 					change && change.action !== "restore" ? change.action : "active",
 				reason: change?.reason || "",
+				...cover(s, slot.id, date, titular),
 			});
 		for (const item of latest.values())
 			if (item.action === "move" && item.targetDate === date)
@@ -139,6 +168,7 @@ export function occurrences(
 					end: item.end,
 					status: "moved",
 					reason: item.reason,
+					...cover(s, slot.id, item.date, titular),
 				});
 	}
 	return result.sort((a, b) => a.start.localeCompare(b.start));
@@ -237,9 +267,13 @@ export function applySchedule(
 		assertTime(d.start, d.end);
 		const old = d.id ? s.schedules.find((slot) => slot.id === d.id) : undefined;
 		if (d.id && !old) throw Error("Horario inexistente.");
-		if (old && old.assignment !== assignment.id)
-			throw Error("Conserva la asignación original al editar.");
-		if (old && s.scheduleChanges.some((c) => c.schedule === old.id))
+		const reshaped =
+			old &&
+			(old.assignment !== assignment.id ||
+				old.day !== d.day ||
+				old.start !== d.start ||
+				old.end !== d.end);
+		if (reshaped && s.scheduleChanges.some((c) => c.schedule === old.id))
 			throw Error(
 				"Esta serie tiene historial de excepciones. Reagenda cada fecha para conservar su trazabilidad.",
 			);
@@ -249,9 +283,29 @@ export function applySchedule(
 			start: d.start,
 			end: d.end,
 		};
+		const teacher = d.teacher?.trim();
+		if (teacher) assignment.teacher = teacher;
 		if (old) Object.assign(old, values);
 		else s.schedules.push({ id, ...values });
 		assertGroup(s, assignment.group);
+		return;
+	}
+	if (kind === "schedule-delete") {
+		const index = s.schedules.findIndex((slot) => slot.id === d.id);
+		if (index < 0) throw Error("Horario inexistente.");
+		const owner = s.assignments.find(
+			(a) => a.id === s.schedules[index].assignment,
+		);
+		if (d.group && owner?.group !== d.group)
+			throw Error("La clase no pertenece a este grupo.");
+		if (
+			s.scheduleChanges.some((c) => c.schedule === d.id) ||
+			s.scheduleStaffing.some((c) => c.schedule === d.id)
+		)
+			throw Error(
+				"Esta serie tiene historial de cancelaciones, reagendas o suplencias; no se puede eliminar.",
+			);
+		s.schedules.splice(index, 1);
 		return;
 	}
 	const slot = s.schedules.find((slot) => slot.id === d.schedule);
@@ -266,6 +320,27 @@ export function applySchedule(
 	assertDate(d.date);
 	if (weekday(d.date) !== slot.day)
 		throw Error("La fecha no corresponde al día de esta clase.");
+	if (kind === "schedule-staffing") {
+		if (!["substitute", "teacher", "titular"].includes(d.role))
+			throw Error("Selecciona suplente, cambio de docente o docente titular.");
+		const teacher = d.role === "titular" ? "" : d.teacher?.trim() || "";
+		if (d.role !== "titular" && !teacher)
+			throw Error("Indica el docente para esta fecha.");
+		if (teacher === assignment.teacher)
+			throw Error("Elige un docente distinto al titular.");
+		if (!d.reason?.trim()) throw Error("Escribe el motivo del cambio.");
+		s.scheduleStaffing.push({
+			id,
+			schedule: slot.id,
+			date: d.date,
+			role: d.role as "substitute" | "teacher" | "titular",
+			teacher,
+			reason: d.reason.trim(),
+			author: "Personal demo",
+			recordedAt: new Date().toISOString(),
+		});
+		return;
+	}
 	if (!d.reason?.trim()) throw Error("Escribe el motivo del cambio.");
 	if (!["cancel", "move", "restore"].includes(d.action))
 		throw Error("Selecciona cancelar, reagendar o restaurar.");

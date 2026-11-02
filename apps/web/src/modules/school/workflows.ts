@@ -9,6 +9,7 @@ import {
 	applySchedule,
 	assertDate,
 	scheduleChangesSchema,
+	scheduleStaffingSchema,
 	scheduleWindowsSchema,
 	schoolToday,
 } from "./schedule-helpers";
@@ -189,6 +190,7 @@ const schema = z.object({
 		)
 		.default([]),
 	scheduleChanges: scheduleChangesSchema,
+	scheduleStaffing: scheduleStaffingSchema,
 	scheduleWindows: scheduleWindowsSchema,
 	staff: z.array(
 		z.object({ id: z.string(), name: z.string(), role: z.string(), history }),
@@ -258,6 +260,7 @@ export function initialState(legacy = false): State {
 		staff: [],
 		schedules: [],
 		scheduleChanges: [],
+		scheduleStaffing: [],
 		scheduleWindows: [],
 		transfers: [],
 		withdrawals: [],
@@ -408,6 +411,8 @@ export function apply(state: State, { kind, data: d }: Command): State {
 		case "schedule":
 		case "schedule-window":
 		case "schedule-occurrence":
+		case "schedule-staffing":
+		case "schedule-delete":
 			applySchedule(s, kind, d, id);
 			break;
 		case "calendar-holiday":

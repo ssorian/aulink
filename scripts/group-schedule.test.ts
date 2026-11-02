@@ -211,3 +211,147 @@ test("strict dates, time, weekdays, reasons, midnight and integer minutes", () =
 		schoolToday("America/Mexico_City", new Date("2026-08-04T02:00:00Z")),
 	).toBe("2026-08-03");
 });
+const cover = (s: State, extra: Record<string, string> = {}) =>
+	run(s, "schedule-staffing", {
+		group: "g1",
+		schedule: s.schedules[1].id,
+		date: "2026-08-03",
+		role: "substitute",
+		teacher: "Laura Suplente",
+		reason: "Licencia médica",
+		...extra,
+	});
+test("per-date substitute or teacher swap only affects that date and can be reverted", () => {
+	const s = fixture();
+	const covered = cover(s);
+	const day = (state: State, date: string) =>
+		occurrences(state, "g1", date).find(
+			(x) => x.schedule === s.schedules[1].id,
+		);
+	expect(day(covered, "2026-08-03")).toMatchObject({
+		teacher: "Laura Suplente",
+		coverRole: "substitute",
+	});
+	expect(day(covered, "2026-08-10")).toMatchObject({
+		teacher: "Docente",
+		coverRole: null,
+	});
+	expect(covered.assignments).toEqual(s.assignments);
+	expect(covered.scheduleStaffing).toHaveLength(1);
+	expect(covered.scheduleStaffing[0]).toMatchObject({
+		date: "2026-08-03",
+		reason: "Licencia médica",
+	});
+	const swapped = cover(covered, { role: "teacher", teacher: "Mario Ruiz" });
+	expect(day(swapped, "2026-08-03")).toMatchObject({
+		teacher: "Mario Ruiz",
+		coverRole: "teacher",
+	});
+	const reverted = cover(swapped, { role: "titular", teacher: "" });
+	expect(day(reverted, "2026-08-03")).toMatchObject({
+		teacher: "Docente",
+		coverRole: null,
+	});
+	expect(reverted.scheduleStaffing).toHaveLength(3);
+	const persisted = restore(JSON.stringify(covered));
+	expect(persisted?.scheduleStaffing).toEqual(covered.scheduleStaffing);
+	const legacy = JSON.parse(JSON.stringify(s));
+	delete legacy.scheduleStaffing;
+	expect(restore(JSON.stringify(legacy))?.scheduleStaffing).toEqual([]);
+});
+test("per-date staffing follows a moved occurrence by its original date", () => {
+	const s = change(fixture(), 1, "move", {
+		targetDate: "2026-08-04",
+		start: "12:00",
+		end: "13:00",
+	});
+	const covered = cover(s);
+	const moved = occurrences(covered, "g1", "2026-08-04").find(
+		(x) => x.status === "moved",
+	);
+	expect(moved).toMatchObject({ teacher: "Laura Suplente" });
+});
+test("per-date staffing rejects invalid input without changing data", () => {
+	const s = fixture();
+	for (const [extra, message] of [
+		[{ teacher: "  " }, /docente/],
+		[{ teacher: "Docente" }, /distinto al titular/],
+		[{ reason: "" }, /motivo/],
+		[{ role: "otro" }, /suplente/],
+		[{ date: "2026-08-04" }, /día de esta clase/],
+		[{ date: "2026-02-30" }, /fecha real/],
+		[{ group: "g2" }, /grupo/],
+		[{ schedule: "nope" }, /clase existente/],
+	] as const)
+		expect(() => cover(s, extra)).toThrow(message);
+	expect(s.scheduleStaffing).toEqual([]);
+});
+test("structure edit changes subject and titular teacher; time edits keep the history rule", () => {
+	let s = fixture();
+	s = run(s, "assignment", {
+		group: "g1",
+		subject: "Música",
+		teacher: "Ana",
+		period: "P1",
+		min: "0",
+		max: "10",
+	});
+	const music = s.assignments[1].id;
+	const edited = run(s, "schedule", {
+		id: s.schedules[0].id,
+		assignment: music,
+		day: "Lunes",
+		start: "08:00",
+		end: "09:00",
+		teacher: "Beatriz Ríos",
+	});
+	expect(edited.schedules[0].assignment).toBe(music);
+	expect(edited.assignments[1].teacher).toBe("Beatriz Ríos");
+	expect(edited.assignments[0].teacher).toBe("Docente");
+	const withHistory = change(s, 0, "cancel");
+	const teacherOnly = run(withHistory, "schedule", {
+		id: s.schedules[0].id,
+		assignment: s.assignments[0].id,
+		day: "Lunes",
+		start: "08:00",
+		end: "09:00",
+		teacher: "Nuevo Titular",
+	});
+	expect(teacherOnly.assignments[0].teacher).toBe("Nuevo Titular");
+	expect(() =>
+		run(withHistory, "schedule", {
+			id: s.schedules[0].id,
+			assignment: music,
+			day: "Lunes",
+			start: "08:00",
+			end: "09:00",
+		}),
+	).toThrow(/historial/);
+});
+test("delete recurrence removes only that series and keeps traced series", () => {
+	const s = fixture();
+	const removed = run(s, "schedule-delete", {
+		group: "g1",
+		id: s.schedules[2].id,
+	});
+	expect(removed.schedules.map((x) => x.id)).toEqual(
+		s.schedules.slice(0, 2).map((x) => x.id),
+	);
+	expect(removed.assignments).toEqual(s.assignments);
+	expect(dayWindow(removed, "g1", "2026-08-03")?.last).toBe("10:00");
+	expect(() =>
+		run(s, "schedule-delete", { group: "g1", id: "nope" }),
+	).toThrow(/inexistente/);
+	expect(() =>
+		run(s, "schedule-delete", { group: "g2", id: s.schedules[2].id }),
+	).toThrow(/grupo/);
+	const traced = change(s, 2, "cancel");
+	expect(() =>
+		run(traced, "schedule-delete", { group: "g1", id: s.schedules[2].id }),
+	).toThrow(/historial/);
+	const staffed = cover(s);
+	expect(() =>
+		run(staffed, "schedule-delete", { group: "g1", id: s.schedules[1].id }),
+	).toThrow(/historial/);
+	expect(traced.schedules).toHaveLength(3);
+});
