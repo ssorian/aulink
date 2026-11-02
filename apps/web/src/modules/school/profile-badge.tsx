@@ -3,7 +3,7 @@ export function ProfileBadge({
 	tone,
 	children,
 }: {
-	tone: "ok" | "warn" | "off" | "current";
+	tone: "ok" | "warn" | "off" | "current" | "neutral";
 	children: string;
 }) {
 	return (

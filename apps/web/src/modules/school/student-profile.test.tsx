@@ -1,13 +1,24 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, test } from "bun:test";
-import { Children, isValidElement, type ReactElement } from "react";
+import {
+	Children,
+	isValidElement,
+	type ReactElement,
+	type ReactNode,
+} from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConductView } from "./conduct-view";
 import { buildMockData } from "./mock-data";
 import { StudentGrades } from "./student-grades";
-import { StudentProfile } from "./student-profile";
+import {
+	credentialPreview,
+	GuardianDetail,
+	openWithdraw,
+	StudentProfile,
+} from "./student-profile";
+import { summarizeGrades } from "./student-summary";
 import { options } from "./view-helpers";
-import { activeGroup } from "./workflows";
+import { activeGroup, wasEnrolled } from "./workflows";
 
 function setup() {
 	const s = buildMockData();
@@ -48,7 +59,14 @@ test("profile offers four tabs and opens on Resumen", () => {
 		expect(nav).not.toContain(gone);
 });
 
-test("heading names the student with matrícula, active group, cycle and actions", () => {
+const section = (html: string, heading: string) =>
+	html.match(
+		new RegExp(
+			`<section class="panel ui-panel profile-card[^"]*"[^>]*>(?:(?!</section>)[\\s\\S])*?<h2[^>]*>${heading}</h2>[\\s\\S]*?</section>`,
+		),
+	)?.[0] ?? "";
+
+test("heading names the student with matrícula, grade, group, cycle and two actions", () => {
 	const html = render();
 	const heading =
 		html.match(/<section class="workspace-heading[\s\S]*?<\/section>/)?.[0] ??
@@ -57,91 +75,337 @@ test("heading names the student with matrícula, active group, cycle and actions
 	expect(text(heading)).toContain(
 		"Matrícula AUR-26101 · 1° B · Agosto 2026 – Julio 2027",
 	);
-	expect(heading).toContain(">Reinscribir en otro ciclo</button>");
 	expect(heading).toContain(">Cambiar de grupo</button>");
+	expect(heading).toContain(">Dar de baja</button>");
+	expect(heading).not.toContain("Reinscribir");
+	expect(heading).not.toContain("Baja</span>");
 });
 
-test("enrollment shows the current cycle first and folds earlier ones", () => {
-	const html = render();
-	const current = html.indexOf(
-		"Agosto 2026 – Julio 2027",
-		html.indexOf("Inscripción"),
-	);
-	const earlier = html.indexOf("Agosto 2025 – Julio 2026");
-	expect(current).toBeGreaterThan(-1);
-	expect(earlier).toBeGreaterThan(current);
-	expect(html).toMatch(/<span class="profile-badge[^"]*">Actual<\/span>/);
-	expect(html).toContain('aria-label="Abrir grupo 1° B"');
-	expect(text(html)).toContain("Inscripción original 1° A");
-	expect(text(html)).toContain("Motivo Cambio al turno vespertino");
-	expect(text(html)).toContain("Registró Patricia Salgado Méndez");
-	const details =
-		html.match(
-			/<details[^>]*>[\s\S]*?Ciclos anteriores[\s\S]*?<\/details>/,
-		)?.[0] ?? "";
-	expect(details).toContain("Agosto 2025 – Julio 2026");
-	expect(details).toContain('aria-label="Abrir grupo 1° H"');
-	// Same original and active group: the original line adds nothing.
-	expect(details).not.toContain("Inscripción original");
-});
-
-test("parents or guardians list status, actions and folded history", () => {
-	const html = render();
-	expect(html).toContain("<h2");
-	expect(text(html)).toContain("Padres o tutores");
-	expect(html).toContain(">Vincular tutor</button>");
-	expect(text(html)).toContain("Mariana Ruiz Salcedo");
-	expect(text(html)).toContain("Javier Mendoza Esquivel");
-	expect(html).toMatch(/profile-badge[^"]*">Verificado en el registro<\/span>/);
-	expect(html).toMatch(/profile-badge[^"]*">Restringido<\/span>/);
-	expect(html).toContain(
-		'aria-label="Restringir o revocar a Mariana Ruiz Salcedo"',
-	);
-	expect(html).toMatch(
-		/<details[^>]*><summary>Historial del vínculo<\/summary>/,
-	);
-});
-
-test("credential shows the current revision and folds earlier ones without repeating identity", () => {
-	const html = render();
-	expect(text(html)).toContain("Revisión 2");
-	expect(html).toMatch(/profile-badge[^"]*">Vigente<\/span>/);
-	expect(text(html)).toContain("Credencial vigente para el ciclo escolar");
-	expect(html).toContain(">Reemitir credencial</button>");
-	const folded =
-		html.match(
-			/<details[^>]*><summary>Revisiones anteriores[\s\S]*?<\/details>/,
-		)?.[0] ?? "";
-	expect(text(folded)).toContain("Revisión 1");
-	expect(html.match(/AUR-26101/g)?.length).toBe(1);
-});
-
-test("pending work counts drafts and links to their tabs", () => {
+test("a withdrawn student shows a Baja badge and cannot be moved or withdrawn again", () => {
 	const { s, student } = setup();
-	const drafts = s.grades.filter(
-		(g) => g.student === student.id && !g.published,
-	).length;
-	const reports = s.conduct.filter(
-		(c) => c.student === student.id && !c.published,
-	).length;
+	s.withdrawals.push({
+		id: "w",
+		student: student.id,
+		cycle: student.enrollments.at(-1)?.cycle ?? "",
+		reason: "Cambio de ciudad",
+		author: "A",
+	});
+	const heading =
+		render(s, student.id).match(
+			/<section class="workspace-heading[\s\S]*?<\/section>/,
+		)?.[0] ?? "";
+	expect(heading).toMatch(/profile-badge[^"]*">Baja<\/span>/);
+	expect(heading).toMatch(/<button[^>]*disabled=""[^>]*>Cambiar de grupo/);
+	expect(heading).toMatch(/<button[^>]*disabled=""[^>]*>Dar de baja/);
+});
+
+test("Dar de baja opens the withdraw flow with a warning preview", () => {
+	const { student } = setup();
+	const calls: unknown[][] = [];
+	openWithdraw((...args) => calls.push(args), student);
+	expect(calls[0][0]).toBe("withdraw");
+	expect(calls[0][3]).toEqual({ student: student.id });
+	expect((calls[0][2] as { key: string }[]).map((f) => f.key)).toEqual([
+		"reason",
+	]);
+	const preview = (calls[0][4] as string[]).join(" ");
+	expect(preview).toContain("sale de las listas del grupo");
+	expect(preview).toContain("avisos a sus tutores");
+	expect(preview).toContain("registros se conservan");
+});
+
+test("grado y grupo shows grade, group link, cycle and shift without history", () => {
+	const html = render();
+	const panel = section(html, "Grado y grupo");
+	expect(text(panel)).toContain("Grado 1°");
+	expect(panel).toContain('aria-label="Abrir grupo 1° B"');
+	expect(text(panel)).toContain("Agosto 2026 – Julio 2027");
+	for (const gone of [
+		"Inscripción original",
+		"Ciclos anteriores",
+		"Motivo",
+		"Registró",
+		"Actual",
+	])
+		expect(text(html)).not.toContain(gone);
+	expect(html).not.toContain("<details");
+});
+
+test("a group without grade says Sin grado", () => {
+	const { s, student } = setup();
+	const id = activeGroup(
+		s,
+		student.id,
+		student.enrollments.at(-1)?.cycle ?? "",
+	);
+	const group = s.groups.find((g) => g.id === id);
+	if (group) group.grade = undefined;
+	expect(text(section(render(s, student.id), "Grado y grupo"))).toContain(
+		"Sin grado",
+	);
+});
+
+test("guardians list at most two rows, each a button, with relation and status", () => {
+	const { s, student } = setup();
+	s.links.push({
+		id: "extra",
+		student: student.id,
+		name: "Tercer Tutor",
+		status: "Verificado",
+		history: [],
+	});
 	const html = render(s, student.id);
-	expect(drafts).toBeGreaterThan(0);
-	expect(html).toContain(
-		`>${drafts} ${drafts === 1 ? "calificación en borrador" : "calificaciones en borrador"}</button>`,
+	const panel = section(html, "Tutores");
+	const rows: string[] = panel.match(/<li>[\s\S]*?<\/li>/g) ?? [];
+	expect(rows).toHaveLength(2);
+	for (const row of rows)
+		expect(row).toMatch(/<button[^>]*aria-haspopup="dialog"/);
+	expect(text(rows[0])).toContain("Mariana Ruiz Salcedo");
+	expect(text(rows[0])).toContain("Madre");
+	expect(rows.join("")).toMatch(
+		/profile-badge[^"]*">Verificado en el registro<\/span>/,
 	);
-	if (reports)
-		expect(html).toContain(
-			`>${reports} ${reports === 1 ? "reporte de conducta sin publicar" : "reportes de conducta sin publicar"}</button>`,
-		);
+	expect(text(panel)).not.toContain("Historial del vínculo");
+	expect(panel).not.toContain("Revocado");
+	expect(text(panel)).not.toContain("Vincular tutor");
 });
 
-test("pending work says so when everything is published", () => {
+test("revoked links go last and free a slot for Vincular tutor", () => {
 	const { s, student } = setup();
-	for (const g of s.grades) g.published = true;
-	for (const c of s.conduct) c.published = true;
-	expect(text(render(s, student.id))).toContain(
-		"Sin pendientes de publicación",
+	for (const l of s.links.filter((x) => x.student === student.id))
+		l.status = "Revocado";
+	const first = s.links.find((x) => x.student === student.id);
+	if (first) first.status = "Verificado";
+	s.links.unshift({
+		id: "old",
+		student: student.id,
+		name: "Antiguo Tutor",
+		status: "Revocado",
+		history: [],
+	});
+	const panel = section(render(s, student.id), "Tutores");
+	const rows: string[] = panel.match(/<li>[\s\S]*?<\/li>/g) ?? [];
+	expect(rows).toHaveLength(2);
+	expect(text(rows[0])).toContain(first?.name ?? "?");
+	expect(panel).toContain(">Vincular tutor</button>");
+});
+
+test("guardian detail shows contact data, never invents missing values, and wires its actions", () => {
+	const calls: unknown[][] = [];
+	const closed: string[] = [];
+	const link = {
+		id: "l9",
+		student: "s",
+		name: "Rosa Pérez",
+		relation: undefined,
+		phone: "5512345678",
+		email: undefined,
+		status: "Verificado",
+		history: [],
+	};
+	const element = GuardianDetail({
+		link,
+		open: (...a) => calls.push(a),
+		onClose: () => closed.push("x"),
+	});
+	const html = renderToStaticMarkup(element);
+	expect(text(html)).toContain("Rosa Pérez");
+	expect(text(html)).toContain("Parentesco Sin registrar");
+	expect(text(html)).toContain("Teléfono 5512345678");
+	expect(text(html)).toContain("Correo Sin registrar");
+	expect(text(html)).toContain("Estado Verificado en el registro");
+	expect(html).toContain(">Editar datos</button>");
+	expect(html).toContain(">Restringir o revocar</button>");
+	const buttons = Children.toArray(
+		(
+			Children.toArray(element.props.children).at(-1) as ReactElement<{
+				children: ReactNode;
+			}>
+		).props.children,
+	) as ReactElement<{ onClick: () => void; children: string }>[];
+	const edit = buttons.find((b) => b.props.children === "Editar datos");
+	edit?.props.onClick();
+	expect(closed).toEqual(["x"]);
+	expect(calls[0][0]).toBe("guardian-edit");
+	expect(calls[0][3]).toEqual({
+		id: "l9",
+		name: "Rosa Pérez",
+		relation: "",
+		phone: "5512345678",
+		email: "",
+	});
+	const fields = calls[0][2] as {
+		key: string;
+		type?: string;
+		optional?: boolean;
+	}[];
+	expect(fields.map((f) => f.key)).toEqual([
+		"name",
+		"relation",
+		"phone",
+		"email",
+	]);
+	expect(fields.find((f) => f.key === "phone")).toMatchObject({
+		type: "tel",
+		optional: true,
+	});
+	expect(fields.find((f) => f.key === "email")).toMatchObject({
+		type: "email",
+		optional: true,
+	});
+	const status = buttons.find(
+		(b) => b.props.children === "Restringir o revocar",
 	);
+	status?.props.onClick();
+	expect(calls[1][0]).toBe("guardian-status");
+	expect(calls[1][3]).toEqual({ id: "l9" });
+});
+
+test("guardian detail disables status change for revoked links", () => {
+	const html = renderToStaticMarkup(
+		GuardianDetail({
+			link: {
+				id: "l",
+				student: "s",
+				name: "N",
+				status: "Revocado",
+				history: [],
+			},
+			open: () => {},
+			onClose: () => {},
+		}),
+	);
+	expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Restringir o revocar/);
+});
+
+test("grades summary reports the published average, coverage, failing subjects and drafts", () => {
+	const { s, student } = setup();
+	const html = render(s, student.id);
+	const panel = section(html, "Calificaciones");
+	const cycle = student.enrollments.at(-1)?.cycle;
+	const groups = s.groups
+		.filter((g) => g.cycle === cycle && wasEnrolled(s, student.id, g.id))
+		.map((g) => g.id);
+	const expected = summarizeGrades(s, student.id, groups);
+	expect(expected.average).not.toBeNull();
+	expect(text(panel)).toContain(
+		(expected.average ?? 0).toLocaleString("es-MX", {
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1,
+		}),
+	);
+	expect(text(panel)).toContain(
+		`Materias calificadas ${expected.graded} de ${expected.subjects}`,
+	);
+	expect(text(panel)).toContain(`Bajo el mínimo (6) ${expected.failing}`);
+	expect(text(panel)).toContain(`En borrador ${expected.drafts}`);
+	expect(text(panel)).toContain("calificaciones publicadas");
+	expect(panel).toMatch(/Ver calificaciones<svg[\s\S]*<\/button>/);
+});
+
+test("grades summary does not invent a number without published grades", () => {
+	const { s, student } = setup();
+	for (const g of s.grades) if (g.student === student.id) g.published = false;
+	const panel = section(render(s, student.id), "Calificaciones");
+	expect(text(panel)).toContain("Promedio — Sin calificaciones publicadas");
+	expect(text(panel)).not.toMatch(/\d\.\d/);
+});
+
+test("attendance summary separates campus entries from class roll call and is dated sample data", () => {
+	const panel = section(render(), "Asistencia");
+	const plain = text(panel);
+	expect(plain).toContain("Datos de muestra");
+	expect(plain).toContain("al viernes, 23 de octubre de 2026");
+	expect(plain).toContain("Entradas al plantel");
+	expect(plain).toContain("97 %");
+	expect(plain).toContain("43 de 44 días con entrada");
+	expect(plain).toContain("Materias en riesgo 1 pase de lista por materia");
+	expect(plain).toContain("Faltas por justificar 6");
+	expect(panel).toMatch(/Ver asistencia<svg[\s\S]*<\/button>/);
+});
+
+test("summary links switch tabs", () => {
+	const html = render();
+	expect(html).toMatch(/Ver calificaciones<svg/);
+	expect(html).toMatch(/Ver asistencia<svg/);
+});
+
+test("credential shows a compact card for the active revision", () => {
+	const html = render();
+	const panel = section(html, "Credencial");
+	expect(text(panel)).toContain("AUR-26101");
+	expect(text(panel)).toContain("Revisión 2");
+	expect(panel).toMatch(/profile-badge[^"]*">Vigente<\/span>/);
+	expect(panel).toContain(">Reemitir credencial</button>");
+	expect(text(panel)).not.toContain("Revisiones anteriores");
+	expect(text(panel)).not.toContain("revoca");
+	expect(html).not.toContain("<details");
+});
+
+test("without an active credential a static empty state offers issuing one", () => {
+	const { s, student } = setup();
+	s.credentials = s.credentials.filter((c) => c.student !== student.id);
+	const panel = section(render(s, student.id), "Credencial");
+	expect(text(panel)).toContain("Sin credencial vigente");
+	expect(panel).not.toContain("skeleton");
+	expect(panel).toContain(">Emitir credencial</button>");
+	expect(panel).not.toContain("Vigente</span>");
+});
+
+test("the no-scan warning is a visible notice, not muted description", () => {
+	const panel = section(render(), "Credencial");
+	expect(panel).toMatch(/class="profile-notice"/);
+	expect(text(panel)).toContain(
+		"Modelo sin código escaneable; no sirve para acceso.",
+	);
+});
+
+test("destructive actions use the danger button class and Cambiar de grupo stays neutral", () => {
+	const html = render();
+	expect(html).toMatch(/<button[^>]*class="button-danger"[^>]*>Dar de baja/);
+	expect(html).not.toMatch(/<button[^>]*button-danger[^>]*>Cambiar de grupo/);
+	const detail = renderToStaticMarkup(
+		GuardianDetail({
+			link: {
+				id: "l",
+				student: "s",
+				name: "N",
+				status: "Verificado",
+				history: [],
+			},
+			open: () => {},
+			onClose: () => {},
+		}),
+	);
+	expect(detail).toMatch(
+		/<button[^>]*class="button-danger"[^>]*>Restringir o revocar/,
+	);
+});
+
+test("grades note spells out the minimum passing grade", () => {
+	const text1 = text(section(render(), "Calificaciones"));
+	expect(text1).toContain("Bajo el mínimo (6)");
+});
+
+test("reissuing warns in the flow preview that the previous revision is revoked", () => {
+	const student = { id: "s", name: "Ana", matricula: "M-1", enrollments: [] };
+	expect(credentialPreview(student, true).join(" ")).toContain(
+		"Reemitir revoca la revisión anterior",
+	);
+	expect(credentialPreview(student, false).join(" ")).not.toContain("revoca");
+});
+
+test("resumen has no history anywhere", () => {
+	const html = render();
+	for (const gone of [
+		"Historial del vínculo",
+		"Ciclos anteriores",
+		"Revisiones anteriores",
+		"Pendientes",
+	])
+		expect(text(html)).not.toContain(gone);
+	expect(html).not.toContain("<details");
+	expect(html).not.toContain("avatar");
 });
 
 test("attendance shows campus percent, subject table and absences to justify", () => {
@@ -412,4 +676,52 @@ test("profile buttons avoid slash labels", () => {
 		].map((m) => m[1]);
 		expect(labels.filter((l) => l.includes(" / "))).toEqual([]);
 	}
+});
+
+test("each Resumen card carries its tone modifier", () => {
+	const html = render();
+	for (const [heading, tone] of [
+		["Grado y grupo", "sky"],
+		["Calificaciones", "lilac"],
+		["Asistencia", "teal"],
+		["Tutores", "peach"],
+		["Credencial", "mustard"],
+	] as const)
+		expect(section(html, heading)).toContain(`profile-card--${tone}`);
+});
+
+test("focal numbers get a decorative meter and secondary tiles a status dot", () => {
+	const html = render();
+	for (const heading of ["Calificaciones", "Asistencia"]) {
+		const panel = section(html, heading);
+		expect(panel).toMatch(
+			/<span class="profile-meter" aria-hidden="true"><span style="width:[\d.]+%"><\/span><i style="left:[\d.]+%"><\/i><\/span>/,
+		);
+	}
+	expect(section(html, "Calificaciones")).toContain("profile-stat--dot");
+	expect(section(html, "Asistencia")).toContain("profile-stat--dot");
+});
+
+test("no meter when the average is missing", () => {
+	const { s, student } = setup();
+	s.grades = [];
+	expect(section(render(s, student.id), "Calificaciones")).not.toContain(
+		"profile-meter",
+	);
+});
+
+test("active credential is a card with school name, student and matrícula", () => {
+	const { s, student } = setup();
+	const panel = section(render(s, student.id), "Credencial");
+	expect(panel).toContain("profile-id-card");
+	expect(text(panel)).toContain(s.school.name);
+	expect(text(panel)).toContain(student.name);
+	expect(text(panel)).toContain(student.matricula);
+});
+
+test("guardian initials are decorative", () => {
+	const panel = section(render(), "Tutores");
+	expect(panel).toMatch(
+		/<span class="profile-initials[^"]*" aria-hidden="true">[A-ZÁÉÍÓÚÑ]{1,2}<\/span>/,
+	);
 });
