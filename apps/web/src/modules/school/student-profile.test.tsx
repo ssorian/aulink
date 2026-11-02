@@ -254,10 +254,10 @@ test("conduct registration fixes the student and current active group", () => {
 		students: options("student", "Alumno", [student]),
 		studentName: () => student.name,
 	});
-	const button = Children.toArray(view.props.children).find(
-		(child) => isValidElement(child) && child.type === "button",
-	) as ReactElement<{ onClick: () => void }>;
-	button.props.onClick();
+	const board = Children.toArray(view.props.children).find(
+		(child) => isValidElement(child) && "action" in (child.props as object),
+	) as ReactElement<{ action: ReactElement<{ onClick: () => void }> }>;
+	board.props.action.props.onClick();
 	expect(calls[0][0]).toBe("conduct");
 	expect(calls[0][3]).toEqual({ student: student.id, group: group.id });
 	expect(
@@ -283,10 +283,10 @@ test("group conduct keeps its original registration button", () => {
 		students: options("student", "Alumno del grupo", s.students),
 		studentName: (id) => id,
 	});
-	const button = Children.toArray(view.props.children).find(
-		(child) => isValidElement(child) && child.type === "button",
-	) as ReactElement<{ onClick: () => void }>;
-	button.props.onClick();
+	const board = Children.toArray(view.props.children).find(
+		(child) => isValidElement(child) && "action" in (child.props as object),
+	) as ReactElement<{ action: ReactElement<{ onClick: () => void }> }>;
+	board.props.action.props.onClick();
 	expect(
 		(calls[0][2] as { key: string }[]).some((f) => f.key === "student"),
 	).toBe(true);
