@@ -1,8 +1,8 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CommunicationsView } from "./communications-view";
 import { initialState } from "../shared/workflows";
+import { CommunicationsView } from "./communications-view";
 
 test("recipient lists start collapsed and expose their verified count in the summary", () => {
 	const s = initialState();
@@ -20,7 +20,8 @@ test("recipient lists start collapsed and expose their verified count in the sum
 	const html = renderToStaticMarkup(
 		<CommunicationsView s={s} open={() => {}} />,
 	);
-	expect(html).toContain('<details class="publication-recipients">');
+	expect(html).toContain('<details data-slot="post-details"');
+	expect(html).not.toContain("<details open");
 	expect(html).toMatch(
 		/<summary[^>]*>[\s\S]*1 tutor verificado · previstos[\s\S]*<\/summary>/,
 	);
@@ -90,32 +91,30 @@ test("communications follow the minimal layout: heading action, stats card, filt
 	);
 	expect(html).not.toContain('class="panel"');
 	expect(html).not.toContain('class="publication-status"');
-	const stats = html.indexOf(
-		'class="progress-card progress-stats notices-stats"',
-	);
-	const filters = html.indexOf('class="progress-filters notices-filters"');
-	const list = html.indexOf('class="notices-list"');
+	const stats = html.indexOf('aria-label="Resumen de comunicados"');
+	const filters = html.indexOf('data-slot="post-filters"');
+	const list = html.indexOf('data-slot="post-list"');
 	expect(stats).toBeGreaterThan(-1);
 	expect(stats).toBeLessThan(filters);
 	expect(filters).toBeLessThan(list);
 	expect(html).toMatch(
-		/<div data-state="draft"><dt>Borradores<\/dt><dd><strong>2<\/strong>/,
+		/data-slot="stat"[^>]*data-state="draft"[^>]*><dt[^>]*>Borradores<\/dt><dd[^>]*><strong[^>]*>2</,
 	);
 	expect(html).toMatch(
-		/<div data-state="published"><dt>Publicados<\/dt><dd><strong>1<\/strong>/,
+		/data-slot="stat"[^>]*data-state="published"[^>]*><dt[^>]*>Publicados<\/dt><dd[^>]*><strong[^>]*>1</,
 	);
 	expect(html).toMatch(
-		/<div data-state="reached"><dt>Tutores alcanzados<\/dt><dd><strong>2<\/strong>/,
+		/data-slot="stat"[^>]*data-state="reached"[^>]*><dt[^>]*>Tutores alcanzados<\/dt><dd[^>]*><strong[^>]*>2</,
 	);
 	expect(html).toMatch(
-		/<div data-state="blocked"><dt>Sin destinatarios<\/dt><dd><strong>1<\/strong>/,
+		/data-slot="stat"[^>]*data-state="blocked"[^>]*><dt[^>]*>Sin destinatarios<\/dt><dd[^>]*><strong[^>]*>1</,
 	);
 	expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</);
 	expect(html).toContain('id="notices-audience"');
-	expect(
-		(html.match(/<article class="progress-card notice-card"/g) || []).length,
-	).toBe(3);
-	expect(html).toMatch(/class="notice-state" data-state="draft">Borrador</);
+	expect((html.match(/data-slot="post-card"/g) || []).length).toBe(3);
+	expect(html).toMatch(
+		/data-slot="badge"[^>]*data-state="draft"[^>]*>(<span[^>]*><\/span>)?Borrador</,
+	);
 });
 test("drafts with no tutors are listed first so they are fixed before publishing", () => {
 	const html = renderToStaticMarkup(
@@ -135,7 +134,7 @@ test("an empty school explains the first step inside the list card", () => {
 		<CommunicationsView s={s} open={() => {}} />,
 	);
 	expect(html).toMatch(
-		/class="progress-card notices-empty"[\s\S]*Tu primer comunicado empieza como borrador/,
+		/data-slot="notices-empty"[\s\S]*Tu primer comunicado empieza como borrador/,
 	);
 });
 
@@ -144,13 +143,13 @@ test("each notice reads like a post: audience avatar, title, excerpt and a foote
 		<CommunicationsView s={sampleNotices()} open={() => {}} />,
 	);
 	const card = html.slice(html.indexOf('data-notice="sent"'));
-	expect(card).toMatch(/class="notice-avatar"[^>]*>IA</);
-	expect(card).toMatch(/class="notice-author"[^>]*>Toda la escuela</);
-	expect(card).toMatch(/<h3>Materiales<\/h3>/);
-	expect(card).toContain('class="notice-excerpt"');
-	expect(card).toContain('class="notice-footer"');
+	expect(card).toMatch(/data-slot="post-marker"[^>]*>IA</);
+	expect(card).toMatch(/data-slot="post-author"[^>]*>Toda la escuela</);
+	expect(card).toMatch(/<h3[^>]*>Materiales<\/h3>/);
+	expect(card).toContain('data-slot="post-text"');
+	expect(card).toContain('data-slot="post-footer"');
 	expect(html).toMatch(
-		/data-notice="draft"[\s\S]*?class="notice-avatar"[^>]*>1A</,
+		/data-notice="draft"[\s\S]*?data-slot="post-marker"[^>]*>1A</,
 	);
 });
 test("tutors show as an avatar stack and expand into a grid of people", () => {
@@ -169,14 +168,12 @@ test("tutors show as an avatar stack and expand into a grid of people", () => {
 	);
 	const card = html.slice(html.indexOf('data-notice="sent"'));
 	const stack =
-		card.match(
-			/<span class="tutor-stack"[^>]*>[\s\S]*?<\/span><\/span>/,
-		)?.[0] || "";
-	expect((stack.match(/class="tutor-avatar"/g) || []).length).toBe(4);
-	expect(stack).toContain(">+3<");
-	expect(card).toMatch(/<ul class="tutor-grid">/);
-	expect((card.match(/<li class="tutor-chip">/g) || []).length).toBe(7);
+		card.match(/<span data-slot="avatar-stack"[\s\S]*?<\/summary>/)?.[0] || "";
+	expect((stack.match(/data-slot="avatar"/g) || []).length).toBe(4);
+	expect(stack).toMatch(/data-slot="avatar-overflow"[^>]*>\+3</);
+	expect(card).toContain('data-slot="post-people"');
+	expect((card.match(/data-slot="post-person"/g) || []).length).toBe(7);
 	expect(card).toMatch(
-		/<li class="tutor-chip"><span class="tutor-avatar"[^>]*>GS<\/span>Gina Siete<\/li>/,
+		/data-slot="post-person"[^>]*><span data-slot="avatar"[^>]*>GS<\/span>Gina Siete<\/li>/,
 	);
 });

@@ -1,19 +1,34 @@
 import { type ReactNode, useState } from "react";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { EmptyState } from "../../../components/ui/empty-state";
 import { Icon } from "../../../components/ui/icon";
-import { Empty, field, options, reason } from "../shared/view-helpers";
+import {
+	PostActions,
+	PostBody,
+	PostCard,
+	PostDetails,
+	PostFilterToggle,
+	PostFooter,
+	PostHeader,
+	PostMarker,
+	PostText,
+} from "../../../components/ui/post-card";
+import { Stat, StatGrid } from "../../../components/ui/stat";
+import { cn } from "../../../lib/utils";
+import { field, options, reason } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
 import type { State } from "../shared/workflows";
-import "../shared/group-tables.css";
-import "./conduct-view.css";
 
 type Report = State["conduct"][number];
 type Filter = "Todos" | "Reconocimiento" | "Incidente";
 type Open = ViewProps["open"];
 
-const filters: { id: Filter; label: string }[] = [
-	{ id: "Todos", label: "Todos" },
-	{ id: "Reconocimiento", label: "Reconocimientos" },
-	{ id: "Incidente", label: "Incidentes" },
+const filters: { value: Filter; label: string }[] = [
+	{ value: "Todos", label: "Todos" },
+	{ value: "Reconocimiento", label: "Reconocimientos" },
+	{ value: "Incidente", label: "Incidentes" },
 ];
 const shortDate = new Intl.DateTimeFormat("es-MX", {
 	day: "numeric",
@@ -54,7 +69,7 @@ export function visibleConduct(rows: Report[], filter: Filter) {
 function Lock() {
 	return (
 		<svg
-			className="ui-icon"
+			className="inline-block shrink-0 align-middle"
 			focusable="false"
 			width="14"
 			height="14"
@@ -92,75 +107,121 @@ export function ConductItem({
 		: "Grupo no determinado";
 	const steps = c.followup.split("\n").filter((line) => line.trim());
 	const detailCount = steps.length + (c.internal ? 1 : 0);
-	const kindTone = recognition ? "recognition" : "incident";
+	const tone = recognition ? "teal" : "brick";
 	return (
-		<article
-			className={`progress-card conduct-post conduct-item--${kindTone}${c.published ? "" : " conduct-item--draft"}`}
-		>
-			<header className="conduct-event">
-				<span className="conduct-marker" aria-hidden="true">
-					<Icon name={recognition ? "heart" : "bell"} size={16} />
-				</span>
-				<p className="conduct-sentence">
+		<PostCard tone={tone} state={c.published ? undefined : "draft"}>
+			<PostHeader
+				lead={
+					<PostMarker tone={tone} pending={!c.published}>
+						<Icon name={recognition ? "heart" : "bell"} size={16} />
+					</PostMarker>
+				}
+				aside={
+					<span className="shrink-0 self-start pt-0.5 text-[13px] leading-normal whitespace-nowrap text-muted-foreground">
+						{c.date ? formatDate(c.date) : "Sin fecha"}
+					</span>
+				}
+			>
+				<p className="m-0 text-sm leading-normal text-muted-foreground">
 					{c.author ? (
 						<>
-							<strong>{c.author}</strong> registró un{" "}
-							<span className="conduct-type">{type}</span>
+							<strong className="font-semibold text-foreground">
+								{c.author}
+							</strong>{" "}
+							registró un{" "}
+							<span
+								data-slot="conduct-type"
+								className={cn(
+									"font-semibold",
+									recognition ? "text-teal-ink" : "text-brick-ink",
+								)}
+							>
+								{type}
+							</span>
 						</>
 					) : (
 						<>
-							Autor no registrado · <span className="conduct-type">{type}</span>
+							Autor no registrado ·{" "}
+							<span
+								data-slot="conduct-type"
+								className={cn(
+									"font-semibold",
+									recognition ? "text-teal-ink" : "text-brick-ink",
+								)}
+							>
+								{type}
+							</span>
 						</>
 					)}
 					{showStudent && (
 						<>
 							{" "}
-							de <strong>{studentName(c.student)}</strong>
+							de{" "}
+							<strong className="font-semibold text-foreground">
+								{studentName(c.student)}
+							</strong>
 						</>
 					)}
-					<span className="conduct-group">{group}</span>
+					<Badge className="ml-2 px-2 py-px font-normal text-muted-foreground">
+						{group}
+					</Badge>
 				</p>
-				<span className="conduct-date">
-					{c.date ? formatDate(c.date) : "Sin fecha"}
-				</span>
-			</header>
-			<div className="conduct-card">
-				<p className="conduct-card-text">{c.text}</p>
-				<div className="conduct-pills">
+			</PostHeader>
+			<PostBody indent>
+				<PostText className="text-base leading-relaxed text-foreground">
+					{c.text}
+				</PostText>
+				<div className="flex flex-wrap gap-1.5">
 					{!c.published && (
-						<span className="conduct-pill conduct-pill--draft">Borrador</span>
+						<Badge tone="mustard" data-state="draft" className="py-0.5">
+							Borrador
+						</Badge>
 					)}
-					<span className="conduct-pill">
+					<Badge className="gap-1.5 py-0.5 font-medium text-muted-foreground">
 						{shared ? <Icon name="users" size={13} /> : <Lock />}
 						{shared ? "Visible para familias" : "Solo interno"}
-					</span>
+					</Badge>
 				</div>
-				<footer className="conduct-footer">
+				<PostFooter className="mt-1">
 					{detailCount > 0 && (
-						<details className="conduct-details">
-							<summary>Nota interna y seguimiento ({detailCount})</summary>
+						<PostDetails
+							summary={`Nota interna y seguimiento (${detailCount})`}
+						>
 							{c.internal && (
-								<div className="conduct-card-internal">
-									<strong>
+								<div className="rounded-lg bg-lilac-bg px-3 py-2.5">
+									<strong className="flex items-center gap-1.5 text-xs font-semibold text-lilac-ink">
 										<Lock />
 										Nota interna · solo personal
 									</strong>
-									<p>{c.internal}</p>
+									<p className="m-0 mt-1 text-sm leading-normal text-foreground">
+										{c.internal}
+									</p>
 								</div>
 							)}
 							{steps.length > 0 && (
-								<ul className="conduct-followup">
+								<ul
+									className={cn(
+										"m-0 mb-1 grid list-none gap-1.5 p-0",
+										c.internal ? "mt-2.5" : "mt-2",
+									)}
+								>
 									{steps.map((line, i) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: lines are an append-only log
-										<li key={i}>{line}</li>
+										<li
+											// biome-ignore lint/suspicious/noArrayIndexKey: lines are an append-only log
+											key={i}
+											className="relative pl-4 text-sm leading-normal text-foreground before:absolute before:top-[0.6em] before:left-[3px] before:size-1.5 before:rounded-full before:bg-teal before:content-['']"
+										>
+											{line}
+										</li>
 									))}
 								</ul>
 							)}
-						</details>
+						</PostDetails>
 					)}
-					<div className="conduct-actions">
-						<button
-							type="button"
+					<PostActions>
+						<Button
+							size="sm"
+							className="whitespace-nowrap"
 							onClick={() =>
 								open(
 									"conduct-followup",
@@ -172,11 +233,12 @@ export function ConductItem({
 							}
 						>
 							Agregar seguimiento
-						</button>
+						</Button>
 						{!c.published && (
-							<button
-								className="primary"
-								type="button"
+							<Button
+								size="sm"
+								variant="primary"
+								className="whitespace-nowrap"
 								onClick={() =>
 									open(
 										"conduct-publish",
@@ -192,12 +254,12 @@ export function ConductItem({
 								}
 							>
 								Revisar y publicar
-							</button>
+							</Button>
 						)}
-					</div>
-				</footer>
-			</div>
-		</article>
+					</PostActions>
+				</PostFooter>
+			</PostBody>
+		</PostCard>
 	);
 }
 
@@ -232,65 +294,73 @@ function ConductBoard({
 	const rows = visibleConduct(s.conduct, filter);
 	const shared = s.conduct.filter((c) => c.shared === "Compartido").length;
 	const stats = [
-		["recognition", "Reconocimientos", count("Reconocimiento")],
-		["incident", "Incidentes", count("Incidente")],
-		["draft", "Borradores", drafts],
-		["shared", "Visibles para familias", shared],
+		["recognition", "Reconocimientos", count("Reconocimiento"), "teal"],
+		["incident", "Incidentes", count("Incidente"), "brick"],
+		["draft", "Borradores", drafts, "mustard"],
+		["shared", "Visibles para familias", shared, "sky"],
 	] as const;
 	return (
-		<div className="conduct-board">
+		<div className="min-w-0">
 			{!studentId && (
-				<header className="progress-heading conduct-heading">
+				<header className="mt-2 mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
 					<div>
-						<h2>Reportes de conducta</h2>
-						<p>Los borradores y las notas internas no llegan a las familias.</p>
+						<h2 className="m-0 text-2xl font-[650] tracking-tight">
+							Reportes de conducta
+						</h2>
+						<p className="mt-0.5 mb-0 text-sm text-muted-foreground">
+							Los borradores y las notas internas no llegan a las familias.
+						</p>
 					</div>
 					{action}
 				</header>
 			)}
 			{s.conduct.length > 0 && (
-				<section
-					className="progress-card progress-stats conduct-stats"
+				<Card
+					padding="none"
+					className="rounded-2xl px-[22px] py-5"
 					aria-label="Resumen de reportes"
 				>
-					<dl>
-						{stats.map(([key, label, value]) => (
-							<div key={key} data-state={key}>
-								<dt>{label}</dt>
-								<dd>
-									<strong>{value}</strong>
-								</dd>
-							</div>
+					<StatGrid>
+						{stats.map(([key, label, value, tone]) => (
+							<Stat
+								key={key}
+								state={key}
+								tone={tone}
+								label={label}
+								value={value}
+							/>
 						))}
-					</dl>
-				</section>
+					</StatGrid>
+				</Card>
 			)}
 			{(s.conduct.length > 0 || studentId) && (
-				<div className="progress-filters conduct-filters">
+				<div
+					data-slot="post-filters"
+					className="mt-5 mb-2 flex flex-wrap items-center gap-2"
+				>
 					{s.conduct.length > 0 && (
-						<fieldset className="attendance-modes">
-							<legend className="schedule-hidden">Tipo de reporte</legend>
-							{filters.map((f) => (
-								<button
-									key={f.id}
-									type="button"
-									aria-pressed={filter === f.id}
-									onClick={() => setFilter(f.id)}
-								>
-									{f.label}
-								</button>
-							))}
-						</fieldset>
+						<PostFilterToggle
+							label="Tipo de reporte"
+							options={filters}
+							value={filter}
+							onChange={setFilter}
+						/>
 					)}
-					{studentId && <div className="conduct-action">{action}</div>}
+					{studentId && (
+						<div className="ml-auto max-[760px]:ml-0 max-[760px]:w-full max-[760px]:*:w-full empty:hidden">
+							{action}
+						</div>
+					)}
 				</div>
 			)}
 			{rows.length > 0 ? (
-				<div className="conduct-list">
+				<div data-slot="post-list">
 					{groupByMonth(rows).map((month) => (
-						<section className="conduct-month" key={month.label}>
-							<h3>{month.label}</h3>
-							<div className="conduct-posts">
+						<section key={month.label}>
+							<h3 className="mt-[26px] mb-2.5 text-[13px] leading-normal font-semibold tracking-normal text-muted-foreground [section:first-child>&]:mt-1">
+								{month.label}
+							</h3>
+							<div className="grid gap-3.5">
 								{month.rows.map((c) => (
 									<ConductItem
 										key={c.id}
@@ -306,9 +376,11 @@ function ConductBoard({
 					))}
 				</div>
 			) : s.conduct.length > 0 ? (
-				<p className="conduct-empty">No hay reportes de este tipo.</p>
+				<p className="m-0 py-6 text-[15px] text-muted-foreground">
+					No hay reportes de este tipo.
+				</p>
 			) : (
-				<Empty text={emptyText} />
+				<EmptyState text={emptyText} />
 			)}
 		</div>
 	);
@@ -328,9 +400,8 @@ export function ConductView({
 	groupId?: string;
 }) {
 	const registerButton = hideCreate ? null : (
-		<button
-			className="primary"
-			type="button"
+		<Button
+			variant="primary"
 			disabled={studentId ? !groupId : undefined}
 			onClick={() =>
 				open(
@@ -369,11 +440,11 @@ export function ConductView({
 			{studentId
 				? "Registrar reconocimiento o incidente"
 				: "Registrar reconocimiento / incidente"}
-		</button>
+		</Button>
 	);
 	return (
 		<>
-			{studentId && <h2 className="visually-hidden">Conducta</h2>}
+			{studentId && <h2 className="sr-only">Conducta</h2>}
 			{studentId && !groupId && (
 				<p>Se necesita un grupo activo para registrar conducta.</p>
 			)}

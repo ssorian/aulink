@@ -1,18 +1,36 @@
 import { useState } from "react";
+import { Avatar, AvatarStack } from "../../../components/ui/avatar";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { Select } from "../../../components/ui/field";
 import { Icon } from "../../../components/ui/icon";
+import {
+	PostActions,
+	PostBody,
+	PostCard,
+	PostDetails,
+	PostFilterToggle,
+	PostFooter,
+	PostHeader,
+	PostMarker,
+	PostText,
+	PostTitle,
+} from "../../../components/ui/post-card";
+import { Stat, StatGrid } from "../../../components/ui/stat";
+import type { Tone } from "../../../components/ui/tone";
+import { initials } from "../../../lib/initials";
+import { noticeFields } from "../shared/view-helpers";
+import type { ViewProps } from "../shared/view-types";
 import {
 	communicationSummary,
 	validateCommunicationTarget,
 } from "./communication-summary";
-import { Select } from "../evaluation/evaluation-progress";
-import { noticeFields } from "../shared/view-helpers";
-import type { ViewProps } from "../shared/view-types";
-import "../shared/group-tables.css";
 
 const states = [
-	["", "Todos"],
-	["draft", "Borradores"],
-	["published", "Publicados"],
+	{ value: "", label: "Todos" },
+	{ value: "draft", label: "Borradores" },
+	{ value: "published", label: "Publicados" },
 ] as const;
 const audiences = [
 	{ value: "school", label: "Escuela" },
@@ -20,14 +38,6 @@ const audiences = [
 	{ value: "student", label: "Alumno" },
 ];
 
-const initials = (name: string) =>
-	name
-		.split(/\s+/)
-		.filter((word) => /^[\p{L}\d]/u.test(word))
-		.slice(0, 2)
-		.map((word) => word[0])
-		.join("")
-		.toUpperCase();
 /** Notices store no author or date: the audience is who the post speaks to. */
 function poster(s: ViewProps["s"], notice: ViewProps["s"]["notices"][number]) {
 	const cycle = (id?: string) =>
@@ -60,39 +70,35 @@ function TutorList({
 	names: string[];
 	published: boolean;
 }) {
-	const shown = names.slice(0, 4);
 	return (
-		<details className="publication-recipients">
-			<summary>
-				<span className="tutor-stack" aria-hidden="true">
-					{shown.map((name) => (
-						<span className="tutor-avatar" key={name}>
-							{initials(name)}
-						</span>
-					))}
-					{names.length > shown.length && (
-						<span className="tutor-avatar tutor-more">
-							+{names.length - shown.length}
-						</span>
-					)}
-				</span>
-				<span>
-					{`${names.length} tutor${names.length === 1 ? " verificado" : "es verificados"} · ${published ? "al publicar" : "previstos"}`}
-				</span>
-			</summary>
+		<PostDetails
+			summary={
+				<>
+					<AvatarStack names={names} max={4} size="sm" />
+					<span>
+						{`${names.length} tutor${names.length === 1 ? " verificado" : "es verificados"} · ${published ? "al publicar" : "previstos"}`}
+					</span>
+				</>
+			}
+		>
 			{names.length > 0 && (
-				<ul className="tutor-grid">
+				<ul
+					data-slot="post-people"
+					className="m-0 mt-2.5 mb-1 grid max-h-58 list-none grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-1.5 overflow-y-auto py-0.5 pr-0.5 pl-0"
+				>
 					{names.map((name) => (
-						<li className="tutor-chip" key={name}>
-							<span className="tutor-avatar" aria-hidden="true">
-								{initials(name)}
-							</span>
+						<li
+							data-slot="post-person"
+							className="flex min-w-0 items-center gap-2 truncate rounded-full bg-background py-1 pr-2.5 pl-1 text-[13px] whitespace-nowrap text-foreground"
+							key={name}
+						>
+							<Avatar name={name} size="sm" tone="sky" />
 							{name}
 						</li>
 					))}
 				</ul>
 			)}
-		</details>
+		</PostDetails>
 	);
 }
 
@@ -134,83 +140,76 @@ export function CommunicationsView({
 		)
 		.sort((a, b) => rank(a) - rank(b));
 	const stats = [
-		["draft", "Borradores", drafts.length],
-		["published", "Publicados", published.length],
-		["reached", "Tutores alcanzados", reached],
-		["blocked", "Sin destinatarios", blocked.length],
+		["draft", "Borradores", drafts.length, "mustard"],
+		["published", "Publicados", published.length, "success"],
+		["reached", "Tutores alcanzados", reached, "teal"],
+		["blocked", "Sin destinatarios", blocked.length, "brick"],
 	] as const;
+	const create = () =>
+		open(
+			"notice",
+			group
+				? `Crear comunicado de ${group.name}`
+				: "Crear borrador de comunicado",
+			contextGroup
+				? fields.filter((f) => f.key === "title" || f.key === "text")
+				: fields,
+			contextGroup
+				? {
+						audience: "group",
+						target: contextGroup,
+						group: contextGroup,
+					}
+				: {},
+			contextGroup
+				? [
+						`Audiencia fija: ${group?.name} · ${s.cycles.find((c) => c.id === group?.cycle)?.name}`,
+					]
+				: undefined,
+		);
 	return (
-		<section
-			className="evaluation-progress notices-view"
-			aria-label="Comunicados"
-		>
-			<header className="progress-heading">
+		<section aria-label="Comunicados" data-slot="notices-view">
+			<header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
 				<div>
-					<h2>
+					<h2 className="m-0 text-2xl font-[650] tracking-tight">
 						{group ? `Comunicados de ${group.name}` : "Comunicados del ciclo"}
 					</h2>
-					<p>Se publican solo a tutores verificados.</p>
+					<p className="mt-0.5 mb-0 text-sm text-muted-foreground">
+						Se publican solo a tutores verificados.
+					</p>
 				</div>
-				<button
-					className="primary notices-create"
-					type="button"
-					onClick={() =>
-						open(
-							"notice",
-							group
-								? `Crear comunicado de ${group.name}`
-								: "Crear borrador de comunicado",
-							contextGroup
-								? fields.filter((f) => f.key === "title" || f.key === "text")
-								: fields,
-							contextGroup
-								? {
-										audience: "group",
-										target: contextGroup,
-										group: contextGroup,
-									}
-								: {},
-							contextGroup
-								? [
-										`Audiencia fija: ${group?.name} · ${s.cycles.find((c) => c.id === group?.cycle)?.name}`,
-									]
-								: undefined,
-						)
-					}
-				>
+				<Button variant="primary" onClick={create}>
 					<Icon name="plus" size={18} />
 					Crear borrador
-				</button>
+				</Button>
 			</header>
-			<section
-				className="progress-card progress-stats notices-stats"
+			<Card
+				padding="none"
+				className="rounded-2xl px-[22px] py-5"
 				aria-label="Resumen de comunicados"
 			>
-				<dl>
-					{stats.map(([key, label, value]) => (
-						<div key={key} data-state={key}>
-							<dt>{label}</dt>
-							<dd>
-								<strong>{value}</strong>
-							</dd>
-						</div>
+				<StatGrid>
+					{stats.map(([key, label, value, tone]) => (
+						<Stat
+							key={key}
+							state={key}
+							tone={tone}
+							label={label}
+							value={value}
+						/>
 					))}
-				</dl>
-			</section>
-			<div className="progress-filters notices-filters">
-				<fieldset className="attendance-modes">
-					<legend className="schedule-hidden">Estado</legend>
-					{states.map(([value, label]) => (
-						<button
-							type="button"
-							key={value || "all"}
-							aria-pressed={state === value}
-							onClick={() => setState(value)}
-						>
-							{label}
-						</button>
-					))}
-				</fieldset>
+				</StatGrid>
+			</Card>
+			<div
+				data-slot="post-filters"
+				className="mt-7 mb-3 flex flex-wrap items-stretch gap-2"
+			>
+				<PostFilterToggle
+					label="Estado"
+					options={states}
+					value={state}
+					onChange={setState}
+				/>
 				<Select
 					id="notices-audience"
 					label="Audiencia"
@@ -218,19 +217,21 @@ export function CommunicationsView({
 					all="Todas"
 					items={audiences}
 					onChange={setAudience}
+					className="min-w-60 flex-none max-[760px]:min-w-0 max-[760px]:basis-full"
 				/>
 			</div>
-			{!s.notices.length ? (
-				<p className="progress-card notices-empty">
-					Tu primer comunicado empieza como borrador. Define la audiencia y
-					revisa los tutores antes de publicar.
-				</p>
-			) : !visible.length ? (
-				<p className="progress-card notices-empty">
-					Ningún comunicado con estos filtros.
-				</p>
+			{!s.notices.length || !visible.length ? (
+				<Card
+					padding="none"
+					data-slot="notices-empty"
+					className="m-0 rounded-2xl p-7 text-center text-sm text-muted-foreground"
+				>
+					{!s.notices.length
+						? "Tu primer comunicado empieza como borrador. Define la audiencia y revisa los tutores antes de publicar."
+						: "Ningún comunicado con estos filtros."}
+				</Card>
 			) : (
-				<div className="notices-list">
+				<div data-slot="post-list" className="grid gap-3.5">
 					{visible.map(({ notice: n, summary }) => {
 						const who = poster(s, n);
 						const tone = n.published
@@ -238,43 +239,75 @@ export function CommunicationsView({
 							: summary.canPublish
 								? "draft"
 								: "blocked";
+						const markerTone: Tone = n.published
+							? "teal"
+							: summary.canPublish
+								? "lilac"
+								: "brick";
+						const badgeTone: Tone = n.published
+							? "success"
+							: summary.canPublish
+								? "mustard"
+								: "brick";
 						return (
-							<article
-								className="progress-card notice-card"
+							<PostCard
 								data-notice={n.id}
-								data-state={tone}
+								state={tone}
+								tone={markerTone}
 								key={n.id}
 							>
-								<header className="notice-head">
-									<span className="notice-avatar" aria-hidden="true">
-										{who.badge}
-									</span>
-									<span className="notice-author">{who.name}</span>
-									<span className="notice-context">· {who.context}</span>
-									<span className="notice-state" data-state={tone}>
-										{n.published ? "Publicado" : "Borrador"}
-									</span>
-								</header>
-								<h3>{summary.preview.title}</h3>
-								<p className="notice-excerpt">{summary.preview.text}</p>
-								{!n.published && !summary.canPublish && (
-									<p
-										className="notice-warning"
-										id={`publication-empty-${n.id}`}
-									>
-										Sin tutores verificados en esta audiencia. Edita el borrador
-										o revisa los vínculos de tutores antes de publicar.
-									</p>
-								)}
-								<footer className="notice-footer">
+								<PostHeader
+									lead={<PostMarker tone={markerTone}>{who.badge}</PostMarker>}
+								>
+									<div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+										<p className="m-0 text-sm leading-normal text-muted-foreground">
+											<strong
+												data-slot="post-author"
+												className="font-semibold text-foreground"
+											>
+												{who.name}
+											</strong>{" "}
+											· {who.context}
+										</p>
+										<Badge
+											tone={badgeTone}
+											data-state={tone}
+											className="gap-1.5 py-0.5 ml-auto max-[760px]:ml-0"
+										>
+											<span
+												aria-hidden="true"
+												className="size-[7px] rounded-full bg-current"
+											/>
+											{n.published ? "Publicado" : "Borrador"}
+										</Badge>
+									</div>
+								</PostHeader>
+								<PostBody>
+									<PostTitle>{summary.preview.title}</PostTitle>
+									<PostText clamp className="text-[15px] text-muted-foreground">
+										{summary.preview.text}
+									</PostText>
+									{!n.published && !summary.canPublish && (
+										<p
+											className="m-0 text-sm text-muted-foreground"
+											id={`publication-empty-${n.id}`}
+										>
+											Sin tutores verificados en esta audiencia. Edita el
+											borrador o revisa los vínculos de tutores antes de
+											publicar.
+										</p>
+									)}
+								</PostBody>
+								<PostFooter>
 									<TutorList
 										names={summary.recipients}
 										published={n.published}
 									/>
 									{!n.published && (
-										<div className="notice-actions">
-											<button
-												type="button"
+										<PostActions>
+											<Button
+												size="sm"
+												className="whitespace-nowrap"
 												onClick={() =>
 													open("notice", `Editar ${n.title}`, fields, {
 														...n,
@@ -286,10 +319,11 @@ export function CommunicationsView({
 											>
 												<Icon name="edit" size={16} />
 												Editar borrador
-											</button>
-											<button
-												type="button"
-												className="primary"
+											</Button>
+											<Button
+												size="sm"
+												variant="primary"
+												className="whitespace-nowrap"
 												disabled={!summary.canPublish}
 												aria-describedby={
 													!summary.canPublish
@@ -314,11 +348,11 @@ export function CommunicationsView({
 											>
 												<Icon name="send" size={16} />
 												Revisar publicación
-											</button>
-										</div>
+											</Button>
+										</PostActions>
 									)}
-								</footer>
-							</article>
+								</PostFooter>
+							</PostCard>
 						);
 					})}
 				</div>

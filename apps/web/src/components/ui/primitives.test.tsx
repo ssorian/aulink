@@ -13,6 +13,18 @@ import { FilterBar } from "./filter-bar";
 import { Legend } from "./legend";
 import { Meter } from "./meter";
 import { MiniMonth } from "./mini-month";
+import {
+	PostActions,
+	PostBody,
+	PostCard,
+	PostDetails,
+	PostFilterToggle,
+	PostFooter,
+	PostHeader,
+	PostMarker,
+	PostText,
+	PostTitle,
+} from "./post-card";
 import { RankedBars } from "./ranked-bars";
 import { Stat, StatGrid } from "./stat";
 
@@ -264,4 +276,55 @@ test("Dialog renders a native dialog with title and close", () => {
 	expect(html).toContain("Nuevo");
 	expect(html).toContain('aria-label="Cerrar"');
 	expect(html).toContain("Contenido");
+});
+
+test("PostCard composes marker, header, body, footer and a collapsed disclosure", () => {
+	const html = render(
+		<PostCard tone="teal" state="blocked" data-notice="n1">
+			<PostHeader
+				lead={<PostMarker pending>AB</PostMarker>}
+				aside={<span>12 oct</span>}
+			>
+				Quién
+			</PostHeader>
+			<PostBody indent>
+				<PostTitle>Título</PostTitle>
+				<PostText clamp>Texto</PostText>
+			</PostBody>
+			<PostFooter>
+				<PostDetails summary="Detalles">Más</PostDetails>
+				<PostActions>
+					<Button>Ok</Button>
+				</PostActions>
+			</PostFooter>
+		</PostCard>,
+	);
+	expect(html).toMatch(/<article data-slot="post-card" data-tone="teal"/);
+	expect(html).toContain('data-state="blocked"');
+	expect(html).toContain('data-notice="n1"');
+	expect(html).toMatch(/data-slot="post-marker"[^>]*>AB</);
+	expect(html).toContain('data-slot="post-header"');
+	expect(html).toMatch(/<h3 data-slot="post-title"[^>]*>Título</);
+	expect(html).toContain('data-slot="post-text"');
+	expect(html).toContain('data-slot="post-footer"');
+	expect(html).toContain('data-slot="post-actions"');
+	expect(html).toContain('<details data-slot="post-details"');
+	expect(html).not.toContain("<details open");
+});
+
+test("PostFilterToggle exposes the selection with aria-pressed", () => {
+	const html = render(
+		<PostFilterToggle
+			label="Estado"
+			value="b"
+			options={[
+				{ value: "a", label: "Uno" },
+				{ value: "b", label: "Dos" },
+			]}
+			onChange={() => {}}
+		/>,
+	);
+	expect(html).toContain('data-slot="post-filter-toggle"');
+	expect(html).toMatch(/aria-pressed="false"[^>]*>Uno</);
+	expect(html).toMatch(/aria-pressed="true"[^>]*>Dos</);
 });

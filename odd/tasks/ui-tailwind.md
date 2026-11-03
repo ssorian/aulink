@@ -25,7 +25,7 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - T3 [S3,S4,S9] Shared primitives in components/ui with data-slot hooks + tests + README. Route: worker. Commit: (T3 commit) ✅
 - T4 [S4,S8,S10] Move modules/school files into module folders; imports only. Route: worker (parallel with T3, disjoint surfaces). Commit: (T4 commit) ✅
 - T5 [S1,S3] Evaluation → Tailwind + primitives; delete its CSS.
-- T6 [S1,S3] Communications + Conduct.
+- T6 [S1,S3] Communications + Conduct. Route: worker. Commit: (T6 commit) ✅
 - T7 [S1,S3] Groups (workspace, attendance/grades tables, directory).
 - T8 [S1,S3] Schedule (calendar, grid, sidebar, day actions, chip tooltip).
 - T9 [S1,S3,S7] Students (directory + profile to minimal style).
@@ -42,3 +42,4 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - L5: T4 done by worker: 85 git mv renames into 12 folders, 70 files with import-only edits, Field type moved to shared/view-types (re-exported by flow-dialog). bun test scripts/ apps/web/src/modules 327/6 before and after (same failing set); typecheck and Biome clean; visual diff vs base identical to T2 (only the known perfil/Agregar materia 2-4px shifts).
 - L6: T3 done by worker: tone.ts, button, card, stat, field (Field+Select), filter-bar, badge, legend, avatar (+AvatarStack), empty-state, meter, ranked-bars, mini-month (ported, day cells now 44px), dialog; lib/initials.ts; primitives.test.tsx 16 pass (RED observed: missing modules). Unrequested Biome reformat of data-table/panel reverted. Delivery: branch already past ~400 lines; slices = commits per task, PRs chained per module group (foundation T2-T4, then one PR per T5..T12).
 - L7: T10 done by worker: Personal and Terminales restyled to minimal (stats card with Registros/Docentes/Con materias asignadas and Equipos/Habilitados/Desactivados, FilterBar, DataTable with Avatar+Badge, icon action); staff-view.css deleted; staff-layout.test hooks -> data-slot/data-variant (RED 8/4 then GREEN 12/12). ChipTooltip (shared) unchanged. Stale school-primitives failures kept; proposed fixes: 4->6 columns (x2), find the icon button by aria-label, replace the <details> assertion with the open() payload — pending user decision.
+- L8: T6 done by worker: shared PostCard family in components/ui/post-card.tsx used by Comunicados and Conducta; conduct-view.css deleted; hooks -> data-slot (RED 11/10, GREEN 21/0, ui 18/0). Accepted visual deltas: 36px marker in both, 44px segmented filter/sm buttons, 24px tutor avatars (12px minimum), success-token green. Known regression handed to T7: group picker (.followup-scope) lost its 420px width because its rules lived in conduct-view.css.

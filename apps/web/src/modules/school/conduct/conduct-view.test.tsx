@@ -1,11 +1,11 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, setSystemTime, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ConductView, sortConduct, visibleConduct } from "./conduct-view";
 import { GroupFollowupView } from "../groups/group-followup-view";
 import { buildMockData } from "../shared/mock-data";
 import { options } from "../shared/view-helpers";
 import { activeGroup, apply, type State } from "../shared/workflows";
+import { ConductView, sortConduct, visibleConduct } from "./conduct-view";
 
 type Report = State["conduct"][number];
 
@@ -111,19 +111,19 @@ test("event sentence names author and type; group view adds the student", () => 
 		}),
 	];
 	const profile = html(s, student.id, group.id);
-	expect(profile).toContain(
-		"<strong>Adriana Beltrán Ríos</strong> registró un ",
+	expect(profile).toMatch(
+		/<strong[^>]*>Adriana Beltrán Ríos<\/strong> registró un /,
 	);
 	expect(profile).toContain(">incidente</span>");
-	expect(profile).not.toContain(`de <strong>${student.name}</strong>`);
+	expect(profile).not.toContain(`>${student.name}</strong>`);
 	expect(profile).toContain(group.name);
 	const groupView = html(s);
-	expect(groupView).toContain(
-		`incidente</span> de <strong>${student.name}</strong>`,
+	expect(groupView).toMatch(
+		new RegExp(`incidente</span> de <strong[^>]*>${student.name}</strong>`),
 	);
 	s.conduct = [report({ author: undefined })];
-	expect(html(s)).toContain(
-		'Autor no registrado · <span class="conduct-type">reconocimiento</span>',
+	expect(html(s)).toMatch(
+		/Autor no registrado · <span[^>]*data-slot="conduct-type"[^>]*>reconocimiento<\/span>/,
 	);
 });
 
@@ -134,10 +134,15 @@ test("pills show draft only when pending, plus visibility", () => {
 		report({ id: "b", shared: "Interno", published: true }),
 	];
 	const out = html(s);
-	expect(out.match(/conduct-pill--draft">Borrador</g)?.length).toBe(1);
+	expect(
+		out.match(/data-slot="badge"[^>]*data-state="draft"[^>]*>Borrador</g)
+			?.length,
+	).toBe(1);
 	expect(out).toContain("Visible para familias");
 	expect(out).toContain("Solo interno");
-	expect(out).toContain("conduct-item--draft");
+	expect(
+		out.match(/data-slot="post-card"[^>]*data-state="draft"/g),
+	).toHaveLength(1);
 });
 
 test("the report text has no visibility prefix and empty internal notes are omitted", () => {
@@ -177,9 +182,9 @@ test("drafts offer a publish action and published reports never show one", () =>
 	s.conduct = [report({ published: true })];
 	const published = html(s);
 	expect(published).not.toContain("Revisar y publicar");
-	expect(published).not.toContain("disabled");
+	expect(published).not.toContain('disabled=""');
 	expect(published).toContain("Agregar seguimiento");
-	expect(published).not.toContain('conduct-pill--draft">Borrador');
+	expect(published).not.toMatch(/data-state="draft"[^>]*>Borrador</);
 });
 
 test("stats card counts types, drafts and shared reports; filter buttons expose aria-pressed", () => {
@@ -190,24 +195,22 @@ test("stats card counts types, drafts and shared reports; filter buttons expose 
 		report({ id: "3", kind: "Incidente" }),
 	];
 	const out = html(s);
-	expect(out).toContain('class="progress-card progress-stats conduct-stats"');
 	expect(out).toMatch(
-		/data-state="recognition"><dt>Reconocimientos<\/dt><dd><strong>2</,
+		/aria-label="Resumen de reportes"[^>]*><dl data-slot="stat-grid"/,
 	);
-	expect(out).toMatch(
-		/data-state="incident"><dt>Incidentes<\/dt><dd><strong>1</,
-	);
-	expect(out).toMatch(/data-state="draft"><dt>Borradores<\/dt><dd><strong>2</);
-	expect(out).toMatch(
-		/data-state="shared"><dt>Visibles para familias<\/dt><dd><strong>3</,
-	);
+	const stat = (key: string, label: string, n: number) =>
+		new RegExp(
+			`data-state="${key}"[^>]*><dt[^>]*>${label}</dt><dd[^>]*><strong[^>]*>${n}<`,
+		);
+	expect(out).toMatch(stat("recognition", "Reconocimientos", 2));
+	expect(out).toMatch(stat("incident", "Incidentes", 1));
+	expect(out).toMatch(stat("draft", "Borradores", 2));
+	expect(out).toMatch(stat("shared", "Visibles para familias", 3));
 	expect(out).toMatch(/aria-pressed="true"[^>]*>Todos</);
 	expect(out).toMatch(/aria-pressed="false"[^>]*>Reconocimientos</);
 	expect(out).toMatch(/aria-pressed="false"[^>]*>Incidentes</);
 	s.conduct = s.conduct.map((c) => ({ ...c, published: true }));
-	expect(html(s)).toMatch(
-		/data-state="draft"><dt>Borradores<\/dt><dd><strong>0</,
-	);
+	expect(html(s)).toMatch(stat("draft", "Borradores", 0));
 });
 
 test("filter narrows by type and the list sorts by date descending, undated last", () => {
@@ -243,24 +246,21 @@ test("each report is a post card with the sentence as its header and button acti
 		report({ id: "b", date: "2026-10-01", published: true }),
 	];
 	const out = html(s);
-	expect(
-		out.match(/<article class="progress-card conduct-post[^"]*"/g),
-	).toHaveLength(2);
-	expect(out).toMatch(/<header class="conduct-event">[\s\S]*?registró un/);
-	expect(out).toContain('class="conduct-footer"');
+	expect(out.match(/<article data-slot="post-card"/g)).toHaveLength(2);
+	expect(out).toMatch(/<header data-slot="post-header"[\s\S]*?registró un/);
+	expect(out).toContain('data-slot="post-footer"');
 	expect(out).toMatch(
-		/<button[^>]*class="primary"[^>]*>Revisar y publicar<\/button>/,
+		/<button[^>]*data-variant="primary"[^>]*>Revisar y publicar<\/button>/,
 	);
-	expect(out).not.toContain("conduct-rail");
 });
 test("the group view has a heading with the register action and filters above the list", () => {
 	const { s, report } = setup();
 	s.conduct = [report({ id: "a" })];
 	const out = html(s);
-	const heading = out.indexOf("<h2>Reportes de conducta</h2>");
-	const stats = out.indexOf("conduct-stats");
-	const filters = out.indexOf('class="progress-filters conduct-filters"');
-	const list = out.indexOf('class="conduct-list"');
+	const heading = out.indexOf(">Reportes de conducta</h2>");
+	const stats = out.indexOf('aria-label="Resumen de reportes"');
+	const filters = out.indexOf('data-slot="post-filters"');
+	const list = out.indexOf('data-slot="post-list"');
 	expect(heading).toBeGreaterThan(-1);
 	expect(heading).toBeLessThan(stats);
 	expect(stats).toBeLessThan(filters);
@@ -270,7 +270,7 @@ test("the group view has a heading with the register action and filters above th
 	);
 	const { student, group } = setup();
 	expect(html(s, student.id, group.id)).not.toContain(
-		"<h2>Reportes de conducta</h2>",
+		">Reportes de conducta</h2>",
 	);
 });
 test("the follow-up group picker is a compact filter, not a panel", () => {
