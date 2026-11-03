@@ -9,6 +9,8 @@ export type PeriodFilters = {
 	groupId?: string;
 	subject?: string;
 	level?: "Secundaria" | "Media superior";
+	/** Exact group grade, e.g. "1°"; narrows the groups in scope. */
+	grade?: string;
 };
 export type ProgressCounts = {
 	expected: number;
@@ -88,6 +90,7 @@ function periodScope(s: State, filters: PeriodFilters) {
 			(g) =>
 				g.cycle === filters.cycleId &&
 				(!filters.groupId || g.id === filters.groupId) &&
+				(!filters.grade || g.grade === filters.grade) &&
 				(!filters.level || educationLevel(g.grade) === filters.level),
 		)
 		.sort((a, b) => compare(a.name, b.name))

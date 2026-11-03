@@ -275,3 +275,14 @@ test("risk lists students reaching the configured failed-subject count, drafts f
 		).students,
 	).toEqual([]);
 });
+test("period progress can be confined to one grade", () => {
+	const s = initialState();
+	s.assignments = [
+		{ id: "x", group: "g1", period: "P1", subject: "A", teacher: "T", min: 0, max: 10 },
+		{ id: "y", group: "g2", period: "P1", subject: "B", teacher: "U", min: 0, max: 10 },
+	];
+	s.grades = [];
+	const report = buildPeriodProgress(s, { cycleId: "c1", period: "P1", grade: "2°" });
+	expect(report.groups.map((g) => g.id)).toEqual(["g2"]);
+	expect(report.subjects).toEqual(["B"]);
+});

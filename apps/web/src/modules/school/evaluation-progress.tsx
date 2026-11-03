@@ -1,16 +1,26 @@
-import { useState } from "react";
+import { Fragment } from "react";
+import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
 import {
 	buildPeriodProgress,
 	groupProgress,
 	type PeriodFilters,
-	type ProgressCell,
 	type ProgressCounts,
 } from "./evaluation-operations";
-import { educationLevel } from "./evaluation-results";
+import { enrolledStudents } from "./group-context";
 import type { ViewProps } from "./view-types";
 import type { State } from "./workflows";
+import "./group-tables.css";
+import "./schedule-calendar.css";
 
-type Level = "Todos" | "Secundaria" | "Media superior";
+type Filter = "period" | "groupId" | "subject" | "grade";
+const legend = [
+	["published", "Publicado"],
+	["draft", "Borrador"],
+	["missing", "Sin captura"],
+] as const;
+const number = (value: number) =>
+	value.toLocaleString("es-MX", { maximumFractionDigits: 2 });
+
 function Meter({ counts }: { counts: ProgressCounts }) {
 	return (
 		<div className="evaluation-stack" aria-hidden="true">
@@ -26,145 +36,181 @@ function Meter({ counts }: { counts: ProgressCounts }) {
 		</div>
 	);
 }
-function Cell({
-	cell,
-	onOpenGroup,
+
+function Select({
+	id,
+	label,
+	value,
+	all,
+	items,
+	onChange,
 }: {
-	cell: ProgressCell;
-	onOpenGroup: (id: string) => void;
+	id: string;
+	label: string;
+	value: string;
+	all?: string;
+	items: { value: string; label: string }[];
+	onChange: (value: string) => void;
 }) {
-	const status =
-		cell.expected === 0 || cell.missing === cell.expected
-			? "sin capturar"
-			: cell.missing
-				? "incompleta"
-				: cell.draft
-					? "borrador"
-					: "publicada";
-	const tone =
-		status === "publicada"
-			? "success"
-			: status === "borrador"
-				? "warning"
-				: status === "incompleta"
-					? "danger"
-					: "neutral";
 	return (
-		<button
-			type="button"
-			className={`evaluation-subject-chip eval-pill eval-pill--${tone}`}
-			title={`${cell.subject} · ${status}`}
-			aria-label={`${cell.groupName}, ${cell.subject}, ${cell.teacher}: ${cell.published} publicadas, ${cell.draft} en borrador, ${cell.missing} sin capturar de ${cell.expected}. Abrir grupo`}
-			onClick={() => onOpenGroup(cell.groupId)}
-		>
-			{cell.subject}
-		</button>
+		<label htmlFor={id} className="progress-filter">
+			<span>{label}</span>
+			<select
+				id={id}
+				value={value}
+				disabled={!items.length}
+				onChange={(e) => onChange(e.target.value)}
+			>
+				{all !== undefined && <option value="">{all}</option>}
+				{!items.length && all === undefined && (
+					<option value="">Sin opciones</option>
+				)}
+				{items.map((item) => (
+					<option key={item.value} value={item.value}>
+						{item.label}
+					</option>
+				))}
+			</select>
+		</label>
 	);
 }
+
 export function EvaluationProgress({
 	s,
-	filters,
+	filters: requested,
+	options,
+	onFilter,
 	onOpenGroup,
 	open,
 }: {
 	s: State;
 	filters: PeriodFilters;
+	options: {
+		periods: string[];
+		grades: string[];
+		groups: State["groups"];
+		subjects: string[];
+	};
+	onFilter: (field: Filter, value: string) => void;
 	onOpenGroup: (id: string) => void;
 	open?: ViewProps["open"];
 }) {
-	const [selectedLevel, setSelectedLevel] = useState<Level>("Todos");
-	const base = buildPeriodProgress(s, filters);
-	const levels = [
-		...new Set(
-			base.groups
-				.filter((g) => g.cells.size)
-				.map((g) =>
-					educationLevel(s.groups.find((item) => item.id === g.id)?.grade),
-				),
-		),
-	];
-	const level =
-		levels.length > 1 &&
-		levels.includes(selectedLevel as Exclude<Level, "Todos">)
-			? selectedLevel
-			: "Todos";
-	const report =
-		level === "Todos" ? base : buildPeriodProgress(s, { ...filters, level });
+	const filters: PeriodFilters = {
+		...requested,
+		groupId: options.groups.some((g) => g.id === requested.groupId)
+			? requested.groupId
+			: "",
+		subject: options.subjects.includes(requested.subject || "")
+			? requested.subject
+			: "",
+	};
+	const report = buildPeriodProgress(s, filters);
 	const { totals, draftIds } = report;
 	const pending = report.teachers.filter((t) => t.draft + t.missing > 0);
 	const groups = report.groups.filter((g) => g.cells.size);
+	const subjects = report.subjects;
 	const scope = [
+		filters.grade ? `${filters.grade} grado` : "",
 		filters.groupId
 			? s.groups.find((g) => g.id === filters.groupId)?.name
 			: "Todos los grupos",
 		filters.subject || "Todas las materias",
-		...(level === "Todos" ? [] : [level]),
-	].join(" · ");
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const gradeOf = (
+		assignmentGroup: string,
+		subject: string,
+		student: string,
+	) => {
+		const assignment = s.assignments.find(
+			(a) =>
+				a.group === assignmentGroup &&
+				a.period === filters.period &&
+				a.subject === subject,
+		);
+		if (!assignment) return undefined;
+		return {
+			grade: s.grades.find(
+				(g) => g.assignment === assignment.id && g.student === student,
+			),
+		};
+	};
+	const many = groups.length > 1;
 	return (
 		<section className="evaluation-progress">
-			<div className="evaluation-section-heading">
+			<div className="progress-filters">
+				<Select
+					id="progress-grade"
+					label="Grado"
+					value={filters.grade || ""}
+					all="Todos"
+					items={options.grades.map((g) => ({ value: g, label: g }))}
+					onChange={(v) => onFilter("grade", v)}
+				/>
+				<Select
+					id="progress-group"
+					label="Grupo"
+					value={filters.groupId || ""}
+					all="Todos"
+					items={options.groups.map((g) => ({ value: g.id, label: g.name }))}
+					onChange={(v) => onFilter("groupId", v)}
+				/>
+				<Select
+					id="progress-period"
+					label="Trimestre"
+					value={filters.period}
+					items={options.periods.map((p) => ({ value: p, label: p }))}
+					onChange={(v) => onFilter("period", v)}
+				/>
+				<Select
+					id="progress-subject"
+					label="Materia"
+					value={filters.subject || ""}
+					all="Todas"
+					items={options.subjects.map((x) => ({ value: x, label: x }))}
+					onChange={(v) => onFilter("subject", v)}
+				/>
+			</div>
+			<div className="progress-heading">
 				<div>
 					<h2>Avance de {filters.period || "periodo"}</h2>
 					<p>
-						{totals.published} de {totals.expected} calificaciones publicadas
+						{totals.published} de {totals.expected} calificaciones publicadas ·{" "}
+						{scope}
 					</p>
 				</div>
-				<div className="evaluation-heading-controls">
-					{levels.length > 1 && ( // biome-ignore lint/a11y/useSemanticElements: Pressed buttons form a compact segmented control.
-						<div
-							className="results-segment"
-							role="group"
-							aria-label="Nivel educativo"
-						>
-							{(["Todos", "Secundaria", "Media superior"] as Level[]).map(
-								(item) => (
-									<button
-										type="button"
-										key={item}
-										aria-pressed={level === item}
-										onClick={() => setSelectedLevel(item)}
-									>
-										{item}
-									</button>
-								),
-							)}
-						</div>
+				<div className="progress-publish">
+					<button
+						type="button"
+						className="evaluation-publish"
+						disabled={!draftIds.length || !open}
+						onClick={() =>
+							open?.(
+								"grade-publish-batch",
+								"Publicar borradores",
+								[],
+								{ ids: draftIds.join(",") },
+								[
+									`${draftIds.length} borradores · ${filters.period}`,
+									scope,
+									"Las familias verán las calificaciones publicadas.",
+									"Las calificaciones sin capturar no se modifican.",
+								],
+								`Se publicarán ${draftIds.length} calificaciones en borrador de ${filters.period} (${scope}). Las familias podrán consultarlas; las calificaciones sin capturar no cambian.`,
+							)
+						}
+					>
+						{draftIds.length
+							? `Publicar ${draftIds.length} ${draftIds.length === 1 ? "borrador" : "borradores"}`
+							: "Sin borradores por publicar"}
+					</button>
+					{draftIds.length > 0 && !open && (
+						<small>La publicación no está disponible.</small>
 					)}
-					<div>
-						<button
-							type="button"
-							className="evaluation-publish"
-							disabled={!draftIds.length || !open}
-							onClick={() =>
-								open?.(
-									"grade-publish-batch",
-									"Publicar borradores",
-									[],
-									{ ids: draftIds.join(",") },
-									[
-										`${draftIds.length} borradores · ${filters.period}`,
-										scope,
-										"Las familias verán las calificaciones publicadas.",
-										"Las calificaciones sin capturar no se modifican.",
-									],
-									`Se publicarán ${draftIds.length} calificaciones en borrador de ${filters.period} (${scope}). Las familias podrán consultarlas; las calificaciones sin capturar no cambian.`,
-								)
-							}
-						>
-							{draftIds.length
-								? `Publicar ${draftIds.length} ${draftIds.length === 1 ? "borrador" : "borradores"}`
-								: "Sin borradores por publicar"}
-						</button>
-						{draftIds.length > 0 && !open && (
-							<small>La publicación no está disponible.</small>
-						)}
-					</div>
 				</div>
 			</div>
-			<dl
-				className="results-kpis evaluation-operation-kpis"
-				aria-label="Resumen de avance"
-			>
+			<dl className="progress-kpis" aria-label="Resumen de avance">
 				{(
 					[
 						["published", "Publicadas"],
@@ -176,17 +222,11 @@ export function EvaluationProgress({
 						? Math.round((totals[key] / totals.expected) * 100)
 						: 0;
 					return (
-						<div key={key}>
+						<div key={key} data-state={key}>
 							<dt>{label}</dt>
 							<dd>
 								<strong>{totals[key]}</strong>
-								<small>{percentage}% del total esperado</small>
-								<div className="eval-meter" aria-hidden="true">
-									<span
-										className={`evaluation-bar-${key}`}
-										style={{ width: `${percentage}%` }}
-									/>
-								</div>
+								<small>{percentage}% del total</small>
 							</dd>
 						</div>
 					);
@@ -202,94 +242,130 @@ export function EvaluationProgress({
 					</dd>
 				</div>
 			</dl>
-			<div className="evaluation-progress-layout">
+			<div className="progress-meter">
+				<Meter counts={totals} />
+			</div>
+			<div className="progress-layout">
 				<section
-					className="eval-panel evaluation-group-panel"
-					aria-label="Avance por grupo y materia"
+					className="group-grades progress-table"
+					aria-label="Calificaciones por alumno"
 				>
-					<div className="evaluation-group-panel-heading">
-						<h3>Avance por grupo</h3>
-						<ul
-							className="evaluation-chip-legend"
-							aria-label="Estado de cada materia"
-						>
-							<li className="eval-pill eval-pill--success">Publicada</li>
-							<li className="eval-pill eval-pill--warning">En borrador</li>
-							<li className="eval-pill eval-pill--danger">Incompleta</li>
-							<li className="eval-pill eval-pill--neutral">Sin capturar</li>
-						</ul>
-					</div>
-					{groups.length ? (
-						(levels.length > 1 && level === "Todos"
-							? ["Secundaria", "Media superior"]
-							: [level]
-						).map((section) => {
-							const sectionGroups = groups.filter(
-								(g) =>
-									section === "Todos" ||
-									educationLevel(
-										s.groups.find((item) => item.id === g.id)?.grade,
-									) === section,
-							);
-							return sectionGroups.length ? (
-								<div key={section}>
-									{levels.length > 1 && level === "Todos" && <h4>{section}</h4>}
-									{sectionGroups.map((group) => {
-										const counts = groupProgress(group);
-										return (
-											<div className="evaluation-group-row" key={group.id}>
-												<div className="evaluation-group-line">
+					<ul
+						className="grades-legend"
+						aria-label="Estado de las calificaciones"
+					>
+						{legend.map(([state, word]) => (
+							<li key={state} data-state={state}>
+								{word}
+							</li>
+						))}
+						<li className="grades-note">Los faltantes no cuentan como cero</li>
+					</ul>
+					<DataTable
+						caption={`Calificaciones de ${filters.period} · ${scope}`}
+						variant="card"
+						scrollClassName="grades-scroll progress-scroll"
+						scrollLabel="Calificaciones por alumno"
+					>
+						<thead>
+							<tr>
+								<th scope="col">Alumno</th>
+								{subjects.map((subject) => (
+									<th scope="col" key={subject}>
+										{subject}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{!groups.length && (
+								<EmptyTableRow columns={subjects.length + 1}>
+									Sin materias para este trimestre con los filtros elegidos.
+								</EmptyTableRow>
+							)}
+							{groups.map((group) => {
+								const counts = groupProgress(group);
+								return (
+									<Fragment key={group.id}>
+										{many && (
+											<tr className="grades-group-row">
+												<th scope="colgroup" colSpan={subjects.length + 1}>
 													<button
 														type="button"
-														className="evaluation-group-name"
+														className="progress-group-link"
 														onClick={() => onOpenGroup(group.id)}
 													>
 														{group.name}
 													</button>
-													<Meter counts={counts} />
 													<span>
-														{counts.published}/{counts.expected}
+														{counts.published} de {counts.expected} publicadas
 													</span>
-												</div>
-												<div className="evaluation-subject-chips">
-													{[...group.cells.values()].map((cell) => (
-														<Cell
-															key={cell.subject}
-															cell={cell}
-															onOpenGroup={onOpenGroup}
-														/>
-													))}
-												</div>
-											</div>
-										);
-									})}
-								</div>
-							) : null;
-						})
-					) : (
-						<div className="evaluation-empty">
-							<h3>Sin asignaciones para este periodo</h3>
-							<p>Revisa el periodo o los filtros seleccionados.</p>
-						</div>
-					)}
+												</th>
+											</tr>
+										)}
+										{enrolledStudents(s, group.id).map((student) => (
+											<tr key={`${group.id}-${student.id}`}>
+												<th scope="row">
+													{student.name}
+													<small>
+														{many ? `${group.name} · ` : ""}
+														{student.matricula}
+													</small>
+												</th>
+												{subjects.map((subject) => {
+													const found = gradeOf(group.id, subject, student.id);
+													if (!found)
+														return (
+															<td key={subject} aria-label="No se imparte">
+																<span className="grade-none" />
+															</td>
+														);
+													const { grade } = found;
+													const state = grade
+														? grade.published
+															? "Publicado"
+															: "Borrador"
+														: "Sin captura";
+													return (
+														<td
+															key={subject}
+															aria-label={`${grade ? number(grade.value) : ""} ${state}`.trim()}
+														>
+															<span
+																className="grade-value"
+																data-state={
+																	grade
+																		? grade.published
+																			? "published"
+																			: "draft"
+																		: "missing"
+																}
+																title={state}
+															>
+																{grade ? number(grade.value) : "—"}
+															</span>
+														</td>
+													);
+												})}
+											</tr>
+										))}
+									</Fragment>
+								);
+							})}
+						</tbody>
+					</DataTable>
 				</section>
-				<section className="eval-panel evaluation-pending">
-					<h3>Pendientes por docente</h3>
+				<section
+					className="progress-pending"
+					aria-labelledby="progress-pending-title"
+				>
+					<h3 id="progress-pending-title">Pendientes por docente</h3>
 					{pending.length ? (
 						<ul>
 							{pending.map((t) => (
 								<li key={t.teacher}>
 									<details>
 										<summary>
-											<span className="evaluation-avatar" aria-hidden="true">
-												{t.teacher
-													.split(" ")
-													.filter(Boolean)
-													.slice(0, 2)
-													.map((part) => part[0])
-													.join("")
-													.toUpperCase()}
-											</span>
 											<span className="evaluation-teacher-content">
 												<strong>{t.teacher}</strong>
 												<Meter counts={t} />

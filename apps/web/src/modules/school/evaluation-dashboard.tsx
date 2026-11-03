@@ -40,12 +40,13 @@ export function EvaluationDashboard({
 		period: "",
 		groupId: "",
 		subject: "",
+		grade: "",
 	});
 	const data = useMemo(() => buildEvaluationData(s), [s]);
 	const current =
 		selection.cycle === cycleId
 			? selection
-			: { cycle: cycleId, period: "", groupId: "", subject: "" };
+			: { cycle: cycleId, period: "", groupId: "", subject: "", grade: "" };
 	const groups = s.groups.filter((g) => g.cycle === cycleId);
 	const assignments = s.assignments.filter((a) =>
 		groups.some((g) => g.id === a.group),
@@ -74,8 +75,19 @@ export function EvaluationDashboard({
 		? current.groupId
 		: "";
 	const subject = subjects.includes(current.subject) ? current.subject : "";
-	const change = (field: "period" | "groupId" | "subject", value: string) =>
-		setSelection({ ...current, [field]: value });
+	const change = (
+		field: "period" | "groupId" | "subject" | "grade",
+		value: string,
+	) =>
+		setSelection({
+			...current,
+			[field]: value,
+			...(field === "grade" ? { groupId: "" } : {}),
+		});
+	const grades = [
+		...new Set(availableGroups.map((g) => g.grade).filter(Boolean)),
+	] as string[];
+	const grade = grades.includes(current.grade) ? current.grade : "";
 	return (
 		<section className="evaluation-dashboard" aria-label="Evaluación del ciclo">
 			<header className="evaluation-header">
@@ -94,6 +106,7 @@ export function EvaluationDashboard({
 								period: "",
 								groupId: "",
 								subject: "",
+								grade: "",
 							});
 							onCycleChange(e.target.value);
 						}}
@@ -117,78 +130,103 @@ export function EvaluationDashboard({
 					onChange={setTab}
 				/>
 			)}
-			<div className="evaluation-context">
-				<label htmlFor="evaluation-period">
-					Periodo:
-					<select
-						id="evaluation-period"
-						value={period}
-						disabled={!periods.length}
-						onChange={(e) => change("period", e.target.value)}
-					>
-						{tab === "Resultados" && (
-							<option value="">Todos los periodos</option>
-						)}
-						{periods.map((p) => (
-							<option key={p} value={p}>
-								{p}
-							</option>
-						))}
-					</select>
-				</label>
-				<label htmlFor="evaluation-group">
-					Grupo:
-					<select
-						id="evaluation-group"
-						value={groupId}
-						disabled={!availableGroups.length}
-						onChange={(e) => change("groupId", e.target.value)}
-					>
-						<option value="">Todos los grupos</option>
-						{availableGroups.map((g) => (
-							<option key={g.id} value={g.id}>
-								{g.name}
-							</option>
-						))}
-					</select>
-				</label>
-				<label htmlFor="evaluation-subject">
-					Materia:
-					<select
-						id="evaluation-subject"
-						value={subject}
-						disabled={!subjects.length}
-						onChange={(e) => change("subject", e.target.value)}
-					>
-						<option value="">Todas las materias</option>
-						{subjects.map((x) => (
-							<option key={x} value={x}>
-								{x}
-							</option>
-						))}
-					</select>
-				</label>
-				{(current.period || groupId || subject) && (
-					<button
-						className="evaluation-reset"
-						type="button"
-						onClick={() =>
-							setSelection({
-								cycle: cycleId,
-								period: "",
-								groupId: "",
-								subject: "",
-							})
-						}
-					>
-						Restablecer
-					</button>
-				)}
-			</div>
+			{tab !== "Avance del periodo" && (
+				<div className="evaluation-context">
+					<label htmlFor="evaluation-period">
+						Periodo:
+						<select
+							id="evaluation-period"
+							value={period}
+							disabled={!periods.length}
+							onChange={(e) => change("period", e.target.value)}
+						>
+							{tab === "Resultados" && (
+								<option value="">Todos los periodos</option>
+							)}
+							{periods.map((p) => (
+								<option key={p} value={p}>
+									{p}
+								</option>
+							))}
+						</select>
+					</label>
+					<label htmlFor="evaluation-group">
+						Grupo:
+						<select
+							id="evaluation-group"
+							value={groupId}
+							disabled={!availableGroups.length}
+							onChange={(e) => change("groupId", e.target.value)}
+						>
+							<option value="">Todos los grupos</option>
+							{availableGroups.map((g) => (
+								<option key={g.id} value={g.id}>
+									{g.name}
+								</option>
+							))}
+						</select>
+					</label>
+					<label htmlFor="evaluation-subject">
+						Materia:
+						<select
+							id="evaluation-subject"
+							value={subject}
+							disabled={!subjects.length}
+							onChange={(e) => change("subject", e.target.value)}
+						>
+							<option value="">Todas las materias</option>
+							{subjects.map((x) => (
+								<option key={x} value={x}>
+									{x}
+								</option>
+							))}
+						</select>
+					</label>
+					{(current.period || groupId || subject) && (
+						<button
+							className="evaluation-reset"
+							type="button"
+							onClick={() =>
+								setSelection({
+									cycle: cycleId,
+									period: "",
+									groupId: "",
+									subject: "",
+									grade: "",
+								})
+							}
+						>
+							Restablecer
+						</button>
+					)}
+				</div>
+			)}
 			{tab === "Avance del periodo" && (
 				<EvaluationProgress
 					s={s}
-					filters={{ cycleId, period, groupId, subject }}
+					filters={{ cycleId, period, groupId, subject, grade }}
+					options={{
+						periods,
+						grades,
+						groups: availableGroups.filter((g) => !grade || g.grade === grade),
+						subjects: [
+							...new Set(
+								assignments
+									.filter(
+										(a) =>
+											a.period === period &&
+											availableGroups.some(
+												(g) =>
+													g.id === a.group &&
+													(!grade || g.grade === grade) &&
+													(!groupId || g.id === groupId),
+											),
+									)
+									.map((a) => a.subject),
+							),
+						].sort((a, b) => a.localeCompare(b, "es")),
+					}}
+					onFilter={change}
 					onOpenGroup={onOpenGroup}
 					open={open}
 				/>

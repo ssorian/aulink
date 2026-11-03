@@ -15,6 +15,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - S10: Fin de jornada = "Línea en la grilla (Recomendado)": línea punteada a la hora de fin de jornada en cada día con etiqueta pequeña.
 - S11: Crítica de layout aplicada con alcance "Todo (P1, P2 y P3)" y fin de semana "Dejarlas como están": lateral en orden mini mes → Cambios → Materias compactas (una línea, docente en tooltip); cabecera en una sola fila; línea de fin de jornada discreta cuando coincide con el final de un bloque y etiqueta a la izquierda; calendario primero en el orden del DOM; horas del eje alineadas; selector de vista con borde; leyenda del mini mes en una línea; cabecera de días más baja.
 - S12: "Sabes que, si haz mas angosto sabado y domingp" — sábado y domingo angostos cuando no tienen clases ni cambios; recuperan su ancho si tienen alguno.
+- S13: "Aplica igual aqui, pero cambia la tabla de avance por grupo por la tabla de calificaciones por grupo que habiamos aplicado en la vista de grupo, con los filtros de grado, grupo, trimestre y materia. Lo demas mejoralo al estilo que estuviste trabajando" (Evaluación › Avance del periodo).
 
 ## Tasks
 - T1 [S4,S6] Modelo: docente/suplente por fecha, editar materia/titular de una recurrencia, eliminar recurrencia; pruebas en scripts/group-schedule.test.ts. Route: inline. Risk: item 1 (formato guardado, aditivo). Commit: b789d4f ✅
@@ -25,6 +26,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - T6 [S7,S8,S9,S10] Layout con columna lateral, cabecera nueva, grilla nueva (colores por materia, hora actual, fin de jornada, pasado atenuado, choque al arrastrar), panel con formularios en sitio, teclado. Route: inline. Commit: (commit de layout) ✅
 - T8 [S11] Ajustes de layout de la crítica. Route: inline. Commit: (commit de ajustes de layout) ✅
 - T9 [S12] Fin de semana angosto. Route: inline. Commit: (commit fin de semana) ✅
+- T10 [S13] Avance del periodo con tabla de calificaciones y filtros propios. Route: inline. Commit: (commit avance) ✅
 - T7 [S7-S10] Verificación: pruebas, typecheck, biome, navegador escritorio/móvil, detector impeccable. Route: inline. Commit: sin código ✅
 
 ## Log
@@ -43,3 +45,5 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - L13 evidencia T8: RED 3 pruebas (orden DOM, materias compactas, línea discreta, cabecera en una fila); GREEN 24/24 horario. Suite 312 pass / 7 fail preexistentes. typecheck OK; Biome 0 errores, 5 avisos de especificidad CSS. Detector layout: [] exit 0. Navegador 1633/1400/390: cabecera en una fila (la etiqueta "Semana N" pasó a la línea de zona horaria para entrar a 1400), orden de Tab arranca en el calendario, eje de horas alineado, móvil sin desbordamiento. Corregido: `.app{overflow-wrap:anywhere}` global partía palabras en bloques. Limitación: la leyenda del mini mes ocupa dos líneas (no entra en 212 px a 12 px); la lateral sigue ~300 px más alta que la grilla con 8 materias.
 - L14 (usuario): "Sabes que, si haz mas angosto sabado y domingp" (cambia la decisión de L12 "Dejarlas como están"). Interpretado con la opción recomendada: angostas cuando están vacías.
 - L15 evidencia T9: RED 1 prueba; GREEN 25/25 horario. typecheck OK; Biome 0 errores (7 avisos de especificidad CSS). Navegador 1400: SÁB/DOM a 56 px en ambas vistas, días hábiles ~121 px; en Estructura el "+" queda bajo la abreviatura.
+- L16 (usuario): S13 + captura de Avance del periodo.
+- L17 evidencia T10: RED 3 (filtro por grado en buildPeriodProgress; tabla y filtros propios; opciones de grado); GREEN 30/30 en evaluación. Suite 320+ pass / 6 fail preexistentes. Detector [] exit 0. Navegador 1520 y 390 sin desbordamiento. Decisiones: filtros propios solo en Avance (Riesgo y Resultados conservan la barra compartida); el selector Secundaria/Media superior sale de Avance (el grado lo reemplaza); trimestre sin "Todos" porque el avance es por periodo; KPIs, publicar y pendientes siguen los filtros.
