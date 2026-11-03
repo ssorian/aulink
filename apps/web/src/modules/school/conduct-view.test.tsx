@@ -2,6 +2,7 @@
 import { expect, setSystemTime, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConductView, sortConduct, visibleConduct } from "./conduct-view";
+import { GroupFollowupView } from "./group-followup-view";
 import { buildMockData } from "./mock-data";
 import { options } from "./view-helpers";
 import { activeGroup, apply, type State } from "./workflows";
@@ -133,7 +134,7 @@ test("pills show draft only when pending, plus visibility", () => {
 		report({ id: "b", shared: "Interno", published: true }),
 	];
 	const out = html(s);
-	expect(out.match(/Borrador/g)?.length).toBe(1);
+	expect(out.match(/conduct-pill--draft">Borrador</g)?.length).toBe(1);
 	expect(out).toContain("Visible para familias");
 	expect(out).toContain("Solo interno");
 	expect(out).toContain("conduct-item--draft");
@@ -178,10 +179,10 @@ test("drafts offer a publish action and published reports never show one", () =>
 	expect(published).not.toContain("Revisar y publicar");
 	expect(published).not.toContain("disabled");
 	expect(published).toContain("Agregar seguimiento");
-	expect(published).not.toContain("Borrador");
+	expect(published).not.toContain('conduct-pill--draft">Borrador');
 });
 
-test("summary chips count types and drafts; filter buttons expose aria-pressed", () => {
+test("stats card counts types, drafts and shared reports; filter buttons expose aria-pressed", () => {
 	const { s, report } = setup();
 	s.conduct = [
 		report({ id: "1" }),
@@ -189,14 +190,24 @@ test("summary chips count types and drafts; filter buttons expose aria-pressed",
 		report({ id: "3", kind: "Incidente" }),
 	];
 	const out = html(s);
-	expect(out).toContain("2 reconocimientos");
-	expect(out).toContain("1 incidente");
-	expect(out).toContain("2 borradores");
+	expect(out).toContain('class="progress-card progress-stats conduct-stats"');
+	expect(out).toMatch(
+		/data-state="recognition"><dt>Reconocimientos<\/dt><dd><strong>2</,
+	);
+	expect(out).toMatch(
+		/data-state="incident"><dt>Incidentes<\/dt><dd><strong>1</,
+	);
+	expect(out).toMatch(/data-state="draft"><dt>Borradores<\/dt><dd><strong>2</);
+	expect(out).toMatch(
+		/data-state="shared"><dt>Visibles para familias<\/dt><dd><strong>3</,
+	);
 	expect(out).toMatch(/aria-pressed="true"[^>]*>Todos</);
 	expect(out).toMatch(/aria-pressed="false"[^>]*>Reconocimientos</);
 	expect(out).toMatch(/aria-pressed="false"[^>]*>Incidentes</);
 	s.conduct = s.conduct.map((c) => ({ ...c, published: true }));
-	expect(html(s)).not.toContain("borrador");
+	expect(html(s)).toMatch(
+		/data-state="draft"><dt>Borradores<\/dt><dd><strong>0</,
+	);
 });
 
 test("filter narrows by type and the list sorts by date descending, undated last", () => {
@@ -222,5 +233,59 @@ test("empty states: no records, and the filter-empty copy", () => {
 	s.conduct = [];
 	expect(html(s)).toContain(
 		"Registra un reconocimiento o incidente con seguimiento concreto.",
+	);
+});
+
+test("each report is a post card with the sentence as its header and button actions", () => {
+	const { s, report } = setup();
+	s.conduct = [
+		report({ id: "a", date: "2026-10-12", author: "Adriana Beltrán Ríos" }),
+		report({ id: "b", date: "2026-10-01", published: true }),
+	];
+	const out = html(s);
+	expect(
+		out.match(/<article class="progress-card conduct-post[^"]*"/g),
+	).toHaveLength(2);
+	expect(out).toMatch(/<header class="conduct-event">[\s\S]*?registró un/);
+	expect(out).toContain('class="conduct-footer"');
+	expect(out).toMatch(
+		/<button[^>]*class="primary"[^>]*>Revisar y publicar<\/button>/,
+	);
+	expect(out).not.toContain("conduct-rail");
+});
+test("the group view has a heading with the register action and filters above the list", () => {
+	const { s, report } = setup();
+	s.conduct = [report({ id: "a" })];
+	const out = html(s);
+	const heading = out.indexOf("<h2>Reportes de conducta</h2>");
+	const stats = out.indexOf("conduct-stats");
+	const filters = out.indexOf('class="progress-filters conduct-filters"');
+	const list = out.indexOf('class="conduct-list"');
+	expect(heading).toBeGreaterThan(-1);
+	expect(heading).toBeLessThan(stats);
+	expect(stats).toBeLessThan(filters);
+	expect(filters).toBeLessThan(list);
+	expect(out.slice(heading, stats)).toContain(
+		"Registrar reconocimiento / incidente",
+	);
+	const { student, group } = setup();
+	expect(html(s, student.id, group.id)).not.toContain(
+		"<h2>Reportes de conducta</h2>",
+	);
+});
+test("the follow-up group picker is a compact filter, not a panel", () => {
+	const { s, group } = setup();
+	const out = renderToStaticMarkup(
+		<GroupFollowupView
+			s={s}
+			open={() => {}}
+			mode="Conducta"
+			groupId={group.id}
+			onGroup={() => {}}
+		/>,
+	);
+	expect(out).not.toContain("scope-selector");
+	expect(out).toMatch(
+		/<label for="followup-group" class="progress-filter"><span>Grupo<\/span>/,
 	);
 });

@@ -78,9 +78,9 @@ export function GroupFollowupView({
 		);
 	return (
 		<>
-			<section className="panel scope-selector" aria-label="Grupo de consulta">
-				<label htmlFor="followup-group">
-					Grupo y ciclo
+			<div className="progress-filters followup-scope">
+				<label htmlFor="followup-group" className="progress-filter">
+					<span>Grupo</span>
 					<select
 						id="followup-group"
 						value={groupId}
@@ -94,7 +94,7 @@ export function GroupFollowupView({
 						))}
 					</select>
 				</label>
-			</section>
+			</div>
 			{!group ? (
 				<Empty
 					title={

@@ -3,6 +3,7 @@ import { Icon } from "../../components/ui/icon";
 import { Empty, field, options, reason } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 import type { State } from "./workflows";
+import "./group-tables.css";
 import "./conduct-view.css";
 
 type Report = State["conduct"][number];
@@ -31,8 +32,6 @@ const monthLabel = (date?: string) => {
 	const name = monthName.format(atNoon(date));
 	return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${date.slice(0, 4)}`;
 };
-const plural = (n: number, one: string, many: string) =>
-	`${n} ${n === 1 ? one : many}`;
 
 /** Newest first; records saved without a date go last, keeping their order. */
 export function sortConduct(rows: Report[]) {
@@ -95,13 +94,13 @@ export function ConductItem({
 	const detailCount = steps.length + (c.internal ? 1 : 0);
 	const kindTone = recognition ? "recognition" : "incident";
 	return (
-		<li
-			className={`conduct-item conduct-item--${kindTone}${c.published ? "" : " conduct-item--draft"}`}
+		<article
+			className={`progress-card conduct-post conduct-item--${kindTone}${c.published ? "" : " conduct-item--draft"}`}
 		>
-			<span className="conduct-marker" aria-hidden="true">
-				<Icon name={recognition ? "heart" : "bell"} size={14} />
-			</span>
-			<div className="conduct-event">
+			<header className="conduct-event">
+				<span className="conduct-marker" aria-hidden="true">
+					<Icon name={recognition ? "heart" : "bell"} size={16} />
+				</span>
 				<p className="conduct-sentence">
 					{c.author ? (
 						<>
@@ -124,7 +123,7 @@ export function ConductItem({
 				<span className="conduct-date">
 					{c.date ? formatDate(c.date) : "Sin fecha"}
 				</span>
-			</div>
+			</header>
 			<div className="conduct-card">
 				<p className="conduct-card-text">{c.text}</p>
 				<div className="conduct-pills">
@@ -136,68 +135,69 @@ export function ConductItem({
 						{shared ? "Visible para familias" : "Solo interno"}
 					</span>
 				</div>
-				{detailCount > 0 && (
-					<details className="conduct-details">
-						<summary>Nota interna y seguimiento ({detailCount})</summary>
-						{c.internal && (
-							<div className="conduct-card-internal">
-								<strong>
-									<Lock />
-									Nota interna · solo personal
-								</strong>
-								<p>{c.internal}</p>
-							</div>
-						)}
-						{steps.length > 0 && (
-							<ul className="conduct-followup">
-								{steps.map((line, i) => (
-									// biome-ignore lint/suspicious/noArrayIndexKey: lines are an append-only log
-									<li key={i}>{line}</li>
-								))}
-							</ul>
-						)}
-					</details>
-				)}
-				<div className="conduct-actions">
-					<button
-						className="conduct-link"
-						type="button"
-						onClick={() =>
-							open(
-								"conduct-followup",
-								`Agregar seguimiento: ${c.id}`,
-								[field("followup", "Nuevo seguimiento", "textarea"), reason],
-								{ id: c.id },
-								["Se agrega al seguimiento previo sin borrarlo."],
-							)
-						}
-					>
-						Agregar seguimiento
-					</button>
-					{!c.published && (
+				<footer className="conduct-footer">
+					{detailCount > 0 && (
+						<details className="conduct-details">
+							<summary>Nota interna y seguimiento ({detailCount})</summary>
+							{c.internal && (
+								<div className="conduct-card-internal">
+									<strong>
+										<Lock />
+										Nota interna · solo personal
+									</strong>
+									<p>{c.internal}</p>
+								</div>
+							)}
+							{steps.length > 0 && (
+								<ul className="conduct-followup">
+									{steps.map((line, i) => (
+										// biome-ignore lint/suspicious/noArrayIndexKey: lines are an append-only log
+										<li key={i}>{line}</li>
+									))}
+								</ul>
+							)}
+						</details>
+					)}
+					<div className="conduct-actions">
 						<button
-							className="conduct-link conduct-link--pending"
 							type="button"
 							onClick={() =>
 								open(
-									"conduct-publish",
-									`Revisar reporte de ${studentName(c.student)}`,
-									[],
+									"conduct-followup",
+									`Agregar seguimiento: ${c.id}`,
+									[field("followup", "Nuevo seguimiento", "textarea"), reason],
 									{ id: c.id },
-									[
-										`${c.shared}: ${c.text}`,
-										`Seguimiento: ${c.followup}`,
-										"Las notas internas no forman parte del contenido compartido.",
-									],
+									["Se agrega al seguimiento previo sin borrarlo."],
 								)
 							}
 						>
-							Revisar y publicar
+							Agregar seguimiento
 						</button>
-					)}
-				</div>
+						{!c.published && (
+							<button
+								className="primary"
+								type="button"
+								onClick={() =>
+									open(
+										"conduct-publish",
+										`Revisar reporte de ${studentName(c.student)}`,
+										[],
+										{ id: c.id },
+										[
+											`${c.shared}: ${c.text}`,
+											`Seguimiento: ${c.followup}`,
+											"Las notas internas no forman parte del contenido compartido.",
+										],
+									)
+								}
+							>
+								Revisar y publicar
+							</button>
+						)}
+					</div>
+				</footer>
 			</div>
-		</li>
+		</article>
 	);
 }
 
@@ -230,33 +230,46 @@ function ConductBoard({
 		s.conduct.filter((c) => c.kind === kind).length;
 	const drafts = s.conduct.filter((c) => !c.published).length;
 	const rows = visibleConduct(s.conduct, filter);
+	const shared = s.conduct.filter((c) => c.shared === "Compartido").length;
+	const stats = [
+		["recognition", "Reconocimientos", count("Reconocimiento")],
+		["incident", "Incidentes", count("Incidente")],
+		["draft", "Borradores", drafts],
+		["shared", "Visibles para familias", shared],
+	] as const;
 	return (
-		<>
-			<div className="conduct-bar">
-				{s.conduct.length > 0 && (
-					<>
-						<ul className="conduct-summary" aria-label="Resumen de reportes">
-							<li
-								className={`conduct-chip conduct-chip--${count("Reconocimiento") ? "recognition" : "zero"}`}
-							>
-								{plural(
-									count("Reconocimiento"),
-									"reconocimiento",
-									"reconocimientos",
-								)}
-							</li>
-							<li
-								className={`conduct-chip conduct-chip--${count("Incidente") ? "incident" : "zero"}`}
-							>
-								{plural(count("Incidente"), "incidente", "incidentes")}
-							</li>
-							{drafts > 0 && (
-								<li className="conduct-chip conduct-chip--draft">
-									{plural(drafts, "borrador", "borradores")}
-								</li>
-							)}
-						</ul>
-						<div className="profile-grades-periods conduct-filter">
+		<div className="conduct-board">
+			{!studentId && (
+				<header className="progress-heading conduct-heading">
+					<div>
+						<h2>Reportes de conducta</h2>
+						<p>Los borradores y las notas internas no llegan a las familias.</p>
+					</div>
+					{action}
+				</header>
+			)}
+			{s.conduct.length > 0 && (
+				<section
+					className="progress-card progress-stats conduct-stats"
+					aria-label="Resumen de reportes"
+				>
+					<dl>
+						{stats.map(([key, label, value]) => (
+							<div key={key} data-state={key}>
+								<dt>{label}</dt>
+								<dd>
+									<strong>{value}</strong>
+								</dd>
+							</div>
+						))}
+					</dl>
+				</section>
+			)}
+			{(s.conduct.length > 0 || studentId) && (
+				<div className="progress-filters conduct-filters">
+					{s.conduct.length > 0 && (
+						<fieldset className="attendance-modes">
+							<legend className="schedule-hidden">Tipo de reporte</legend>
 							{filters.map((f) => (
 								<button
 									key={f.id}
@@ -267,17 +280,17 @@ function ConductBoard({
 									{f.label}
 								</button>
 							))}
-						</div>
-					</>
-				)}
-				<div className="conduct-action">{action}</div>
-			</div>
+						</fieldset>
+					)}
+					{studentId && <div className="conduct-action">{action}</div>}
+				</div>
+			)}
 			{rows.length > 0 ? (
 				<div className="conduct-list">
 					{groupByMonth(rows).map((month) => (
 						<section className="conduct-month" key={month.label}>
 							<h3>{month.label}</h3>
-							<ol className="conduct-rail">
+							<div className="conduct-posts">
 								{month.rows.map((c) => (
 									<ConductItem
 										key={c.id}
@@ -288,7 +301,7 @@ function ConductBoard({
 										showStudent={!studentId}
 									/>
 								))}
-							</ol>
+							</div>
 						</section>
 					))}
 				</div>
@@ -297,7 +310,7 @@ function ConductBoard({
 			) : (
 				<Empty text={emptyText} />
 			)}
-		</>
+		</div>
 	);
 }
 
