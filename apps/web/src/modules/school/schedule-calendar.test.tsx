@@ -53,6 +53,9 @@ const blocks = (html: string) =>
 test("only the calendar and its header remain; the lower panels are gone", () => {
 	const html = render(fixture().s);
 	expect(html).toContain('class="schedule-scroll"');
+	expect(html).toContain("Materias");
+	expect(html).toContain("Cambios de la semana");
+	expect(html).toContain('aria-label="Elegir semana"');
 	for (const removed of [
 		"schedule-detail",
 		"schedule-settings",
@@ -72,7 +75,7 @@ test("dated classes open an options panel and can be dragged; ghosts cannot", ()
 	const [block] = blocks(render(s));
 	expect(block).toContain('aria-haspopup="dialog"');
 	expect(block).toContain('draggable="true"');
-	expect(block).toContain('aria-label="Matemáticas');
+	expect(block).toContain('aria-label="Matemáticas,');
 	expect(block).toContain("Abrir opciones");
 	const canceled = apply(s, {
 		kind: "schedule-occurrence",
@@ -86,7 +89,11 @@ test("dated classes open an options panel and can be dragged; ghosts cannot", ()
 	});
 	const [ghost] = blocks(render(canceled));
 	expect(ghost).toContain('draggable="false"');
+	expect(ghost).toContain('data-ghost="cancel"');
 	expect(ghost).toContain("Cancelada");
+	expect(render(canceled)).toMatch(
+		/<strong>Matemáticas<\/strong>[\s\S]*Cancelada/,
+	);
 });
 
 test("a per-date substitute is visible on that class", () => {
@@ -106,15 +113,57 @@ test("a per-date substitute is visible on that class", () => {
 	expect(render(s)).not.toContain("Suplente: Laura Suplente");
 });
 
-test("compact time scale, seven columns and end-of-day notes are preserved", () => {
+test("time scale, seven columns and the end-of-day line inside the grid", () => {
 	const { s } = fixture();
 	const html = render(s);
-	expect(html).toContain("height:448px");
+	expect(html).toContain("height:512px");
 	expect((html.match(/class="schedule-day-heading"/g) || []).length).toBe(7);
-	expect(html).toContain("07:00–15:00");
-	expect(html).toContain("Fin de jornada: 15:00");
+	expect(html).toContain("7:00–15:00");
+	expect(html).toMatch(/class="schedule-end-line"[^>]*><span>Fin 15:00</);
 	s.scheduleWindows = [{ group: "g1", before: 10, after: 5 }];
-	expect(render(s)).toContain("Ventana: 14:50–15:05");
+	expect(render(s)).toContain("Salida 14:50–15:05");
+	expect(render(s)).toContain('class="schedule-end-band"');
+});
+
+test("a subject keeps one colour across periods and differs from other subjects", () => {
+	const { s } = fixture();
+	s.assignments = [
+		{ ...s.assignments[0] },
+		{ ...s.assignments[0], id: "a2", period: "P2" },
+		{ ...s.assignments[0], id: "h", subject: "Historia" },
+	];
+	s.schedules = [
+		{ ...s.schedules[0], start: "07:00", end: "08:00" },
+		{
+			...s.schedules[0],
+			id: "s2",
+			assignment: "a2",
+			start: "08:00",
+			end: "09:00",
+		},
+		{
+			...s.schedules[0],
+			id: "s3",
+			assignment: "h",
+			start: "09:00",
+			end: "10:00",
+		},
+	];
+	const tones = blocks(render(s)).map((b) => b.match(/data-tone="(\d)"/)?.[1]);
+	expect(tones[0]).toBe(tones[1]);
+	expect(tones[2]).not.toBe(tones[0]);
+	expect(
+		render(s).match(/schedule-subject-name">Matemáticas</g) || [],
+	).toHaveLength(1);
+});
+
+test("an empty group explains the next step inside the calendar", () => {
+	const { s } = fixture();
+	s.assignments = [];
+	s.schedules = [];
+	const html = render(s);
+	expect(html).toContain("Este grupo aún no tiene materias");
+	expect(html).toMatch(/class="primary"[^>]*>.*Agregar materia/);
 });
 
 test("the view switch offers dates and the weekly structure", () => {
@@ -128,13 +177,15 @@ test("structure view shows weekdays without dates, empty slots and the titular",
 	const { s } = fixture();
 	const html = render(s, "structure");
 	expect(html).toMatch(/aria-pressed="true"[^>]*>Estructura semanal</);
-	expect(html).toContain("Plantilla de cada semana");
+	expect(html).toContain("Plantilla que se repite cada semana");
 	expect(html).not.toContain("<time");
-	expect(html).not.toContain("Ir a fecha");
+	expect(html).not.toContain('aria-label="Elegir semana"');
+	expect(html).not.toContain("Cambios de la semana");
 	expect(html).toContain('aria-label="Agregar clase · Lunes 07:00"');
+	expect(html).toContain('aria-label="Agregar clase el lunes"');
 	const [block] = blocks(html);
 	expect(block).toContain('draggable="true"');
 	expect(block).toContain(`cada ${weekday(fixture().today)}`);
 	expect(html).toContain("Docente del grupo");
-	expect(html).toContain("1 clase · fin 15:00");
+	expect(html).toContain("1 clase");
 });

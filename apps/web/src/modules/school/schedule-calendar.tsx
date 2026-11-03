@@ -1,9 +1,9 @@
-import { useCallback, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { Icon } from "../../components/ui/icon";
 import {
-	ClassMenu,
+	ClassPanel,
 	type GridColumn,
 	type GridItem,
-	type MenuAction,
 	ScheduleGrid,
 } from "./schedule-grid";
 import {
@@ -14,11 +14,18 @@ import {
 	type Occurrence,
 	occurrences,
 	schoolToday,
-	validDate,
+	undoCommand,
 	weekday,
 	weekdays,
 } from "./schedule-helpers";
-import { field, options, reason } from "./view-helpers";
+import {
+	type ChangeRow,
+	type DayMarks,
+	MiniMonth,
+	SubjectFilter,
+	WeekChanges,
+} from "./schedule-sidebar";
+import { field, options } from "./view-helpers";
 import type { ViewProps } from "./view-types";
 import type { State } from "./workflows";
 import "./schedule-calendar.css";
@@ -26,49 +33,149 @@ import "./schedule-calendar.css";
 const disclaimer =
 	"Solo simulación local; no se comunica a terminales ni autoriza entrega de menores";
 const schoolWeek = [...weekdays.slice(1), weekdays[0]];
-const displayDate = (date: string, full = false) =>
-	new Intl.DateTimeFormat("es-MX", {
-		day: "numeric",
-		month: "short",
-		...(full ? { year: "numeric" as const } : {}),
-		timeZone: "UTC",
-	}).format(new Date(`${date}T12:00:00Z`));
+const fmt = (date: string, options: Intl.DateTimeFormatOptions) =>
+	new Intl.DateTimeFormat("es-MX", { ...options, timeZone: "UTC" }).format(
+		new Date(`${date}T12:00:00Z`),
+	);
+/** "lun 2 nov" */
+const shortDate = (date: string) =>
+	fmt(date, { weekday: "short", day: "numeric", month: "short" }).replace(
+		/\./g,
+		"",
+	);
+const longDate = (date: string) =>
+	fmt(date, { weekday: "long", day: "numeric", month: "long" });
+function weekTitle(first: string, last: string) {
+	const sameMonth = first.slice(0, 7) === last.slice(0, 7);
+	const start = fmt(
+		first,
+		sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" },
+	);
+	return `${start} – ${fmt(last, { day: "numeric", month: "short", year: "numeric" })}`.replace(
+		/\./g,
+		"",
+	);
+}
+function isoWeek(date: string) {
+	const d = new Date(`${date}T12:00:00Z`);
+	d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));
+	const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+	return (
+		1 +
+		Math.round(
+			((d.getTime() - firstThursday.getTime()) / 86400000 -
+				3 +
+				((firstThursday.getUTCDay() + 6) % 7)) /
+				7,
+		)
+	);
+}
+function zoneName(timezone: string) {
+	try {
+		const name = new Intl.DateTimeFormat("es-MX", {
+			timeZone: timezone,
+			timeZoneName: "longGeneric",
+		})
+			.formatToParts(new Date())
+			.find((part) => part.type === "timeZoneName")?.value;
+		return name ? name.charAt(0).toUpperCase() + name.slice(1) : timezone;
+	} catch {
+		return timezone;
+	}
+}
+function hash(value: string) {
+	let h = 0;
+	for (const char of value) h = (h * 31 + char.charCodeAt(0)) | 0;
+	return Math.abs(h);
+}
+/**
+ * One colour per subject across the school, in order of first creation, so a
+ * subject keeps its colour in every group and new subjects never repaint old ones.
+ */
+export function subjectTones(s: State) {
+	const order: string[] = [];
+	for (const a of s.assignments) {
+		const subject = a.subject.trim().toLowerCase();
+		if (!order.includes(subject)) order.push(subject);
+	}
+	return (subject: string) =>
+		Math.max(order.indexOf(subject.trim().toLowerCase()), 0) % 8;
+}
+/** "07:30" → "7:30" */
+const hm = (time: string) => time.replace(/^0(\d)/, "$1");
 const occurrenceKey = (item: Occurrence) =>
 	JSON.stringify([item.schedule, item.originDate, item.status]);
-const statusLabels = {
-	active: "Programada",
-	cancel: "Cancelada",
-	move: "Reagendada · origen",
-	moved: "Reagendada · destino",
-};
-const coverLabels = { substitute: "Suplente", teacher: "Cubre" };
-const coverRoles = [
-	{ id: "substitute", name: "Asignar suplente" },
-	{ id: "teacher", name: "Asignar otro docente" },
-	{ id: "titular", name: "Volver al docente titular" },
-];
+const coverWords = { substitute: "Suplente", teacher: "Cubre" };
 type Slot = State["schedules"][number];
-type Menu =
-	| { kind: "occurrence"; item: Occurrence; key: string; anchor: HTMLElement }
+type Mode = "view" | "cancel" | "move" | "staff" | "restore";
+type Panel =
+	| {
+			kind: "occurrence";
+			item: Occurrence;
+			key: string;
+			anchor: HTMLElement;
+			mode: Mode;
+			draft?: { date: string; start: string; end: string };
+	  }
 	| { kind: "slot"; slot: Slot; key: string; anchor: HTMLElement };
+type Toast = {
+	text: string;
+	undo?: { kind: string; data: Record<string, string> };
+};
 
 export function ScheduleCalendar({
 	s,
 	groupId,
 	open,
+	run,
 	initialView = "dates",
 }: {
 	s: State;
 	groupId: string;
 	open: ViewProps["open"];
-	initialView?: "dates" | "structure";
 	run?: (kind: string, data: Record<string, string>) => void;
+	initialView?: "dates" | "structure";
 }) {
 	const [view, setView] = useState(initialView);
-	const [menu, setMenu] = useState<Menu | null>(null);
-	const closeMenu = useCallback(() => setMenu(null), []);
+	const [panel, setPanel] = useState<Panel | null>(null);
+	const [error, setError] = useState("");
+	const [toast, setToast] = useState<Toast | null>(null);
+	const [announce, setAnnounce] = useState("");
+	const [hidden, setHidden] = useState(new Set<string>());
+	const closePanel = useCallback(() => {
+		setPanel(null);
+		setError("");
+	}, []);
 	const today = schoolToday(s.school.timezone);
 	const [selectedDate, setSelectedDate] = useState(today);
+	const [now, setNow] = useState<{ date: string; minutes: number } | null>(
+		null,
+	);
+	useEffect(() => {
+		const tick = () => {
+			const parts = new Intl.DateTimeFormat("en-GB", {
+				timeZone: s.school.timezone,
+				hour: "2-digit",
+				minute: "2-digit",
+				hourCycle: "h23",
+			}).formatToParts(new Date());
+			const part = (type: string) =>
+				Number(parts.find((p) => p.type === type)?.value || 0);
+			setNow({
+				date: schoolToday(s.school.timezone),
+				minutes: part("hour") * 60 + part("minute"),
+			});
+		};
+		tick();
+		const timer = setInterval(tick, 60_000);
+		return () => clearInterval(timer);
+	}, [s.school.timezone]);
+	useEffect(() => {
+		if (!toast) return;
+		const timer = setTimeout(() => setToast(null), 10_000);
+		return () => clearTimeout(timer);
+	}, [toast]);
+
 	const monday = addDays(
 		selectedDate,
 		-((new Date(`${selectedDate}T12:00:00Z`).getUTCDay() + 6) % 7),
@@ -78,15 +185,13 @@ export function ScheduleCalendar({
 	const slots = s.schedules.filter((slot) =>
 		assignments.some((a) => a.id === slot.assignment),
 	);
-	const name = (id: string) =>
-		assignments.find((a) => a.id === id)?.subject || "Materia";
-	const titular = (id: string) =>
-		assignments.find((a) => a.id === id)?.teacher || "";
-	const tone = (id: string) =>
-		Math.max(
-			assignments.findIndex((a) => a.id === id),
-			0,
-		) % 5;
+	const assignment = (id: string) => assignments.find((a) => a.id === id);
+	const name = (id: string) => assignment(id)?.subject || "Materia";
+	const titular = (id: string) => assignment(id)?.teacher || "";
+	const subjectTone = subjectTones(s);
+	const tone = (id: string) => subjectTone(name(id));
+	const visible = (id: string) => !hidden.has(name(id));
+	const domId = (key: string) => `schedule-${groupId}-${hash(key)}`;
 	const teachers = [
 		...new Set([
 			...s.staff.filter((x) => x.role === "Docente").map((x) => x.name),
@@ -94,9 +199,28 @@ export function ScheduleCalendar({
 		]),
 	]
 		.filter(Boolean)
-		.sort((a, b) => a.localeCompare(b, "es"))
-		.map((teacher) => ({ id: teacher, name: teacher }));
+		.sort((a, b) => a.localeCompare(b, "es"));
+	const latestChange = (schedule: string, date: string) =>
+		s.scheduleChanges
+			.filter((c) => c.schedule === schedule && c.date === date)
+			.at(-1);
 
+	function addSubject() {
+		open(
+			"assignment",
+			"Agregar materia al grupo",
+			[
+				field("subject", "Materia"),
+				field("teacher", "Docente"),
+				field("period", "Periodo"),
+				field("min", "Calificación mínima", "number"),
+				field("max", "Calificación máxima", "number"),
+			],
+			{ group: groupId, min: "0", max: "10" },
+			[],
+			"La materia se conserva aunque todavía no tenga horario.",
+		);
+	}
 	function schedule(slot?: Slot, draft: Partial<Slot> = {}) {
 		const moving = Boolean(slot && (draft.day || draft.start));
 		const values = { ...slot, ...draft };
@@ -125,7 +249,7 @@ export function ScheduleCalendar({
 								...options(
 									"teacher",
 									"Nuevo docente titular (opcional)",
-									teachers,
+									teachers.map((t) => ({ id: t, name: t })),
 								),
 								optional: true,
 							},
@@ -151,7 +275,7 @@ export function ScheduleCalendar({
 				"Se repite cada semana. No se permiten cruces de medianoche ni clases superpuestas.",
 				...(slot
 					? [
-							"El docente titular cambia para la materia en todas sus clases. Para una sola fecha, usa Editar en la vista Por fechas.",
+							"El docente titular cambia para la materia en todas sus clases. Para una sola fecha, usa la vista Por fechas.",
 						]
 					: []),
 			],
@@ -172,427 +296,830 @@ export function ScheduleCalendar({
 			"Una serie con cancelaciones, reagendas o suplencias registradas no se puede eliminar, para conservar su historial.",
 		);
 	}
-	function occurrence(
-		item: Occurrence,
-		action: "cancel" | "move" | "restore",
-		target?: { date: string; start: string },
+	/** Per-date changes apply at once and offer an undo that adds, never deletes, history. */
+	function commitChange(
+		kind: "schedule-occurrence" | "schedule-staffing",
+		data: Record<string, string>,
+		done: string,
 	) {
-		const subject = name(item.assignment);
-		const end = target
-			? clock(minutes(target.start) + minutes(item.end) - minutes(item.start))
-			: item.end;
-		const title =
-			action === "cancel"
-				? `Cancelar clase · ${subject} · ${item.originDate}`
-				: action === "restore"
-					? `Restaurar clase · ${subject} · ${item.originDate}`
-					: target
-						? `Reagendar ${subject} al ${displayDate(target.date)} ${target.start}`
-						: `Reagendar clase · ${subject} · ${item.originDate}`;
-		open(
-			"schedule-occurrence",
-			title,
-			[
-				...(action === "move"
-					? [
-							field("targetDate", "Fecha destino", "date"),
-							field("start", "Nuevo inicio", "time"),
-							field("end", "Nuevo fin", "time"),
-						]
-					: []),
-				reason,
-			],
-			{
-				group: groupId,
-				schedule: item.schedule,
-				date: item.originDate,
-				action,
-				targetDate: target?.date || item.date,
-				start: target?.start || item.start,
-				end,
-			},
-			[
-				`Fecha original: ${displayDate(item.originDate, true)}. Solo cambia esta fecha; las demás semanas se conservan.`,
-				disclaimer,
-			],
-			"El motivo y el horario original quedan en el historial local. El fin de jornada se recalcula en las fechas afectadas.",
-		);
-	}
-	function staffing(item: Occurrence) {
-		const subject = name(item.assignment);
-		open(
-			"schedule-staffing",
-			`Editar clase · ${subject} · ${item.originDate}`,
-			[
-				options("role", "Cambio", coverRoles),
-				{
-					...options("teacher", "Docente para esta fecha", teachers),
-					optional: true,
-				},
-				reason,
-			],
-			{
-				group: groupId,
-				schedule: item.schedule,
-				date: item.originDate,
-				role: item.coverRole || "substitute",
-				teacher: item.coverRole ? item.teacher : "",
-			},
-			[
-				`Solo cambia la clase del ${displayDate(item.date, true)}. ${titular(item.assignment)} sigue como titular en las demás semanas.`,
-			],
-			"Para volver al titular elige «Volver al docente titular»; el docente indicado se ignora.",
-		);
-	}
-	function windowText(date: string) {
+		if (!run) {
+			open(kind, done, [], data, [disclaimer]);
+			closePanel();
+			return;
+		}
+		const undo = undoCommand(s, kind, data);
 		try {
-			const window = dayWindow(s, groupId, date);
-			if (!window) return "Sin clases efectivas";
-			return window.start === window.end
-				? `Fin de jornada: ${window.last}`
-				: `Ventana: ${window.start}–${window.end} · fin ${window.last}`;
-		} catch {
-			return "Ventana fuera del día: revisa los minutos configurados";
+			run(kind, data);
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Revisa los datos.");
+			return;
+		}
+		const anchor = panel?.anchor;
+		closePanel();
+		setToast({ text: done, undo });
+		setAnnounce(done);
+		requestAnimationFrame(() => {
+			if (anchor?.isConnected) anchor.focus();
+		});
+	}
+	function undoLast() {
+		if (!toast?.undo || !run) return;
+		try {
+			run(toast.undo.kind, toast.undo.data);
+			setToast({ text: "Cambio deshecho. Quedó registrado en el historial." });
+			setAnnounce("Cambio deshecho");
+		} catch (e) {
+			setToast({
+				text: `No se pudo deshacer: ${e instanceof Error ? e.message : "revisa el horario"}`,
+			});
 		}
 	}
 
+	// Dated view data
 	const byKey = new Map<string, Occurrence>();
 	const dayItems = dates.map((date) => occurrences(s, groupId, date));
-	const dated: { columns: GridColumn[]; items: GridItem[] } = {
-		columns: dates.map((date) => {
-			const holiday = s.exceptions.find((e) => e.date === date);
-			return {
-				key: date,
-				date,
-				label: weekday(date),
-				day: date.slice(8),
-				today: date === today,
-				note: holiday ? "Día inhábil" : windowText(date),
-				noteTitle: holiday?.reason,
-				off: Boolean(holiday),
-			};
-		}),
-		items: dayItems.flatMap((items) =>
-			items.map((item) => {
+	const isPast = (item: Occurrence) =>
+		item.date < today ||
+		(now !== null &&
+			item.date === now.date &&
+			minutes(item.end) <= now.minutes);
+	const datedColumns: GridColumn[] = dates.map((date) => {
+		const holiday = s.exceptions.find((e) => e.date === date);
+		let end: GridColumn["end"];
+		try {
+			const window = holiday ? null : dayWindow(s, groupId, date);
+			if (window)
+				end = {
+					at: window.last,
+					...(window.start !== window.end
+						? { band: { start: window.start, end: window.end } }
+						: {}),
+				};
+		} catch {
+			end = undefined;
+		}
+		return {
+			key: date,
+			date,
+			label: weekday(date),
+			short: weekday(date).slice(0, 3).toUpperCase(),
+			day: String(Number(date.slice(8))),
+			today: date === today,
+			holiday: holiday?.reason,
+			end,
+		};
+	});
+	const datedItems: GridItem[] = dayItems.flatMap((items) =>
+		items
+			.filter((item) => visible(item.assignment))
+			.map((item) => {
 				const key = occurrenceKey(item);
 				byKey.set(key, item);
-				const ghost = item.status === "cancel" || item.status === "move";
-				const shared = items.some(
-					(other) =>
-						other !== item &&
-						(other.status === "cancel" || other.status === "move") &&
-						other.start < item.end &&
-						other.end > item.start,
-				);
-				const cover = item.coverRole
-					? `${coverLabels[item.coverRole]}: ${item.teacher}`
-					: "";
+				const ghost =
+					item.status === "cancel" || item.status === "move"
+						? item.status
+						: undefined;
+				const overlaps = (ghosts: boolean) =>
+					items.some(
+						(other) =>
+							other !== item &&
+							(other.status === "cancel" || other.status === "move") ===
+								ghosts &&
+							visible(other.assignment) &&
+							other.start < item.end &&
+							other.end > item.start,
+					);
+				const target =
+					item.status === "move"
+						? latestChange(item.schedule, item.originDate)
+						: undefined;
+				const badge: GridItem["badge"] =
+					item.status === "cancel"
+						? { tone: "cancel", text: "Cancelada" }
+						: item.status === "move"
+							? {
+									tone: "move",
+									text: target
+										? `Movida al ${shortDate(target.targetDate)}`
+										: "Reagendada",
+								}
+							: item.coverRole
+								? {
+										tone: "cover",
+										text: `${coverWords[item.coverRole]}: ${item.teacher}`,
+									}
+								: item.status === "moved"
+									? {
+											tone: "moved",
+											text: `Desde ${shortDate(item.originDate)}`,
+										}
+									: undefined;
 				return {
 					key,
+					id: domId(key),
 					column: item.date,
 					start: item.start,
 					end: item.end,
 					title: name(item.assignment),
-					detail: ghost || !cover ? statusLabels[item.status] : cover,
-					covered: !ghost && Boolean(cover),
-					status: item.status,
+					time: `${hm(item.start)}–${hm(item.end)}`,
 					tone: tone(item.assignment),
+					ghost,
+					badge,
+					past: isPast(item),
 					draggable: !ghost,
-					side: ghost ? "right" : shared ? "left" : "full",
-					label: `${name(item.assignment)} · ${displayDate(item.date, true)} · ${item.start}–${item.end} · ${statusLabels[item.status]}${cover ? ` · ${cover}` : ""}. Abrir opciones`,
-					hint: `${name(item.assignment)} · ${item.start}–${item.end} · ${item.teacher}${ghost ? "" : " · Arrastra para reagendar"}`,
+					side: ghost
+						? overlaps(false)
+							? "right"
+							: "full"
+						: overlaps(true)
+							? "left"
+							: "full",
+					label: `${name(item.assignment)}, ${longDate(item.date)}, ${item.start} a ${item.end}${badge ? `, ${badge.text}` : ""}. Abrir opciones`,
 				} satisfies GridItem;
 			}),
-		),
+	);
+	const marks: DayMarks = new Map();
+	const mark = (date: string, value: "cancel" | "move" | "cover") => {
+		if (!marks.has(date)) marks.set(date, new Set());
+		marks.get(date)?.add(value);
 	};
-	const structure: { columns: GridColumn[]; items: GridItem[] } = {
-		columns: schoolWeek.map((day) => {
-			const daySlots = slots.filter((slot) => slot.day === day);
-			const last = daySlots.reduce(
-				(end, slot) => (slot.end > end ? slot.end : end),
-				"",
-			);
-			return {
-				key: day,
-				label: day,
-				note: daySlots.length
-					? `${daySlots.length} ${daySlots.length === 1 ? "clase" : "clases"} · fin ${last}`
-					: "Sin clases",
-			};
-		}),
-		items: slots.map((slot) => ({
+	for (const slot of slots) {
+		const seen = new Map<string, State["scheduleChanges"][number]>();
+		for (const change of s.scheduleChanges.filter(
+			(c) => c.schedule === slot.id,
+		))
+			seen.set(change.date, change);
+		for (const change of seen.values()) {
+			if (change.action === "cancel") mark(change.date, "cancel");
+			if (change.action === "move") {
+				mark(change.date, "move");
+				mark(change.targetDate, "move");
+			}
+		}
+		const covers = new Map<string, State["scheduleStaffing"][number]>();
+		for (const record of s.scheduleStaffing.filter(
+			(c) => c.schedule === slot.id,
+		))
+			covers.set(record.date, record);
+		for (const record of covers.values())
+			if (record.role !== "titular") {
+				const moved = seen.get(record.date);
+				mark(
+					moved?.action === "move" ? moved.targetDate : record.date,
+					"cover",
+				);
+			}
+	}
+	function openFromList(key: string) {
+		const item = byKey.get(key);
+		if (!item) return;
+		const element = document.getElementById(domId(key));
+		if (!element) return;
+		element.scrollIntoView({ block: "center", inline: "center" });
+		element.focus();
+		setError("");
+		setPanel({ kind: "occurrence", item, key, anchor: element, mode: "view" });
+	}
+	const changeRows: ChangeRow[] = dayItems
+		.flat()
+		.filter((item) => visible(item.assignment))
+		.flatMap((item): ChangeRow[] => {
+			const key = occurrenceKey(item);
+			const subject = name(item.assignment);
+			const base = { key, subject, onOpen: () => openFromList(key) };
+			if (item.status === "cancel")
+				return [
+					{
+						...base,
+						mark: "cancel",
+						text: `${shortDate(item.date)} · Cancelada${item.reason ? ` · ${item.reason}` : ""}`,
+					},
+				];
+			if (item.status === "moved")
+				return [
+					{
+						...base,
+						mark: "move",
+						text: `Reagendada al ${shortDate(item.date)}, ${item.start}${item.coverRole ? ` · ${coverWords[item.coverRole]}: ${item.teacher}` : ""}`,
+					},
+				];
+			if (item.status === "move") {
+				const target = latestChange(item.schedule, item.originDate);
+				if (target && dates.includes(target.targetDate)) return [];
+				return [
+					{
+						...base,
+						mark: "move",
+						text: `${shortDate(item.date)} · Movida al ${target ? shortDate(target.targetDate) : "otra semana"}`,
+					},
+				];
+			}
+			if (item.coverRole)
+				return [
+					{
+						...base,
+						mark: "cover",
+						text: `${shortDate(item.date)} · ${coverWords[item.coverRole]}: ${item.teacher}`,
+					},
+				];
+			return [];
+		});
+
+	// Weekly structure data
+	const structureColumns: GridColumn[] = schoolWeek.map((day) => {
+		const count = slots.filter((slot) => slot.day === day).length;
+		return {
+			key: day,
+			label: day,
+			short: day.slice(0, 3).toUpperCase(),
+			summary: count
+				? `${count} ${count === 1 ? "clase" : "clases"}`
+				: "Sin clases",
+			add: assignments.length
+				? () => schedule(undefined, { day, start: "08:00", end: "09:00" })
+				: undefined,
+		};
+	});
+	const structureItems: GridItem[] = slots
+		.filter((slot) => visible(slot.assignment))
+		.map((slot) => ({
 			key: slot.id,
+			id: domId(slot.id),
 			column: slot.day,
 			start: slot.start,
 			end: slot.end,
 			title: name(slot.assignment),
-			detail: titular(slot.assignment),
-			status: "active",
+			time: `${hm(slot.start)}–${hm(slot.end)}`,
+			badge: undefined,
 			tone: tone(slot.assignment),
 			draggable: true,
 			side: "full",
-			label: `${name(slot.assignment)} · cada ${slot.day} · ${slot.start}–${slot.end} · ${titular(slot.assignment)}. Abrir opciones`,
-			hint: `${name(slot.assignment)} · ${slot.start}–${slot.end} · Arrastra para cambiar día u hora`,
-		})),
-	};
-
-	const menuContent = (() => {
-		if (!menu) return null;
-		if (menu.kind === "slot") {
-			const { slot } = menu;
+			label: `${name(slot.assignment)}, cada ${slot.day}, ${slot.start} a ${slot.end}, titular ${titular(slot.assignment) || "sin docente"}. Abrir opciones`,
+		}));
+	const subjectRows = [...new Set(assignments.map((a) => a.subject))].map(
+		(subject) => {
+			const ids = assignments
+				.filter((a) => a.subject === subject)
+				.map((a) => a.id);
+			const own = slots.filter((slot) => ids.includes(slot.assignment));
 			return {
-				title: name(slot.assignment),
-				lines: [
-					`Cada ${slot.day.toLowerCase()} · ${slot.start}–${slot.end}`,
-					`Titular: ${titular(slot.assignment) || "Sin docente"}`,
-				],
-				actions: [
-					{ label: "Editar", run: () => schedule(slot) },
-					{ label: "Eliminar", run: () => removeSlot(slot), tone: "danger" },
-				] satisfies MenuAction[],
+				id: subject,
+				subject,
+				teacher: titular(own[0]?.assignment || ids[0]),
+				tone: subjectTone(subject),
+				minutes: own.reduce(
+					(sum, slot) => sum + minutes(slot.end) - minutes(slot.start),
+					0,
+				),
 			};
-		}
-		const { item } = menu;
-		const live = item.status === "active" || item.status === "moved";
-		return {
-			title: name(item.assignment),
-			lines: [
-				`${weekday(item.date)} ${displayDate(item.date, true)} · ${item.start}–${item.end}`,
-				item.coverRole
-					? `${coverLabels[item.coverRole]}: ${item.teacher} (titular: ${titular(item.assignment)})`
-					: `Docente: ${item.teacher || "Sin docente"}`,
-				`${statusLabels[item.status]}${item.reason ? ` · ${item.reason}` : ""}${item.status === "moved" ? ` · desde ${displayDate(item.originDate)}` : ""}`,
-			],
-			actions: [
-				...(live
-					? [
-							{ label: "Editar", run: () => staffing(item) },
-							{ label: "Reagendar", run: () => occurrence(item, "move") },
-							{
-								label: "Cancelar clase",
-								run: () => occurrence(item, "cancel"),
-								tone: "danger" as const,
-							},
-						]
-					: []),
-				...(item.status !== "active"
-					? [{ label: "Restaurar", run: () => occurrence(item, "restore") }]
-					: []),
-			] satisfies MenuAction[],
+		},
+	);
+	function submitPanel(e: FormEvent<HTMLFormElement>) {
+		e.preventDefault();
+		if (panel?.kind !== "occurrence") return;
+		const form = new FormData(e.currentTarget);
+		const value = (key: string) => String(form.get(key) || "").trim();
+		const { item } = panel;
+		const subject = name(item.assignment);
+		const base = {
+			group: groupId,
+			schedule: item.schedule,
+			date: item.originDate,
+			reason: value("reason"),
 		};
-	})();
-	const grid = view === "dates" ? dated : structure;
+		if (!base.reason) {
+			setError("Escribe el motivo del cambio.");
+			return;
+		}
+		if (panel.mode === "staff") {
+			const role = value("role");
+			commitChange(
+				"schedule-staffing",
+				{ ...base, role, teacher: role === "titular" ? "" : value("teacher") },
+				role === "titular"
+					? `${subject} del ${shortDate(item.date)} vuelve con ${titular(item.assignment)}.`
+					: `${value("teacher")} cubre ${subject} el ${shortDate(item.date)}.`,
+			);
+			return;
+		}
+		if (panel.mode === "move") {
+			commitChange(
+				"schedule-occurrence",
+				{
+					...base,
+					action: "move",
+					targetDate: value("targetDate"),
+					start: value("start"),
+					end: value("end"),
+				},
+				`${subject} reagendada al ${shortDate(value("targetDate"))}, ${value("start")}.`,
+			);
+			return;
+		}
+		commitChange(
+			"schedule-occurrence",
+			{ ...base, action: panel.mode === "cancel" ? "cancel" : "restore" },
+			panel.mode === "cancel"
+				? `${subject} del ${shortDate(item.date)} cancelada.`
+				: `${subject} del ${shortDate(item.originDate)} restaurada.`,
+		);
+	}
+	function setMode(mode: Mode) {
+		setError("");
+		setPanel((current) =>
+			current?.kind === "occurrence" ? { ...current, mode } : current,
+		);
+	}
+	function panelBody() {
+		if (!panel) return null;
+		if (panel.kind === "slot") {
+			const { slot } = panel;
+			return (
+				<div className="schedule-panel-body">
+					<p className="schedule-panel-meta">
+						Cada {slot.day.toLowerCase()} · {slot.start}–{slot.end}
+					</p>
+					<p>Titular: {titular(slot.assignment) || "Sin docente"}</p>
+					<div className="schedule-panel-actions">
+						<button type="button" data-autofocus onClick={() => schedule(slot)}>
+							Editar
+						</button>
+						<button
+							type="button"
+							data-tone="danger"
+							onClick={() => removeSlot(slot)}
+						>
+							Eliminar
+						</button>
+					</div>
+				</div>
+			);
+		}
+		const { item, mode, draft } = panel;
+		const live = item.status === "active" || item.status === "moved";
+		const errorLine = error && (
+			<p className="schedule-panel-error" role="alert">
+				{error}
+			</p>
+		);
+		const reasonField = (placeholder: string) => (
+			<label>
+				Motivo
+				<textarea
+					name="reason"
+					rows={2}
+					required
+					placeholder={placeholder}
+					data-autofocus={
+						mode === "cancel" || mode === "restore" ? true : undefined
+					}
+				/>
+			</label>
+		);
+		const footer = (primary: string, danger = false) => (
+			<div className="schedule-panel-actions">
+				<button type="button" onClick={() => setMode("view")}>
+					Volver
+				</button>
+				<button type="submit" className={danger ? "danger" : "primary"}>
+					{primary}
+				</button>
+			</div>
+		);
+		if (mode === "view")
+			return (
+				<div className="schedule-panel-body">
+					<p className="schedule-panel-meta">
+						{longDate(item.date)} · {item.start}–{item.end}
+					</p>
+					{item.coverRole ? (
+						<p>
+							<strong>
+								{coverWords[item.coverRole]}: {item.teacher}
+							</strong>
+							<br />
+							Titular: {titular(item.assignment)}
+						</p>
+					) : (
+						<p>Docente: {item.teacher || "Sin docente"}</p>
+					)}
+					{item.status !== "active" && (
+						<p className="schedule-panel-status" data-status={item.status}>
+							{item.status === "cancel"
+								? "Cancelada"
+								: item.status === "move"
+									? "Reagendada a otra fecha"
+									: `Reagendada desde el ${shortDate(item.originDate)}`}
+							{item.reason ? ` · ${item.reason}` : ""}
+						</p>
+					)}
+					<div className="schedule-panel-actions">
+						{live && (
+							<>
+								<button
+									type="button"
+									data-autofocus
+									onClick={() => setMode("staff")}
+								>
+									Cambiar docente
+								</button>
+								<button type="button" onClick={() => setMode("move")}>
+									Reagendar
+								</button>
+								<button
+									type="button"
+									data-tone="danger"
+									onClick={() => setMode("cancel")}
+								>
+									Cancelar clase
+								</button>
+							</>
+						)}
+						{item.status !== "active" && (
+							<button type="button" onClick={() => setMode("restore")}>
+								Restaurar
+							</button>
+						)}
+					</div>
+				</div>
+			);
+		if (mode === "staff")
+			return (
+				<form className="schedule-panel-body" onSubmit={submitPanel} noValidate>
+					<p className="schedule-panel-meta">
+						Solo el {longDate(item.date)}. Titular: {titular(item.assignment)}.
+					</p>
+					<fieldset className="schedule-choice">
+						<legend>Cambio</legend>
+						{(
+							[
+								["substitute", "Suplente"],
+								["teacher", "Otro docente"],
+								["titular", "Volver al titular"],
+							] as const
+						).map(([value, text]) => (
+							<label key={value}>
+								<input
+									type="radio"
+									name="role"
+									value={value}
+									defaultChecked={(item.coverRole || "substitute") === value}
+									disabled={value === "titular" && !item.coverRole}
+								/>
+								{text}
+							</label>
+						))}
+					</fieldset>
+					<label>
+						Docente para esta fecha
+						<select
+							name="teacher"
+							defaultValue={item.coverRole ? item.teacher : ""}
+							data-autofocus
+						>
+							<option value="">Selecciona…</option>
+							{teachers
+								.filter((t) => t !== titular(item.assignment))
+								.map((t) => (
+									<option key={t} value={t}>
+										{t}
+									</option>
+								))}
+						</select>
+					</label>
+					{reasonField("Ej. licencia médica del titular")}
+					{errorLine}
+					{footer("Guardar")}
+				</form>
+			);
+		if (mode === "move")
+			return (
+				<form className="schedule-panel-body" onSubmit={submitPanel} noValidate>
+					<p className="schedule-panel-meta">
+						Solo cambia la clase del {longDate(item.originDate)}.
+					</p>
+					<div className="schedule-panel-row">
+						<label>
+							Fecha
+							<input
+								type="date"
+								name="targetDate"
+								defaultValue={draft?.date || item.date}
+								data-autofocus={draft ? undefined : true}
+							/>
+						</label>
+					</div>
+					<div className="schedule-panel-row">
+						<label>
+							Inicio
+							<input
+								type="time"
+								name="start"
+								defaultValue={draft?.start || item.start}
+							/>
+						</label>
+						<label>
+							Fin
+							<input
+								type="time"
+								name="end"
+								defaultValue={draft?.end || item.end}
+							/>
+						</label>
+					</div>
+					<label>
+						Motivo
+						<textarea
+							name="reason"
+							rows={2}
+							required
+							placeholder="Ej. junta de academia"
+							data-autofocus={draft ? true : undefined}
+						/>
+					</label>
+					{errorLine}
+					{footer("Reagendar")}
+				</form>
+			);
+		return (
+			<form className="schedule-panel-body" onSubmit={submitPanel} noValidate>
+				<p className="schedule-panel-meta">
+					{mode === "cancel"
+						? `Se cancela solo el ${longDate(item.date)}. Queda visible como evidencia.`
+						: `Vuelve a su horario original del ${longDate(item.originDate)}.`}
+				</p>
+				{reasonField(
+					mode === "cancel"
+						? "Ej. suspensión por junta"
+						: "Ej. se resolvió el aviso",
+				)}
+				{errorLine}
+				{footer(
+					mode === "cancel" ? "Cancelar clase" : "Restaurar",
+					mode === "cancel",
+				)}
+			</form>
+		);
+	}
 
+	const columns = view === "dates" ? datedColumns : structureColumns;
+	const items = view === "dates" ? datedItems : structureItems;
+	const panelTitle = panel
+		? name(
+				panel.kind === "slot" ? panel.slot.assignment : panel.item.assignment,
+			)
+		: "";
 	return (
 		<section
 			className="schedule-calendar"
 			aria-labelledby="schedule-calendar-heading"
 		>
-			<header className="schedule-header">
-				<div>
-					<h2 id="schedule-calendar-heading">Horario semanal</h2>
-					<p>
-						{view === "dates"
-							? "Arrastra una clase para reagendarla. Haz clic en ella para editarla o cancelarla solo en esa fecha."
-							: "Define las clases que se repiten cada semana. Arrastra para cambiar día u hora, o haz clic en un hueco para agregar una clase."}
-					</p>
-				</div>
-				<div className="schedule-controls">
-					<button
-						type="button"
-						onClick={() =>
-							open(
-								"assignment",
-								"Agregar materia al grupo",
+			<div className="schedule-layout">
+				<aside className="schedule-aside" aria-label="Filtros del horario">
+					{view === "dates" && (
+						<MiniMonth
+							selected={selectedDate}
+							today={today}
+							marks={marks}
+							onSelect={(date) => {
+								closePanel();
+								setSelectedDate(date);
+							}}
+						/>
+					)}
+					<SubjectFilter
+						rows={subjectRows}
+						hidden={hidden}
+						onAdd={addSubject}
+						onToggle={(id) => {
+							const next = new Set(hidden);
+							if (next.has(id)) next.delete(id);
+							else next.add(id);
+							setHidden(next);
+						}}
+					/>
+					{view === "dates" && <WeekChanges rows={changeRows} />}
+					<p className="schedule-disclaimer">{disclaimer}</p>
+				</aside>
+				<div className="schedule-main">
+					<header className="schedule-head">
+						<div className="schedule-head-title">
+							{view === "dates" && (
+								<div className="schedule-step">
+									<button
+										type="button"
+										className="schedule-icon-button schedule-prev"
+										aria-label="Semana anterior"
+										onClick={() => {
+											closePanel();
+											setSelectedDate(addDays(selectedDate, -7));
+										}}
+									>
+										<Icon name="chevron" />
+									</button>
+									<button
+										type="button"
+										className="schedule-icon-button"
+										aria-label="Semana siguiente"
+										onClick={() => {
+											closePanel();
+											setSelectedDate(addDays(selectedDate, 7));
+										}}
+									>
+										<Icon name="chevron" />
+									</button>
+								</div>
+							)}
+							<div>
+								<h2 id="schedule-calendar-heading" aria-live="polite">
+									{view === "dates"
+										? weekTitle(dates[0], dates[6])
+										: "Estructura semanal"}
+								</h2>
+								<p className="schedule-zone">
+									{view === "dates"
+										? zoneName(s.school.timezone)
+										: "Plantilla que se repite cada semana"}
+								</p>
+							</div>
+							{view === "dates" && (
+								<span className="schedule-pill">Semana {isoWeek(monday)}</span>
+							)}
+						</div>
+						{view === "dates" && !dates.includes(today) && (
+							<button
+								type="button"
+								className="schedule-today"
+								onClick={() => setSelectedDate(today)}
+							>
+								Ir a hoy
+							</button>
+						)}
+					</header>
+					<div className="schedule-toolbar">
+						<fieldset className="schedule-views">
+							<legend className="schedule-hidden">Vista del horario</legend>
+							{(
 								[
-									field("subject", "Materia"),
-									field("teacher", "Docente"),
-									field("period", "Periodo"),
-									field("min", "Calificación mínima", "number"),
-									field("max", "Calificación máxima", "number"),
-								],
-								{ group: groupId, min: "0", max: "10" },
-								[],
-								"La asignación se conserva aunque todavía no tenga horario.",
-							)
-						}
-					>
-						Agregar materia
-					</button>
-					<button
-						type="button"
-						className="primary"
-						disabled={!assignments.length}
-						onClick={() => schedule()}
-					>
-						Agendar clase semanal
-					</button>
-				</div>
-			</header>
-			<p className="schedule-disclaimer">{disclaimer}</p>
-			{!assignments.length && (
-				<p>
-					Empieza por agregar una materia y su docente; después podrás agendar
-					su recurrencia.
-				</p>
-			)}
-			<div className="schedule-toolbar" data-view={view}>
-				<fieldset className="schedule-views">
-					<legend className="schedule-hidden">Vista del horario</legend>
-					{(
-						[
-							["dates", "Por fechas"],
-							["structure", "Estructura semanal"],
-						] as const
-					).map(([id, text]) => (
+									["dates", "Por fechas"],
+									["structure", "Estructura semanal"],
+								] as const
+							).map(([id, text]) => (
+								<button
+									type="button"
+									key={id}
+									aria-pressed={view === id}
+									onClick={() => {
+										closePanel();
+										setView(id);
+									}}
+								>
+									{text}
+								</button>
+							))}
+						</fieldset>
 						<button
 							type="button"
-							key={id}
-							aria-pressed={view === id}
-							onClick={() => {
-								setMenu(null);
-								setView(id);
-							}}
+							className={`schedule-create ${view === "structure" ? "primary" : ""}`}
+							disabled={!assignments.length}
+							onClick={() => schedule()}
 						>
-							{text}
+							<Icon name="plus" size={18} />
+							Agendar clase
 						</button>
-					))}
-				</fieldset>
-				{view === "dates" ? (
-					<>
-						<div className="schedule-week" aria-live="polite">
-							<h3>
-								{displayDate(dates[0])} – {displayDate(dates[6], true)}
-							</h3>
-							<p>Hora local · {s.school.timezone}</p>
-						</div>
-						<fieldset className="schedule-controls schedule-nav">
-							<legend className="schedule-hidden">Navegar semanas</legend>
-							<button
-								type="button"
-								aria-label="Semana anterior"
-								disabled={monday <= "1900-01-08"}
-								onClick={() => setSelectedDate(addDays(selectedDate, -7))}
-							>
-								Anterior
-							</button>
-							<button type="button" onClick={() => setSelectedDate(today)}>
-								Hoy
-							</button>
-							<button
-								type="button"
-								aria-label="Semana siguiente"
-								disabled={monday >= "9999-12-20"}
-								onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-							>
-								Siguiente
-							</button>
-						</fieldset>
-						<label>
-							Ir a fecha
-							<input
-								type="date"
-								min="1900-01-08"
-								max="9999-12-20"
-								value={selectedDate}
-								onChange={(e) => {
-									if (
-										validDate(e.target.value) &&
-										e.target.value >= "1900-01-08" &&
-										e.target.value <= "9999-12-20"
-									)
-										setSelectedDate(e.target.value);
-								}}
-							/>
-						</label>
-					</>
-				) : (
-					<div className="schedule-week">
-						<h3>Plantilla de cada semana</h3>
-						<p>
-							{slots.length} {slots.length === 1 ? "clase" : "clases"} ·
-							Cancelaciones y reagendas se hacen en Por fechas
-						</p>
 					</div>
-				)}
+					<ScheduleGrid
+						key={view}
+						columns={columns}
+						items={items}
+						activeKey={panel?.key}
+						now={
+							view === "dates" && now && dates.includes(now.date)
+								? { column: now.date, minutes: now.minutes }
+								: undefined
+						}
+						label={
+							view === "dates"
+								? "Calendario de la semana. Flechas para moverte entre clases; Enter abre sus opciones."
+								: "Estructura semanal. Flechas para moverte entre clases; Enter abre sus opciones."
+						}
+						empty={
+							!assignments.length ? (
+								<div className="schedule-empty">
+									<h3>Este grupo aún no tiene materias</h3>
+									<p>
+										Agrega una materia con su docente; después podrás acomodar
+										sus clases en la semana.
+									</p>
+									<button
+										type="button"
+										className="primary"
+										onClick={addSubject}
+									>
+										<Icon name="plus" size={18} />
+										Agregar materia
+									</button>
+								</div>
+							) : undefined
+						}
+						onSelect={(item, anchor) => {
+							if (panel?.key === item.key) return closePanel();
+							setError("");
+							if (view === "structure") {
+								const slot = slots.find((x) => x.id === item.key);
+								if (slot)
+									setPanel({ kind: "slot", slot, key: item.key, anchor });
+								return;
+							}
+							const found = byKey.get(item.key);
+							if (found)
+								setPanel({
+									kind: "occurrence",
+									item: found,
+									key: item.key,
+									anchor,
+									mode: "view",
+								});
+						}}
+						onMove={(item, column, start) => {
+							setError("");
+							if (view === "structure") {
+								closePanel();
+								const slot = slots.find((x) => x.id === item.key);
+								if (slot)
+									schedule(slot, {
+										day: column,
+										start,
+										end: clock(
+											minutes(start) + minutes(slot.end) - minutes(slot.start),
+										),
+									});
+								return;
+							}
+							const found = byKey.get(item.key);
+							const anchor = document.getElementById(item.id);
+							if (found && anchor)
+								setPanel({
+									kind: "occurrence",
+									item: found,
+									key: item.key,
+									anchor,
+									mode: "move",
+									draft: {
+										date: column,
+										start,
+										end: clock(
+											minutes(start) +
+												minutes(found.end) -
+												minutes(found.start),
+										),
+									},
+								});
+						}}
+						onCreate={
+							view === "structure" && assignments.length
+								? (day, start) =>
+										schedule(undefined, {
+											day,
+											start,
+											end: clock(Math.min(minutes(start) + 60, 23 * 60 + 59)),
+										})
+								: undefined
+						}
+					/>
+				</div>
 			</div>
-			<div className="schedule-legend">
-				<span className="schedule-hidden">Estados de las clases:</span>
-				{view === "dates" ? (
-					<>
-						<span data-status="active">Programada</span>
-						<span data-status="cancel">Cancelada</span>
-						<span data-status="move">Reagendada</span>
-						<span data-status="cover">Suplencia</span>
-					</>
-				) : (
-					<span data-status="active">Clase semanal</span>
-				)}
-				<p className="schedule-scroll-hint">
-					Desliza horizontalmente para ver toda la semana.
-				</p>
-			</div>
-			<ScheduleGrid
-				key={view}
-				columns={grid.columns}
-				items={grid.items}
-				activeKey={menu?.key}
-				label={
-					view === "dates"
-						? "Calendario semanal por fechas con desplazamiento horizontal y vertical"
-						: "Estructura semanal con desplazamiento horizontal y vertical"
-				}
-				onSelect={(item, anchor) => {
-					if (menu?.key === item.key) return setMenu(null);
-					if (view === "structure") {
-						const slot = slots.find((x) => x.id === item.key);
-						if (slot) setMenu({ kind: "slot", slot, key: item.key, anchor });
-						return;
-					}
-					const found = byKey.get(item.key);
-					if (found)
-						setMenu({ kind: "occurrence", item: found, key: item.key, anchor });
-				}}
-				onMove={(item, column, start) => {
-					setMenu(null);
-					if (view === "structure") {
-						const slot = slots.find((x) => x.id === item.key);
-						if (slot)
-							schedule(slot, {
-								day: column,
-								start,
-								end: clock(
-									minutes(start) + minutes(slot.end) - minutes(slot.start),
-								),
-							});
-						return;
-					}
-					const found = byKey.get(item.key);
-					if (found) occurrence(found, "move", { date: column, start });
-				}}
-				onCreate={
-					view === "structure" && assignments.length
-						? (day, start) =>
-								schedule(undefined, {
-									day,
-									start,
-									end: clock(Math.min(minutes(start) + 60, 23 * 60 + 59)),
-								})
-						: undefined
-				}
-			/>
-			{menu && menuContent && (
-				<ClassMenu
-					anchor={menu.anchor}
-					title={menuContent.title}
-					actions={menuContent.actions}
-					onClose={closeMenu}
+			{panel && (
+				<ClassPanel
+					key={`${panel.key}-${panel.kind === "occurrence" ? panel.mode : "slot"}`}
+					anchor={panel.anchor}
+					title={panelTitle}
+					onClose={closePanel}
 				>
-					{menuContent.lines.map((line) => (
-						<p key={line}>{line}</p>
-					))}
-				</ClassMenu>
+					{panelBody()}
+				</ClassPanel>
 			)}
+			{toast && (
+				<div className="schedule-toast">
+					<p>{toast.text}</p>
+					{toast.undo && (
+						<button type="button" onClick={undoLast}>
+							Deshacer
+						</button>
+					)}
+					<button
+						type="button"
+						className="schedule-icon-button"
+						aria-label="Cerrar aviso"
+						onClick={() => setToast(null)}
+					>
+						<Icon name="close" size={16} />
+					</button>
+				</div>
+			)}
+			<p className="schedule-hidden" aria-live="polite">
+				{announce}
+			</p>
 		</section>
 	);
 }

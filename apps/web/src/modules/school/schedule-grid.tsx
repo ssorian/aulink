@@ -1,45 +1,57 @@
 import {
 	type DragEvent,
+	type KeyboardEvent,
 	type ReactNode,
 	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
+import { Icon } from "../../components/ui/icon";
 import { clock, minutes } from "./schedule-helpers";
 
-export const hourHeight = 56;
-/** Drops snap to quarter hours; a class can never end past 23:45. */
+export const hourHeight = 64;
+/** Drops snap to quarter hours; a class can never end past 23:59. */
 const snap = 15;
 const lastStart = (duration: number) =>
 	Math.floor((23 * 60 + 59 - duration) / snap) * snap;
 
 export type GridColumn = {
 	key: string;
+	/** Short uppercase label, e.g. "LUN". */
+	short: string;
 	label: string;
-	/** Day of month shown as the large number; absent in the weekly structure. */
+	/** Day of month; absent in the weekly structure. */
 	day?: string;
 	date?: string;
 	today?: boolean;
-	note: string;
-	noteTitle?: string;
-	off?: boolean;
+	holiday?: string;
+	/** End of the effective school day, drawn as a dashed line. */
+	end?: { at: string; band?: { start: string; end: string } };
+	/** Weekly structure only: accessible "add class" action in the heading. */
+	add?: () => void;
+	summary?: string;
+};
+export type GridBadge = {
+	tone: "cover" | "moved" | "cancel" | "move";
+	text: string;
 };
 export type GridItem = {
 	key: string;
+	id: string;
 	column: string;
 	start: string;
 	end: string;
 	title: string;
-	detail: string;
-	status: string;
+	time: string;
 	tone: number;
+	/** Cancelled or moved-away occurrence that stays visible as evidence. */
+	ghost?: "cancel" | "move";
+	badge?: GridBadge;
+	past?: boolean;
 	draggable: boolean;
-	/** Cancelled/moved ghosts share their slot with the class that replaced them. */
 	side: "full" | "left" | "right";
 	label: string;
-	hint: string;
-	covered?: boolean;
 };
 
 export function hourRange(items: { start: string; end: string }[]) {
@@ -56,6 +68,8 @@ export function ScheduleGrid({
 	items,
 	label,
 	activeKey,
+	now,
+	empty,
 	onSelect,
 	onMove,
 	onCreate,
@@ -64,6 +78,8 @@ export function ScheduleGrid({
 	items: GridItem[];
 	label: string;
 	activeKey?: string;
+	now?: { column: string; minutes: number };
+	empty?: ReactNode;
 	onSelect: (item: GridItem, anchor: HTMLElement) => void;
 	onMove: (item: GridItem, column: string, start: string) => void;
 	onCreate?: (column: string, start: string) => void;
@@ -75,21 +91,63 @@ export function ScheduleGrid({
 	);
 	const height = (range.end - range.start) * hourHeight;
 	const drag = useRef<{ item: GridItem; offset: number } | null>(null);
-	const [drop, setDrop] = useState<{ column: string; start: number } | null>(
-		null,
-	);
-	const top = (time: string) =>
-		((minutes(time) - range.start * 60) * hourHeight) / 60;
+	const [drop, setDrop] = useState<{
+		column: string;
+		start: number;
+		conflict?: string;
+	} | null>(null);
+	const y = (value: number) => ((value - range.start * 60) * hourHeight) / 60;
+	const top = (time: string) => y(minutes(time));
 	function target(e: DragEvent<HTMLElement>) {
 		const current = drag.current;
 		if (!current) return null;
 		const duration = minutes(current.item.end) - minutes(current.item.start);
-		const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
-		const raw = range.start * 60 + ((y - current.offset) / hourHeight) * 60;
+		const offset = e.clientY - e.currentTarget.getBoundingClientRect().top;
+		const raw =
+			range.start * 60 + ((offset - current.offset) / hourHeight) * 60;
 		return Math.min(
 			Math.max(Math.round(raw / snap) * snap, 0),
 			lastStart(duration),
 		);
+	}
+	function clash(item: GridItem, column: string, start: number) {
+		const end = start + minutes(item.end) - minutes(item.start);
+		return items.find(
+			(other) =>
+				other.column === column &&
+				other.key !== item.key &&
+				!other.ghost &&
+				minutes(other.start) < end &&
+				minutes(other.end) > start,
+		)?.title;
+	}
+	/** Arrow keys walk the visible classes: up/down within a day, left/right across days. */
+	function walk(e: KeyboardEvent<HTMLButtonElement>, item: GridItem) {
+		const order = columns.map((column) =>
+			items
+				.filter((other) => other.column === column.key)
+				.sort((a, b) => a.start.localeCompare(b.start)),
+		);
+		const col = columns.findIndex((column) => column.key === item.column);
+		const row = order[col].findIndex((other) => other.key === item.key);
+		let next: GridItem | undefined;
+		if (e.key === "ArrowDown") next = order[col][row + 1];
+		else if (e.key === "ArrowUp") next = order[col][row - 1];
+		else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+			const step = e.key === "ArrowLeft" ? -1 : 1;
+			for (let i = col + step; i >= 0 && i < order.length; i += step)
+				if (order[i].length) {
+					next = order[i].reduce((best, other) =>
+						Math.abs(minutes(other.start) - minutes(item.start)) <
+						Math.abs(minutes(best.start) - minutes(item.start))
+							? other
+							: best,
+					);
+					break;
+				}
+		} else return;
+		e.preventDefault();
+		if (next) document.getElementById(next.id)?.focus();
 	}
 	const dragged = drag.current?.item;
 	return (
@@ -100,21 +158,37 @@ export function ScheduleGrid({
 			tabIndex={0}
 		>
 			<div className="schedule-grid">
-				<div className="schedule-corner">Hora</div>
+				<div className="schedule-corner" />
 				{columns.map((column) => (
 					<div
 						className="schedule-day-heading"
 						key={column.key}
 						data-today={column.today === true}
 					>
-						<div className="schedule-day-title">
-							<span>
-								{column.label}
-								{column.today && <small>Hoy</small>}
+						<span className="schedule-day-short" title={column.label}>
+							{column.short}
+						</span>
+						{column.day && <time dateTime={column.date}>{column.day}</time>}
+						{column.today && <span className="schedule-hidden">, hoy</span>}
+						{column.holiday && (
+							<span className="schedule-day-tag" title={column.holiday}>
+								Inhábil
 							</span>
-							{column.day && <time dateTime={column.date}>{column.day}</time>}
-						</div>
-						<p title={column.noteTitle}>{column.note}</p>
+						)}
+						{column.summary && (
+							<span className="schedule-day-summary">{column.summary}</span>
+						)}
+						{column.add && (
+							<button
+								type="button"
+								className="schedule-day-add"
+								aria-label={`Agregar clase el ${column.label.toLowerCase()}`}
+								title={`Agregar clase el ${column.label.toLowerCase()}`}
+								onClick={column.add}
+							>
+								<Icon name="plus" size={16} />
+							</button>
+						)}
 					</div>
 				))}
 				<div className="schedule-axis" style={{ height }}>
@@ -127,7 +201,9 @@ export function ScheduleGrid({
 				{columns.map((column) => (
 					<section
 						key={column.key}
-						className={`schedule-day ${column.off ? "schedule-day-off" : ""}`}
+						className="schedule-day"
+						data-off={Boolean(column.holiday)}
+						data-today={column.today === true}
 						data-drop={drop?.column === column.key}
 						style={{ height }}
 						aria-label={
@@ -135,11 +211,16 @@ export function ScheduleGrid({
 						}
 						onDragOver={(e) => {
 							const start = target(e);
-							if (start === null) return;
+							const current = drag.current;
+							if (start === null || !current) return;
 							e.preventDefault();
 							e.dataTransfer.dropEffect = "move";
 							if (drop?.column !== column.key || drop.start !== start)
-								setDrop({ column: column.key, start });
+								setDrop({
+									column: column.key,
+									start,
+									conflict: clash(current.item, column.key, start),
+								});
 						}}
 						onDrop={(e) => {
 							e.preventDefault();
@@ -156,27 +237,48 @@ export function ScheduleGrid({
 							onMove(current.item, column.key, clock(start));
 						}}
 					>
-						{hours.slice(0, -1).map((hour) =>
-							onCreate ? (
-								<button
-									type="button"
-									key={hour}
-									tabIndex={-1}
-									className="schedule-slot"
-									aria-label={`Agregar clase · ${column.label} ${clock(hour * 60)}`}
-									style={{
-										top: (hour - range.start) * hourHeight,
-										height: hourHeight,
-									}}
-									onClick={() => onCreate(column.key, clock(hour * 60))}
-								/>
-							) : (
-								<div
-									key={hour}
-									className="schedule-hour-line"
-									style={{ top: (hour - range.start) * hourHeight }}
-								/>
-							),
+						{hours
+							.slice(0, -1)
+							.map((hour) =>
+								onCreate ? (
+									<button
+										type="button"
+										key={hour}
+										tabIndex={-1}
+										className="schedule-slot"
+										aria-label={`Agregar clase · ${column.label} ${clock(hour * 60)}`}
+										style={{ top: (hour - range.start) * hourHeight }}
+										onClick={() => onCreate(column.key, clock(hour * 60))}
+									/>
+								) : (
+									<div
+										key={hour}
+										className="schedule-hour-line"
+										style={{ top: (hour - range.start) * hourHeight }}
+									/>
+								),
+							)}
+						{column.end?.band && (
+							<div
+								className="schedule-end-band"
+								aria-hidden="true"
+								style={{
+									top: top(column.end.band.start),
+									height: top(column.end.band.end) - top(column.end.band.start),
+								}}
+							/>
+						)}
+						{column.end && (
+							<div
+								className="schedule-end-line"
+								style={{ top: top(column.end.at) }}
+							>
+								<span>
+									{column.end.band
+										? `Salida ${column.end.band.start}–${column.end.band.end}`
+										: `Fin ${column.end.at}`}
+								</span>
+							</div>
 						)}
 						{items
 							.filter((item) => item.column === column.key)
@@ -184,14 +286,18 @@ export function ScheduleGrid({
 								<button
 									type="button"
 									key={item.key}
-									className={`schedule-block schedule-${item.status} ${minutes(item.end) - minutes(item.start) < 60 ? "schedule-short" : ""}`}
+									id={item.id}
+									className="schedule-block"
 									data-tone={item.tone}
+									data-ghost={item.ghost}
+									data-past={item.past}
+									data-short={minutes(item.end) - minutes(item.start) < 60}
 									data-dragging={dragged?.key === item.key && drop !== null}
 									aria-haspopup="dialog"
 									aria-expanded={activeKey === item.key}
 									aria-label={item.label}
-									title={item.hint}
 									draggable={item.draggable}
+									onKeyDown={(e) => walk(e, item)}
 									onDragStart={(e) => {
 										drag.current = {
 											item,
@@ -211,27 +317,37 @@ export function ScheduleGrid({
 										height: top(item.end) - top(item.start),
 										left: item.side === "right" ? "50%" : 4,
 										right: item.side === "left" ? "50%" : 4,
-										zIndex: index + 2,
+										zIndex: index + 3,
 									}}
 								>
 									<strong>{item.title}</strong>
-									<span>
-										{item.start}–{item.end}
-									</span>
-									<span
-										className="schedule-block-status"
-										data-covered={item.covered}
-									>
-										{item.detail}
-									</span>
+									{item.badge && (
+										<span
+											className="schedule-badge"
+											data-tone={item.badge.tone}
+										>
+											{item.badge.text}
+										</span>
+									)}
+									<span className="schedule-time">{item.time}</span>
 								</button>
 							))}
+						{now?.column === column.key &&
+							now.minutes >= range.start * 60 &&
+							now.minutes <= range.end * 60 && (
+								<div
+									className="schedule-now"
+									aria-hidden="true"
+									style={{ top: y(now.minutes) }}
+								/>
+							)}
 						{drop?.column === column.key && dragged && (
 							<div
 								className="schedule-drop"
+								data-conflict={Boolean(drop.conflict)}
 								aria-hidden="true"
 								style={{
-									top: ((drop.start - range.start * 60) * hourHeight) / 60,
+									top: y(drop.start),
 									height:
 										((minutes(dragged.end) - minutes(dragged.start)) *
 											hourHeight) /
@@ -242,33 +358,30 @@ export function ScheduleGrid({
 								{clock(
 									drop.start + minutes(dragged.end) - minutes(dragged.start),
 								)}
+								{drop.conflict && <small>Choca con {drop.conflict}</small>}
 							</div>
 						)}
 					</section>
 				))}
 			</div>
+			{empty}
 		</section>
 	);
 }
 
-export type MenuAction = {
-	label: string;
-	run: () => void;
-	tone?: "danger";
-};
-
-/** Floating panel anchored to a class block; Escape or an outside click closes it. */
-export function ClassMenu({
+/**
+ * Floating panel anchored to a class block. It keeps focus inside, follows the
+ * block while the page or grid scrolls, and closes on Escape or an outside click.
+ */
+export function ClassPanel({
 	anchor,
 	title,
 	children,
-	actions,
 	onClose,
 }: {
 	anchor: HTMLElement;
 	title: string;
 	children: ReactNode;
-	actions: MenuAction[];
 	onClose: () => void;
 }) {
 	const ref = useRef<HTMLDivElement>(null);
@@ -276,75 +389,106 @@ export function ClassMenu({
 	useLayoutEffect(() => {
 		const panel = ref.current;
 		if (!panel) return;
-		const box = anchor.getBoundingClientRect();
-		const width = panel.offsetWidth;
-		const panelHeight = panel.offsetHeight;
-		const right = box.right + 8;
-		const left =
-			right + width <= window.innerWidth - 8
-				? right
-				: Math.max(8, box.left - width - 8);
-		const top = Math.min(
-			Math.max(8, box.top),
-			window.innerHeight - panelHeight - 8,
-		);
-		setPosition({ top, left, ready: true });
-		panel.querySelector("button")?.focus();
+		const place = () => {
+			const box = anchor.getBoundingClientRect();
+			const width = panel.offsetWidth;
+			const right = box.right + 8;
+			const left =
+				right + width <= window.innerWidth - 8
+					? right
+					: Math.max(8, box.left - width - 8);
+			const top = Math.min(
+				Math.max(8, box.top),
+				window.innerHeight - panel.offsetHeight - 8,
+			);
+			setPosition({ top: Math.max(8, top), left, ready: true });
+		};
+		place();
+		const observer = new ResizeObserver(place);
+		observer.observe(panel);
+		document.addEventListener("scroll", place, true);
+		window.addEventListener("resize", place);
+		return () => {
+			observer.disconnect();
+			document.removeEventListener("scroll", place, true);
+			window.removeEventListener("resize", place);
+		};
 	}, [anchor]);
+	useEffect(() => {
+		const panel = ref.current;
+		(
+			panel?.querySelector<HTMLElement>("[data-autofocus]") ||
+			panel?.querySelector<HTMLElement>(".schedule-panel-body button")
+		)?.focus();
+	}, []);
 	useEffect(() => {
 		const close = (event: Event) => {
 			const node = event.target as Node | null;
 			if (node && (ref.current?.contains(node) || anchor.contains(node)))
 				return;
+			if (node instanceof Element && node.closest("dialog, .flow-dialog"))
+				return;
 			onClose();
 		};
-		const key = (event: KeyboardEvent) => {
-			if (event.key !== "Escape") return;
+		const onEscape = (event: globalThis.KeyboardEvent) => {
+			if (event.key !== "Escape" || document.querySelector("dialog[open]"))
+				return;
 			event.preventDefault();
 			anchor.focus();
 			onClose();
 		};
 		document.addEventListener("pointerdown", close);
-		document.addEventListener("scroll", close, true);
-		document.addEventListener("keydown", key);
-		window.addEventListener("resize", onClose);
+		document.addEventListener("keydown", onEscape);
 		return () => {
 			document.removeEventListener("pointerdown", close);
-			document.removeEventListener("scroll", close, true);
-			document.removeEventListener("keydown", key);
-			window.removeEventListener("resize", onClose);
+			document.removeEventListener("keydown", onEscape);
 		};
 	}, [anchor, onClose]);
+	function keep(e: KeyboardEvent<HTMLDivElement>) {
+		if (e.key !== "Tab") return;
+		const focusable = [
+			...(ref.current?.querySelectorAll<HTMLElement>(
+				"button:not(:disabled), input, select, textarea",
+			) || []),
+		];
+		const first = focusable[0];
+		const last = focusable.at(-1);
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last?.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first?.focus();
+		}
+	}
 	return (
 		<div
 			ref={ref}
-			className="schedule-menu"
+			className="schedule-panel"
 			role="dialog"
 			aria-label={title}
+			onKeyDown={keep}
 			style={{
 				top: position.top,
 				left: position.left,
 				visibility: position.ready ? "visible" : "hidden",
 			}}
 		>
-			<h3>{title}</h3>
-			<div className="schedule-menu-body">{children}</div>
-			<div className="schedule-menu-actions">
-				{actions.map((action) => (
-					<button
-						type="button"
-						key={action.label}
-						data-tone={action.tone}
-						onClick={() => {
-							anchor.focus();
-							onClose();
-							action.run();
-						}}
-					>
-						{action.label}
-					</button>
-				))}
-			</div>
+			<header>
+				<h3>{title}</h3>
+				<button
+					type="button"
+					className="schedule-panel-close"
+					aria-label="Cerrar"
+					onClick={() => {
+						anchor.focus();
+						onClose();
+					}}
+				>
+					<Icon name="close" size={16} />
+				</button>
+			</header>
+			{children}
 		</div>
 	);
 }
