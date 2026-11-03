@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import "./data-table.css";
 
 export function DataTable({
 	caption,
@@ -32,7 +31,11 @@ export function DataTable({
 			<p className="ui-table-scroll-hint">
 				Desliza para ver todas las columnas
 			</p>
-			{variant === "card" ? <div className="ui-table-card">{table}</div> : table}
+			{variant === "card" ? (
+				<div className="ui-table-card">{table}</div>
+			) : (
+				table
+			)}
 		</>
 	);
 }

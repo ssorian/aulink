@@ -96,8 +96,8 @@ test("workspace navigation is controlled, current-marked native buttons", async 
 		onChange: () => {},
 	};
 	const markup = renderToStaticMarkup(createElement(WorkspaceTabs, props));
-	expect(markup).toContain(
-		'<nav class="workspace-tabs" aria-label="Secciones">',
+	expect(markup).toMatch(
+		/^<nav data-slot="workspace-tabs" class="[^"]*" aria-label="Secciones">/,
 	);
 	expect(markup.match(/type="button"/g)).toHaveLength(2);
 	expect(markup.match(/aria-current="page"/g)).toHaveLength(1);

@@ -5,7 +5,8 @@ Use these primitives for consistent navigation and comparable records. They use 
 ## Quick path
 
 ```tsx
-<Panel heading="Equipos" description="Registro administrativo">
+<Card>
+  <CardTitle>Equipos</CardTitle>
   <DataTable caption="Registro de equipos">
     <thead>
       <tr><th scope="col">Equipo</th><th scope="col">Acciones</th></tr>
@@ -20,7 +21,7 @@ Use these primitives for consistent navigation and comparable records. They use 
       {!equipment.length && <EmptyTableRow columns={2}>No hay equipos.</EmptyTableRow>}
     </tbody>
   </DataTable>
-</Panel>
+</Card>
 
 <WorkspaceTabs
   label="Espacio de grupo"
@@ -30,11 +31,10 @@ Use these primitives for consistent navigation and comparable records. They use 
 />
 ```
 
-Import each component from its named file. `styles.css` imports `primitives.css` once.
+Import each component from its named file. The DataTable skin (`.ui-table-*`, `.ui-data-table`) lives in `src/styles.css` under `@layer components`, written with `@apply`.
 
 ## Contracts
 
-- **Panel:** required string `heading`, optional React-node `description`, semantic content as `children`. The heading names the section automatically. Put visible actions in children.
 - **DataTable:** required string `caption`; compose native `thead`, `tbody`, `tr`, `th` and `td`. Always scope column and row headers. `EmptyTableRow` belongs inside `tbody`; `columns` must match the table.
 - **WorkspaceTabs:** controlled string items, current value and change callback. Uses navigation buttons with `aria-current="page"`, not ARIA tabs. Tab/Shift+Tab and Enter/Space retain native behavior.
 - **Scrolling:** `.ui-table-scroll` is a named, keyboard-focusable horizontal scroll region; long cells wrap. A mobile-only hint above the scroll region (“Desliza para ver todas las columnas”) makes offscreen columns discoverable without reaching the bottom scrollbar. Keep actions as visible buttons, never row-only click targets.
@@ -78,4 +78,4 @@ Use tables when users compare stable fields across records (Personal, Grupos, Te
 
 ## Verification
 
-Check empty rows, long names, keyboard scrolling, visible focus and disabled actions at narrow widths. The three directories share Panel/DataTable; SchoolApp, GroupWorkspace and StudentProfile share WorkspaceTabs.
+Check empty rows, long names, keyboard scrolling, visible focus and disabled actions at narrow widths. The directories share Card/DataTable; SchoolApp, GroupWorkspace and StudentProfile share WorkspaceTabs.

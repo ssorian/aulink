@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
-@import './components/ui/primitives.css' layer(components);
 
 /*
  * Aulink design system (shadcn-style globals).
@@ -117,6 +116,56 @@
 	--radius-md: 8px;
 	--radius-lg: 12px;
 	--radius-xl: 16px;
+}
+
+/* DataTable: callers compose raw <th>/<td>, so the table skin lives here as one component
+   rule set built from utilities; any utility on a caller still wins. */
+@layer components {
+	.ui-table-scroll-hint {
+		@apply hidden text-xs text-muted-foreground max-md:block;
+	}
+	.ui-table-scroll {
+		@apply max-w-full min-w-0 overflow-x-auto [scrollbar-color:var(--color-input)_var(--color-muted)] [scrollbar-width:thin] focus-visible:-outline-offset-3;
+	}
+	.ui-table-card {
+		@apply max-w-full min-w-0 overflow-hidden rounded-lg border border-border bg-card;
+	}
+	.ui-table-card > .ui-table-scroll {
+		@apply rounded-[inherit] focus-visible:outline-2 focus-visible:outline-primary;
+	}
+	.ui-data-table {
+		@apply w-full min-w-[680px] table-fixed border-collapse text-left text-[13px] whitespace-normal tabular-nums;
+	}
+	.ui-data-table caption {
+		@apply py-3 text-left text-[13px] text-muted-foreground;
+	}
+	.ui-data-table :is(th, td) {
+		@apply border-b border-border p-3 align-top leading-[1.6] wrap-anywhere text-foreground;
+	}
+	.ui-data-table th {
+		@apply bg-muted text-[13px] font-semibold;
+	}
+	.ui-data-table th[scope="row"] {
+		@apply bg-transparent;
+	}
+	.ui-data-table tbody tr:hover {
+		@apply bg-background;
+	}
+	.ui-data-table button {
+		@apply min-h-11 max-w-full whitespace-normal;
+	}
+	.ui-data-table summary {
+		@apply min-h-11 cursor-pointer py-2.5 text-primary;
+	}
+	.ui-data-table details p {
+		@apply mt-2 text-[13px];
+	}
+	.ui-data-table .ui-table-empty {
+		@apply px-3 py-7 text-center text-muted-foreground;
+	}
+	.ui-table-card .ui-data-table tbody tr:last-child > :is(th, td) {
+		@apply border-b-0;
+	}
 }
 
 @layer components {

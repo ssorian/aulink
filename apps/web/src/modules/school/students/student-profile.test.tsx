@@ -47,7 +47,7 @@ const text = (html: string) =>
 test("profile offers four tabs and opens on Resumen", () => {
 	const html = render();
 	const nav =
-		html.match(/<nav class="workspace-tabs"[\s\S]*?<\/nav>/)?.[0] ?? "";
+		html.match(/<nav data-slot="workspace-tabs"[\s\S]*?<\/nav>/)?.[0] ?? "";
 	const tabs = [...nav.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map(
 		(m) => m[1],
 	);
