@@ -19,7 +19,7 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - T0 [S4] Explorers: styles, components, test coupling. Route: 3x gentle-ai-explore. ✅
 - T1 [S6] Merge feat/schedule-redesign into master (ff) and branch feat/ui-tailwind. Route: inline. ✅
 - T2 [S2,S5] Foundation: deps, `lib/utils.ts` cn(), styles.css as shadcn-like globals (:root tokens, @theme inline, @layer base, legacy purple/dead rules removed). Route: inline. Commit: (T2 commit) ✅
-- T3 [S3,S4] Shared primitives in components/ui (Button, Card, Stat, Field/Select, Badge, Legend, Avatar, EmptyState, Meter, MiniMonth, Dialog, FilterBar) with data-slot hooks + tests + README. Route: inline.
+- T3 [S3,S4,S9] Shared primitives in components/ui with data-slot hooks + tests + README. Route: worker. Commit: (T3 commit) ✅
 - T4 [S4,S8,S10] Move modules/school files into module folders; imports only. Route: worker (parallel with T3, disjoint surfaces). Commit: (T4 commit) ✅
 - T5 [S1,S3] Evaluation → Tailwind + primitives; delete its CSS.
 - T6 [S1,S3] Communications + Conduct.
@@ -37,3 +37,4 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - L3: decisions S5-S8 answered. master fast-forwarded to 63f06d4 locally (no push).
 - L4: T2 done. Visual-diff harness outside the repo (/tmp/aulink-vd: shoot.mjs = 17 screens x 1440/390 full-page via playwright-core on :3101; diff.py; cmp.py). Baseline noise ≤0.03% at 1440. After layering, all screens identical/noise except: group workspace shifted 16px because module `.group-back` (brick button, previously beaten by global `button.group-back`) now won -> dead module rule removed; perfil and "Agregar materia" show 2-4px gap/padding shifts (module rules now beat generic global button rules) — accepted, those screens are redone in T8/T9. Suite 329/6 known, typecheck clean.
 - L5: T4 done by worker: 85 git mv renames into 12 folders, 70 files with import-only edits, Field type moved to shared/view-types (re-exported by flow-dialog). bun test scripts/ apps/web/src/modules 327/6 before and after (same failing set); typecheck and Biome clean; visual diff vs base identical to T2 (only the known perfil/Agregar materia 2-4px shifts).
+- L6: T3 done by worker: tone.ts, button, card, stat, field (Field+Select), filter-bar, badge, legend, avatar (+AvatarStack), empty-state, meter, ranked-bars, mini-month (ported, day cells now 44px), dialog; lib/initials.ts; primitives.test.tsx 16 pass (RED observed: missing modules). Unrequested Biome reformat of data-table/panel reverted. Delivery: branch already past ~400 lines; slices = commits per task, PRs chained per module group (foundation T2-T4, then one PR per T5..T12).

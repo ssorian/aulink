@@ -1,6 +1,6 @@
 # Shared workspace surfaces
 
-Use these primitives for consistent navigation and comparable records. They reuse the existing cool-neutral surfaces and purple action tokens; domain decisions stay in `src/modules/school`.
+Use these primitives for consistent navigation and comparable records. They use the shadcn-style tokens exposed by `src/styles.css` (`@theme inline`); domain decisions stay in `src/modules/school`.
 
 ## Quick path
 
@@ -38,6 +38,39 @@ Import each component from its named file. `styles.css` imports `primitives.css`
 - **DataTable:** required string `caption`; compose native `thead`, `tbody`, `tr`, `th` and `td`. Always scope column and row headers. `EmptyTableRow` belongs inside `tbody`; `columns` must match the table.
 - **WorkspaceTabs:** controlled string items, current value and change callback. Uses navigation buttons with `aria-current="page"`, not ARIA tabs. Tab/Shift+Tab and Enter/Space retain native behavior.
 - **Scrolling:** `.ui-table-scroll` is a named, keyboard-focusable horizontal scroll region; long cells wrap. A mobile-only hint above the scroll region (“Desliza para ver todas las columnas”) makes offscreen columns discoverable without reaching the bottom scrollbar. Keep actions as visible buttons, never row-only click targets.
+
+## Tailwind primitives
+
+Styled only with Tailwind utilities over the `@theme` tokens (`bg-card`, `border-border`, `bg-teal-bg`, `text-teal-ink`…). Variants use `cva`, classes merge with `cn()`, every root has `data-slot` (plus `data-variant`, `data-tone`, `data-state` where relevant). Assert `data-*` in tests, never utility classes. All accept `className`.
+
+```tsx
+<Card as="article">
+  <CardHeader><CardTitle>Avance</CardTitle><Badge tone="success">Al día</Badge></CardHeader>
+  <CardContent>
+    <Meter percent={72} label="Calificaciones publicadas" />
+    <StatGrid label="Resumen"><Stat label="Publicadas" value={18} caption="72%" state="published" /></StatGrid>
+  </CardContent>
+</Card>
+<FilterBar label="Filtros">
+  <Select id="grp" label="Grupo" value={group} all="Todos" items={groups} onChange={setGroup} />
+</FilterBar>
+```
+
+- **Tone** (`tone.ts`): `neutral | teal | lilac | sky | mustard | brick | brown | peach | lemon | success | warning | danger`.
+- **Button:** `variant` default|primary|ghost|link|danger|icon, `size` default|sm|lg. Defaults to `type="button"`; min 44px height (icon: 44×44, needs `aria-label`). Base sets border/background explicitly over the legacy global `button` rule.
+- **Card / CardHeader / CardTitle / CardContent / CardFooter:** `as` article|section (default section), optional `tone`, `padding` none|default|compact.
+- **StatGrid / Stat:** `StatGrid label?` is a `<dl>`. `Stat` takes `label`, `value`, optional `caption`, and `tone` or `state` (published→success, draft→mustard, missing→brick, groups→teal).
+- **Field / Select:** `Field id label` wraps any control whose id equals `id`. `Select id label value items all? onChange(value)`: label tied by `htmlFor`, disabled with “Sin opciones” when `items` is empty.
+- **FilterBar:** `label` required; a `fieldset` row that wraps its children.
+- **Badge:** `tone`.
+- **Legend:** `label` (accessible list name) and `items: {tone, label}[]` rendered as dot list.
+- **Avatar / AvatarStack:** `Avatar name size sm|md|lg tone` shows `initials(name)`. `AvatarStack names max=3 size` shows the rest as `+N`; the stack is labelled with all names.
+- **EmptyState:** `text` required, `title="Sin registros"`, `icon` (an `IconName`, default `book`), optional `action`.
+- **Meter:** `percent` (clamped 0–100, NaN→0), `label`, `tone`; `role="meter"` with `aria-valuenow`.
+- **RankedBars:** `label`, `rows: {id, label, value 0–100, display, tone, onSelect?}[]`; rows with `onSelect` render a link-style button.
+- **MiniMonth:** same props as the schedule sidebar picker (`selected`, `today`, `marks`, `onSelect`, `label`, `inRange`, `legend`). Arrows move by day/week, PageUp/PageDown by month, roving `tabindex`, `aria-pressed` for the covered range, aria-labels with “hoy” and marks.
+- **Dialog:** native `<dialog>`; `open`, `onClose`, `title`, `children`. Opens with `showModal()`, closes on Escape or the labelled close button.
+- **`initials(name)`** lives in `src/lib/initials.ts`.
 
 ## Table or list?
 
