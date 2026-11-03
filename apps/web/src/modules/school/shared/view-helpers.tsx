@@ -1,4 +1,3 @@
-import { Icon } from "../../../components/ui/icon";
 import type { Field } from "../setup/flow-dialog";
 import type { State } from "./workflows";
 export const field = (key: string, label: string, type?: string): Field => ({
@@ -22,23 +21,6 @@ export const roles = [
 	"Docente",
 	"Operador de terminal",
 ].map((name) => ({ id: name, name }));
-export function Empty({
-	text,
-	title = "Sin registros",
-}: {
-	text: string;
-	title?: string;
-}) {
-	return (
-		<section className="empty">
-			<span className="task-icon">
-				<Icon name="book" />
-			</span>
-			<h2>{title}</h2>
-			<p>{text}</p>
-		</section>
-	);
-}
 export function noticeFields(s: State): Field[] {
 	return [
 		field("title", "Título"),
