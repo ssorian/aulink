@@ -8,6 +8,7 @@ import {
 import {
 	dayWindow,
 	occurrences,
+	undoCommand,
 	schoolToday,
 	validDate,
 } from "../apps/web/src/modules/school/schedule-helpers";
@@ -354,4 +355,80 @@ test("delete recurrence removes only that series and keeps traced series", () =>
 		run(staffed, "schedule-delete", { group: "g1", id: s.schedules[1].id }),
 	).toThrow(/historial/);
 	expect(traced.schedules).toHaveLength(3);
+});
+test("undo re-applies the previous state of that date and keeps every record", () => {
+	const s = fixture();
+	const slot = s.schedules[2].id;
+	const at = (state: State) =>
+		occurrences(state, "g1", "2026-08-03").find(
+			(x) => x.schedule === slot && x.originDate === "2026-08-03",
+		);
+	const cancel = {
+		group: "g1",
+		schedule: slot,
+		date: "2026-08-03",
+		action: "cancel",
+		reason: "Junta",
+	};
+	const undoCancel = undoCommand(s, "schedule-occurrence", cancel);
+	expect(undoCancel).toEqual({
+		kind: "schedule-occurrence",
+		data: {
+			group: "g1",
+			schedule: slot,
+			date: "2026-08-03",
+			action: "restore",
+			reason: "Deshacer: Junta",
+		},
+	});
+	const cancelled = run(s, "schedule-occurrence", cancel);
+	const back = apply(cancelled, undoCancel);
+	expect(at(back)?.status).toBe("active");
+	expect(back.scheduleChanges).toHaveLength(2);
+	const moved = change(s, 2, "move", {
+		targetDate: "2026-08-04",
+		start: "12:00",
+		end: "13:00",
+	});
+	const undo = undoCommand(moved, "schedule-occurrence", cancel);
+	expect(undo.data).toMatchObject({
+		action: "move",
+		targetDate: "2026-08-04",
+		start: "12:00",
+		end: "13:00",
+	});
+	const reverted = apply(run(moved, "schedule-occurrence", cancel), undo);
+	expect(
+		occurrences(reverted, "g1", "2026-08-04").find((x) => x.status === "moved")
+			?.start,
+	).toBe("12:00");
+});
+test("undo of a staffing change returns to the previous cover or the titular", () => {
+	const s = fixture();
+	const first = cover(s);
+	const swap = {
+		group: "g1",
+		schedule: s.schedules[1].id,
+		date: "2026-08-03",
+		role: "teacher",
+		teacher: "Mario Ruiz",
+		reason: "Cambio",
+	};
+	expect(undoCommand(s, "schedule-staffing", swap).data).toMatchObject({
+		role: "titular",
+		teacher: "",
+		reason: "Deshacer: Cambio",
+	});
+	const undo = undoCommand(first, "schedule-staffing", swap);
+	expect(undo.data).toMatchObject({
+		role: "substitute",
+		teacher: "Laura Suplente",
+	});
+	const back = apply(run(first, "schedule-staffing", swap), undo);
+	expect(
+		occurrences(back, "g1", "2026-08-03").find(
+			(x) => x.schedule === s.schedules[1].id,
+		)?.teacher,
+	).toBe("Laura Suplente");
+	expect(back.scheduleStaffing).toHaveLength(3);
 });

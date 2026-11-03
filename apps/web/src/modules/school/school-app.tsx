@@ -401,6 +401,7 @@ export function SchoolApp() {
 										key={groupId}
 										s={s}
 										open={open}
+										run={(kind, data) => commit(apply(s, { kind, data }))}
 										groupId={groupId}
 										tab={groupTabs[groupId] || "Alumnos"}
 										setTab={(tab) =>

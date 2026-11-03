@@ -62,6 +62,7 @@ export function ScheduleCalendar({
 	groupId: string;
 	open: ViewProps["open"];
 	initialView?: "dates" | "structure";
+	run?: (kind: string, data: Record<string, string>) => void;
 }) {
 	const [view, setView] = useState(initialView);
 	const [menu, setMenu] = useState<Menu | null>(null);

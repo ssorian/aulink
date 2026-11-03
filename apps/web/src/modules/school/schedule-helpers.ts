@@ -377,3 +377,50 @@ export function applySchedule(
 	))
 		assertDay(s, assignment.group, date);
 }
+/**
+ * Inverse of a per-date change, computed before applying it. Undo never deletes
+ * history: it records a new change that re-applies the previous state of that date.
+ */
+export function undoCommand(
+	s: State,
+	kind: "schedule-occurrence" | "schedule-staffing",
+	d: Record<string, string>,
+): { kind: string; data: Record<string, string> } {
+	const base = {
+		group: d.group,
+		schedule: d.schedule,
+		date: d.date,
+		reason: `Deshacer: ${d.reason?.trim() || "cambio"}`,
+	};
+	if (kind === "schedule-staffing") {
+		const previous = s.scheduleStaffing
+			.filter((x) => x.schedule === d.schedule && x.date === d.date)
+			.at(-1);
+		return {
+			kind,
+			data:
+				previous && previous.role !== "titular"
+					? { ...base, role: previous.role, teacher: previous.teacher }
+					: { ...base, role: "titular", teacher: "" },
+		};
+	}
+	const previous = s.scheduleChanges
+		.filter((x) => x.schedule === d.schedule && x.date === d.date)
+		.at(-1);
+	if (!previous || previous.action === "restore")
+		return { kind, data: { ...base, action: "restore" } };
+	return {
+		kind,
+		data: {
+			...base,
+			action: previous.action,
+			...(previous.action === "move"
+				? {
+						targetDate: previous.targetDate,
+						start: previous.start,
+						end: previous.end,
+					}
+				: {}),
+		},
+	};
+}

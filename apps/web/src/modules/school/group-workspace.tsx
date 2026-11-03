@@ -16,12 +16,15 @@ const tabs = ["Alumnos", "Horario", "Asistencia", "Calificaciones"];
 export function GroupWorkspace({
 	s,
 	open,
+	run,
 	groupId,
 	onStudent,
 	onNotice,
 	tab,
 	setTab,
 }: Pick<ViewProps, "s" | "open"> & {
+	/** Applies and persists a command at once; throws with a user-facing message. */
+	run?: (kind: string, data: Record<string, string>) => void;
 	groupId: string;
 	onStudent: (id: string) => void;
 	onNotice: (id: string) => void;
@@ -212,7 +215,12 @@ export function GroupWorkspace({
 				</section>
 			)}
 			{tab === "Horario" && (
-				<ScheduleCalendar s={s} groupId={groupId} open={contextualOpen} />
+				<ScheduleCalendar
+					s={s}
+					groupId={groupId}
+					open={contextualOpen}
+					run={run}
+				/>
 			)}
 			{tab === "Asistencia" && (
 				<GroupAttendanceTable
