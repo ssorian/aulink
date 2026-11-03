@@ -209,22 +209,6 @@ export function EvaluationDashboard({
 						periods,
 						grades,
 						groups: availableGroups.filter((g) => !grade || g.grade === grade),
-						subjects: [
-							...new Set(
-								assignments
-									.filter(
-										(a) =>
-											a.period === period &&
-											availableGroups.some(
-												(g) =>
-													g.id === a.group &&
-													(!grade || g.grade === grade) &&
-													(!groupId || g.id === groupId),
-											),
-									)
-									.map((a) => a.subject),
-							),
-						].sort((a, b) => a.localeCompare(b, "es")),
 					}}
 					onFilter={change}
 					onOpenGroup={onOpenGroup}

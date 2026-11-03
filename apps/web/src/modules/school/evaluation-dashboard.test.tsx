@@ -151,7 +151,7 @@ test("progress presents publication and teacher pending with a single period", (
 	const html = renderOperational(operationalFixture());
 	for (const text of [
 		"Avance de P1",
-		"1 de 3 calificaciones publicadas",
+		"de 3 calificaciones publicadas",
 		"Publicar 1 borrador",
 		"sin capturar",
 		"por publicar",
@@ -161,8 +161,6 @@ test("progress presents publication and teacher pending with a single period", (
 		expect(html).toContain(text);
 	expect(html).not.toContain("<h2>Evaluación del ciclo</h2>");
 	expect(html).toContain('aria-label="Evaluación del ciclo"');
-	for (const status of ["published", "draft", "missing"])
-		expect(html).toContain(`evaluation-bar-${status}`);
 	expect(html).toContain("<details>");
 	expect(html).not.toContain("<details open");
 	expect(html).not.toContain("Todos los periodos");
@@ -170,24 +168,35 @@ test("progress presents publication and teacher pending with a single period", (
 		"Todos los periodos",
 	);
 });
-test("progress replaces the group chips with the grades table and its own filters", () => {
+test("progress table shows one group and one subject with every term, average and campus access", () => {
 	const html = renderOperational(operationalFixture());
 	expect(html).not.toContain("Avance por grupo");
-	expect(html).not.toContain("evaluation-subject-chip");
 	expect(html).not.toContain('class="evaluation-context"');
-	for (const id of ["grade", "group", "period", "subject"])
-		expect(html).toContain(`id="progress-${id}"`);
-	expect(html).toContain('class="ui-data-table"');
-	expect(html).toContain('<th scope="col">Matemáticas</th>');
-	expect(html).toContain('<th scope="col">Lengua</th>');
-	expect(html).toMatch(/class="grade-value" data-state="published"[^>]*>5</);
+	expect(html).not.toContain('class="grades-group-row"');
+	expect(html).not.toMatch(/id="progress-group"[^>]*><option value="">/);
+	expect(html).not.toMatch(/id="progress-subject"[^>]*><option value="">/);
+	expect(html).toContain("<caption>1° A · Lengua</caption>");
+	expect(html).toMatch(/<th scope="col" data-current="true">P1<\/th>/);
+	expect(html).toContain('<th scope="col">Promedio</th>');
+	expect(html).toContain('<th scope="col">Acceso al plantel</th>');
 	expect(html).toMatch(/class="grade-value" data-state="draft"[^>]*>4</);
-	expect(html).toContain('class="grades-group-row"');
-	for (const word of ["Publicado", "Borrador", "Sin captura"])
-		expect(html).toMatch(new RegExp(`data-state="[^"]+">${word}<`));
-	expect(html).not.toMatch(/class="eval-panel/);
+	expect(html).not.toContain("Leonardo Castillo Vega");
 });
-test("grade filter confines table, totals and publication to that grade", () => {
+test("filters sit right above the table; stats and teacher pending are cards", () => {
+	const html = renderOperational(operationalFixture());
+	const stats = html.indexOf('class="progress-card progress-stats"');
+	const filters = html.indexOf('class="progress-filters"');
+	const table = html.indexOf('class="ui-table-card"');
+	expect(stats).toBeGreaterThan(-1);
+	expect(stats).toBeLessThan(filters);
+	expect(filters).toBeLessThan(table);
+	expect(html).toContain('class="progress-card progress-pending"');
+	expect(html).not.toContain("% del total");
+	expect(html).not.toContain(
+		"La captura y corrección se realizan dentro de cada grupo.",
+	);
+});
+test("grade filter offers each grade and scopes the stats", () => {
 	const html = renderOperational(operationalFixture());
 	expect(html).toMatch(/<option value="1°">1°<\/option>/);
 	expect(html).toMatch(/<option value="2°">2°<\/option>/);
