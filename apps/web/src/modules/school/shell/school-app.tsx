@@ -1,27 +1,30 @@
 import { useEffect, useRef, useState } from "react";
+import { Avatar } from "../../../components/ui/avatar";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
 import { Icon } from "../../../components/ui/icon";
 import { CommunicationsView } from "../communications/communications-view";
 import { EvaluationDashboard } from "../evaluation/evaluation-dashboard";
-import { filterDirectory } from "../students/experience";
-import { type Field, type Flow, FlowDialog } from "../setup/flow-dialog";
 import { GroupFollowupView } from "../groups/group-followup-view";
 import { GroupDirectory, GroupWorkspace } from "../groups/group-workspace";
-import { HomeView } from "./home-view";
+import { type Field, type Flow, FlowDialog } from "../setup/flow-dialog";
+import { SetupView } from "../setup/setup-view";
 import { buildMockData, mergeMockData } from "../shared/mock-data";
+import { migrateLegacySeed } from "../shared/seed-migration";
+import { field, options } from "../shared/view-helpers";
+import { apply, previewCSV, restore, type State } from "../shared/workflows";
+import { StaffView } from "../staff/staff-view";
+import { filterDirectory } from "../students/experience";
+import { StudentProfile } from "../students/student-profile";
+import { StudentsView } from "../students/students-view";
+import { HomeView } from "./home-view";
 import {
 	type EvaluationPage,
 	isEvaluationPage,
 	type SchoolPage,
 	sectionFor,
 } from "./navigation";
-import { migrateLegacySeed } from "../shared/seed-migration";
-import { SetupView } from "../setup/setup-view";
 import { SidebarNav } from "./sidebar-nav";
-import { StaffView } from "../staff/staff-view";
-import { StudentProfile } from "../students/student-profile";
-import { StudentsView } from "../students/students-view";
-import { field, options } from "../shared/view-helpers";
-import { apply, previewCSV, restore, type State } from "../shared/workflows";
 
 export function schoolBreadcrumb(section: string, page: string) {
 	return [
@@ -239,20 +242,43 @@ export function SchoolApp() {
 			field("matricula", "Matrícula única"),
 			groups,
 		]);
+	const detail =
+		(page === "Grupos" && groupId) || (page === "Alumnos" && profile);
+	const backClass =
+		"min-h-11 gap-2 text-sm text-primary hover:text-primary-hover hover:underline underline-offset-[3px]";
 	return (
-		<div className="app">
-			<a className="skip-link" href="#main">
+		<div data-slot="app" className="min-w-0 [overflow-wrap:anywhere]">
+			<a
+				data-slot="skip-link"
+				className="fixed top-3 left-4 z-100 -translate-y-[160%] rounded-lg bg-primary-hover px-[18px] py-3 text-primary-foreground focus:translate-y-0"
+				href="#main"
+			>
 				Saltar al contenido
 			</a>
-			<aside className="sidebar">
-				<a className="brand" href="#main">
-					<span>á</span> aulink<span className="brand-dot">●</span>
+			<aside
+				data-slot="sidebar"
+				className="fixed inset-y-0 left-0 flex w-[260px] flex-col overflow-y-auto bg-sidebar pt-7 pb-8 text-sidebar-foreground max-[1150px]:w-[220px] max-[760px]:static max-[760px]:w-auto max-[760px]:overflow-visible max-[760px]:pt-[18px] max-[760px]:pb-2"
+			>
+				<a
+					data-slot="brand"
+					className="mx-5 mb-7 flex items-center gap-[9px] text-[32px] font-extrabold tracking-[-.035em] text-sidebar-foreground max-[1150px]:mx-3 max-[760px]:mx-4 max-[760px]:mb-3.5 max-[760px]:text-[27px]"
+					href="#main"
+				>
+					<span className="grid size-[38px] place-items-center rounded-xl bg-teal text-[30px] text-white max-[760px]:size-8 max-[760px]:text-[25px]">
+						á
+					</span>{" "}
+					aulink
+					<span className="-ml-[5px] text-[10px] text-lemon">●</span>
 				</a>
-				<div className="school-mark">
-					<span className="avatar">IA</span>
-					<div>
-						<strong>{schoolLabel}</strong>
-					</div>
+				<div
+					data-slot="school-mark"
+					className="mx-5 mb-[29px] flex items-center gap-2.5 rounded-xl border border-sidebar-active px-2.5 py-3.5 max-[1150px]:mx-3 max-[760px]:hidden"
+				>
+					<Avatar
+						name={schoolLabel}
+						className="size-[37px] rounded-xl bg-sidebar-active text-sidebar-foreground"
+					/>
+					<strong className="block text-xs font-semibold">{schoolLabel}</strong>
 				</div>
 				<SidebarNav
 					page={page}
@@ -262,11 +288,22 @@ export function SchoolApp() {
 					}}
 				/>
 			</aside>
-			<div className="main-shell">
-				<header className="topbar">
+			<div
+				data-slot="main-shell"
+				className="ml-[260px] min-w-0 max-[1150px]:ml-[220px] max-[760px]:ml-0"
+			>
+				<header
+					data-slot="topbar"
+					className="flex min-h-16 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b-4 border-solid bg-card px-10 py-3 text-xs text-muted-foreground [border-image:var(--palette-stripe)_1] max-[1150px]:px-6 max-[760px]:min-h-[55px] max-[760px]:gap-x-3 max-[760px]:gap-y-1.5 max-[760px]:px-[17px] max-[760px]:py-2.5"
+				>
 					<span>{schoolBreadcrumb(section.label, page)}</span>
-					<section className="context-bar" aria-label="Contexto de consulta">
-						<strong className="context-school">{schoolLabel}</strong>
+					<section
+						aria-label="Contexto de consulta"
+						className="flex flex-wrap gap-x-[18px] gap-y-2 text-[13px] text-foreground max-[760px]:gap-x-3 max-[760px]:gap-y-1.5 max-[760px]:text-xs [&>span]:text-muted-foreground [&>span+span]:border-l [&>span+span]:border-border [&>span+span]:pl-3 max-[760px]:[&>span+span]:border-0 max-[760px]:[&>span+span]:pl-0"
+					>
+						<strong className="hidden font-semibold max-[760px]:block max-[760px]:basis-full">
+							{schoolLabel}
+						</strong>
 						<span>
 							{s.cycles.find((c) => c.id === contextCycle)?.name ||
 								(page === "Alumnos" && profile
@@ -279,50 +316,68 @@ export function SchoolApp() {
 						)}
 					</section>
 				</header>
-				<main id="main" tabIndex={-1}>
+				<main
+					id="main"
+					tabIndex={-1}
+					className="mx-auto min-w-0 max-w-[1460px] scroll-mt-28 px-10 pt-6 pb-8 max-[1150px]:px-6 max-[760px]:scroll-mt-3 max-[760px]:px-[17px] max-[760px]:pt-5"
+				>
 					<div
+						data-slot={detail ? "detail-nav" : undefined}
 						className={
-							(page === "Grupos" && groupId) || (page === "Alumnos" && profile)
-								? "detail-nav"
-								: undefined
+							detail ? "mb-2 flex flex-wrap items-center gap-x-4" : undefined
 						}
 					>
 						{page === "Grupos" && groupId && (
-							<button
-								type="button"
-								className="group-back"
+							<Button
+								variant="link"
+								className={backClass}
 								onClick={() => setGroupId("")}
 							>
 								<Icon name="back" size={18} />
 								Volver a Grupos
-							</button>
+							</Button>
 						)}
 						{page === "Alumnos" && profile && (
-							<button
-								type="button"
-								className="group-back"
+							<Button
+								variant="link"
+								className={backClass}
 								onClick={returnFromProfile}
 							>
 								<Icon name="back" size={18} />
 								{profileOrigin
 									? "Volver al grupo de origen"
 									: "Volver a Alumnos"}
-							</button>
+							</Button>
 						)}
-						<div className="page-heading">
-							<div>
-								<h1>{section.pages.length > 1 ? page : section.label}</h1>
-							</div>
+						<div
+							data-slot="page-heading"
+							className={detail ? "sr-only" : "mb-4"}
+						>
+							<h1 className="text-[28px] leading-tight font-extrabold tracking-[-.02em] max-[760px]:text-[26px]">
+								{section.pages.length > 1 ? page : section.label}
+							</h1>
 						</div>
 					</div>
 					{storageError && (
-						<div className="notice error" role="alert">
+						<div
+							data-slot="notice"
+							data-tone="danger"
+							className="my-[18px] rounded-xl border border-destructive bg-destructive-bg p-2.5 text-[13px] text-destructive"
+							role="alert"
+						>
 							{storage}
 						</div>
 					)}
-					{message && <output className="feedback">{message}</output>}
+					{message && (
+						<output
+							data-slot="feedback"
+							className="mb-[18px] block rounded-lg border border-success bg-success-bg px-[17px] py-[13px] text-success"
+						>
+							{message}
+						</output>
+					)}
 					{!ready ? (
-						<p>Cargando…</p>
+						<p className="text-sm text-muted-foreground">Cargando…</p>
 					) : (
 						<>
 							{page === "Inicio" && (
@@ -427,8 +482,13 @@ export function SchoolApp() {
 							{page === "Comunicados" && (
 								<>
 									{noticeGroup && (
-										<div className="notice">
-											<strong>
+										<Card
+											as="section"
+											padding="compact"
+											data-slot="notice"
+											className="my-[18px] bg-muted text-xs text-muted-foreground"
+										>
+											<strong className="font-semibold text-foreground">
 												Desde {s.groups.find((g) => g.id === noticeGroup)?.name}{" "}
 												·{" "}
 												{
@@ -439,24 +499,20 @@ export function SchoolApp() {
 													)?.name
 												}
 											</strong>
-											<div className="actions">
-												<button
-													type="button"
+											<div className="mt-3 flex flex-wrap gap-2">
+												<Button
 													onClick={() => {
 														setGroupId(noticeGroup);
 														setPage("Grupos");
 													}}
 												>
 													← Volver al grupo
-												</button>
-												<button
-													type="button"
-													onClick={() => setNoticeGroup("")}
-												>
+												</Button>
+												<Button onClick={() => setNoticeGroup("")}>
 													Quitar contexto de grupo
-												</button>
+												</Button>
 											</div>
-										</div>
+										</Card>
 									)}
 									<CommunicationsView
 										s={s}
