@@ -13,7 +13,7 @@ test("rendered tables expose scoped evidence, accessible days and draft grades",
  const s=initialState();
  s.events.push({...s.events[0],id:"foreign",student:"s2",group:"g2",kind:"Inasistencia"});
  const attendance=renderToStaticMarkup(createElement(GroupAttendanceTable,{s,groupId:"g1",open:()=>{}}));
- expect(attendance).toContain("<table>");
+ expect(attendance).toContain("<table");
  expect(attendance).toContain("Ana Sofía Mendoza Ruiz · 2026-10-19: Entrada sin salida");
  expect(attendance).not.toContain("Leonardo Castillo Vega");
  expect((attendance.match(/class=\"day-square\"/g)||[]).length).toBe(7);
@@ -26,10 +26,10 @@ test("rendered tables expose scoped evidence, accessible days and draft grades",
  expect(grades).toContain("Capturar P1");
  const workspace=renderToStaticMarkup(createElement(GroupWorkspace,{s,groupId:"g1",open:()=>{},onBack:()=>{},onStudent:()=>{},onNotice:()=>{},tab:"Alumnos",setTab:()=>{}}));
  for (const [markup,label] of [[attendance,"Asistencia por alumno y día"],[grades,"Calificaciones por alumno"],[workspace,"Alumnos del grupo"]]) {
-  const region=markup.match(/<section\b[^>]*class="group-table-scroll"[^>]*>/)?.[0];
+  const region=markup.match(/<section\b[^>]*class="(?:group-table-scroll|ui-table-scroll)[^"]*"[^>]*>/)?.[0];
   expect(region).toBeDefined();
   expect(region).toContain('tabindex="0"');
-  expect(region).toContain(`aria-label="${label}"`);
+  expect(region).toContain(`aria-label="${label}`);
   expect(region).not.toContain('role=');
  }
 });

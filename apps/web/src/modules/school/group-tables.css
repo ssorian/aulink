@@ -40,35 +40,197 @@
 .group-table-scroll tbody tr:hover {
 	background: color-mix(in srgb, var(--action) 5%, transparent);
 }
-.group-tables .day-square {
-	width: 36px;
-	height: 36px;
-	min-width: 36px;
-	padding: 0;
-	border-radius: 4px;
-	background: #edf0f3;
-	color: #374151;
-	border: 1px solid #9ca3af;
-}
-.group-tables .day-square[data-status="E"] {
-	background: var(--warning-bg);
-	color: var(--warning);
-	border-color: var(--palette-mustard);
-}
-.group-tables .day-square[data-status="C"] {
-	background: #d8efdf;
-	color: #17552b;
-	border-color: #4b845b;
-}
-.group-tables .day-square[data-status="F"] {
-	background: var(--danger-bg);
-	color: var(--danger);
-	border-color: var(--palette-brick);
-}
-.group-tables .day-square[aria-pressed="true"] {
-	outline: 2px solid var(--ink);
-	outline-offset: 2px;
-}
 .group-tables details {
 	margin-top: 20px;
 }
+
+/* Group attendance: calendar on the left, filters on top, plain table. */
+.group-attendance {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 1fr);
+	grid-template-areas: "aside main";
+	gap: 20px;
+	align-items: start;
+	margin-top: 24px;
+}
+.attendance-main {
+	grid-area: main;
+	min-width: 0;
+}
+.attendance-aside {
+	grid-area: aside;
+}
+.attendance-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px 16px;
+	margin-bottom: 12px;
+}
+.attendance-toolbar h2 {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+}
+.attendance-toolbar p {
+	margin: 2px 0 0;
+	font-size: 13px;
+	color: var(--ink-muted);
+}
+.attendance-toolbar p::first-letter {
+	text-transform: uppercase;
+}
+.attendance-modes {
+	display: flex;
+	margin: 0;
+	padding: 3px;
+	min-width: 0;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--surface);
+}
+.attendance-modes button {
+	min-height: 38px;
+	padding: 0 18px;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ink-muted);
+}
+.attendance-modes button[aria-pressed="true"] {
+	background: var(--surface-muted);
+	color: var(--ink);
+}
+.attendance-modes button:focus-visible,
+.group-attendance .day-square:focus-visible {
+	outline: 3px solid var(--action);
+	outline-offset: 2px;
+}
+.attendance-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 18px;
+	margin: 0 0 12px;
+	padding: 0;
+	list-style: none;
+	font-size: 12px;
+	color: var(--ink-muted);
+}
+.attendance-legend li {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.attendance-legend li::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--square);
+}
+.group-attendance [data-status] {
+	--square: #e3e9ed;
+}
+.group-attendance [data-status="C"] {
+	--square: #5a9e6e;
+}
+.group-attendance [data-status="E"] {
+	--square: var(--palette-mustard);
+}
+.group-attendance [data-status="F"] {
+	--square: var(--palette-brick);
+}
+.group-attendance [data-status="?"] {
+	--square: var(--control-line);
+}
+.attendance-scroll .ui-data-table {
+	table-layout: auto;
+	min-width: 0;
+}
+.attendance-scroll .ui-data-table caption {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+.attendance-scroll .ui-data-table th,
+.attendance-scroll .ui-data-table td {
+	padding: 8px 12px;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+.attendance-scroll .ui-data-table thead th:not(:first-child),
+.attendance-scroll .ui-data-table td {
+	text-align: center;
+}
+.attendance-scroll thead th[data-today="true"] {
+	color: var(--action);
+}
+.attendance-scroll tbody th small {
+	display: block;
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--ink-muted);
+}
+.attendance-scroll .ui-data-table :is(tbody, thead) th:first-child {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	background: var(--surface);
+	box-shadow: 1px 0 0 var(--line);
+}
+.attendance-scroll .ui-data-table thead th:first-child {
+	background: var(--surface-muted);
+}
+.group-attendance .day-square {
+	display: inline-block;
+	width: 22px;
+	height: 22px;
+	min-width: 0;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 5px;
+	background: var(--square);
+	vertical-align: middle;
+}
+.group-attendance .day-square:hover {
+	filter: brightness(0.92);
+}
+.group-attendance .day-square[aria-pressed="true"] {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+.attendance-detail {
+	margin-top: 16px;
+	padding-top: 4px;
+}
+.attendance-detail h3 {
+	margin: 0 0 4px;
+	font-size: 16px;
+}
+.attendance-detail h3::first-letter {
+	text-transform: uppercase;
+}
+@media (max-width: 1240px) {
+	.group-attendance {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "main" "aside";
+	}
+	.attendance-aside {
+		max-width: 320px;
+	}
+}
+.attendance-scroll .ui-data-table tbody tr:hover th:first-child {
+	background: var(--canvas);
+}
+.attendance-legend li[data-status="—"]::before {
+	box-shadow: inset 0 0 0 1px var(--control-line);
+}
+

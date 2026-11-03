@@ -36,13 +36,20 @@ const shiftMonth = (month: string, offset: number) => {
 export function MiniMonth({
 	selected,
 	today,
-	marks,
+	marks = new Map(),
 	onSelect,
+	label = "Elegir semana",
+	inRange,
+	legend = true,
 }: {
 	selected: string;
 	today: string;
-	marks: DayMarks;
+	marks?: DayMarks;
 	onSelect: (date: string) => void;
+	label?: string;
+	/** Which days the current view covers; defaults to the selected week. */
+	inRange?: (date: string) => boolean;
+	legend?: boolean;
 }) {
 	const [month, setMonth] = useState(selected.slice(0, 7));
 	const [focus, setFocus] = useState(selected);
@@ -54,6 +61,7 @@ export function MiniMonth({
 	const first = mondayOf(`${shownMonth}-01`);
 	const days = Array.from({ length: 42 }, (_, i) => addDays(first, i));
 	const week = mondayOf(selected);
+	const covered = inRange || ((date: string) => mondayOf(date) === week);
 	const tabbable = days.includes(focus)
 		? focus
 		: days.includes(selected)
@@ -83,7 +91,7 @@ export function MiniMonth({
 		);
 	}
 	return (
-		<section className="schedule-card schedule-mini" aria-label="Elegir semana">
+		<section className="schedule-card schedule-mini" aria-label={label}>
 			<header>
 				<h3>{monthTitle(shownMonth)}</h3>
 				<div>
@@ -120,9 +128,11 @@ export function MiniMonth({
 							key={date}
 							data-date={date}
 							data-outside={date.slice(0, 7) !== shownMonth}
-							data-week={mondayOf(date) === week}
+							data-week={covered(date)}
+							data-range-start={covered(date) && !covered(addDays(date, -1))}
+							data-range-end={covered(date) && !covered(addDays(date, 1))}
 							data-today={date === today}
-							aria-pressed={mondayOf(date) === week}
+							aria-pressed={covered(date)}
 							aria-label={`${Number(date.slice(8))} de ${monthTitle(date.slice(0, 7))}${date === today ? ", hoy" : ""}${dayMarks.length ? `, con ${dayMarks.map((m) => markLabels[m]).join(" y ")}` : ""}`}
 							tabIndex={date === tabbable ? 0 : -1}
 							onKeyDown={(e) => move(e, date)}
@@ -144,11 +154,13 @@ export function MiniMonth({
 					);
 				})}
 			</fieldset>
-			<p className="schedule-marks-legend">
-				<span data-mark="cancel">Cancelada</span>
-				<span data-mark="move">Reagendada</span>
-				<span data-mark="cover">Suplencia</span>
-			</p>
+			{legend && (
+				<p className="schedule-marks-legend">
+					<span data-mark="cancel">Cancelada</span>
+					<span data-mark="move">Reagendada</span>
+					<span data-mark="cover">Suplencia</span>
+				</p>
+			)}
 		</section>
 	);
 }

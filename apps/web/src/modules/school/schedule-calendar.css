@@ -41,7 +41,8 @@
 .schedule-calendar :is(input, textarea, select) {
 	caret-color: var(--action);
 }
-.schedule-calendar fieldset {
+.schedule-calendar fieldset,
+.schedule-mini fieldset {
 	min-width: 0;
 	margin: 0;
 	padding: 0;
@@ -121,7 +122,7 @@
 	display: flex;
 	flex-shrink: 0;
 }
-.schedule-calendar .schedule-mini h3 {
+.schedule-mini h3 {
 	font-size: 15px;
 	white-space: nowrap;
 }
@@ -174,6 +175,14 @@
 }
 .schedule-mini-grid button:nth-child(7n) {
 	border-radius: 0 10px 10px 0;
+}
+.schedule-mini-grid button[data-range-start="true"] {
+	border-top-left-radius: 10px;
+	border-bottom-left-radius: 10px;
+}
+.schedule-mini-grid button[data-range-end="true"] {
+	border-top-right-radius: 10px;
+	border-bottom-right-radius: 10px;
 }
 .schedule-mini-grid button[data-today="true"] {
 	color: var(--action);
