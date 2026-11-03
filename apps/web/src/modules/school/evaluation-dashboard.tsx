@@ -130,77 +130,6 @@ export function EvaluationDashboard({
 					onChange={setTab}
 				/>
 			)}
-			{tab === "Resultados" && (
-				<div className="evaluation-context">
-					<label htmlFor="evaluation-period">
-						Periodo:
-						<select
-							id="evaluation-period"
-							value={period}
-							disabled={!periods.length}
-							onChange={(e) => change("period", e.target.value)}
-						>
-							{tab === "Resultados" && (
-								<option value="">Todos los periodos</option>
-							)}
-							{periods.map((p) => (
-								<option key={p} value={p}>
-									{p}
-								</option>
-							))}
-						</select>
-					</label>
-					<label htmlFor="evaluation-group">
-						Grupo:
-						<select
-							id="evaluation-group"
-							value={groupId}
-							disabled={!availableGroups.length}
-							onChange={(e) => change("groupId", e.target.value)}
-						>
-							<option value="">Todos los grupos</option>
-							{availableGroups.map((g) => (
-								<option key={g.id} value={g.id}>
-									{g.name}
-								</option>
-							))}
-						</select>
-					</label>
-					<label htmlFor="evaluation-subject">
-						Materia:
-						<select
-							id="evaluation-subject"
-							value={subject}
-							disabled={!subjects.length}
-							onChange={(e) => change("subject", e.target.value)}
-						>
-							<option value="">Todas las materias</option>
-							{subjects.map((x) => (
-								<option key={x} value={x}>
-									{x}
-								</option>
-							))}
-						</select>
-					</label>
-					{(current.period || groupId || subject) && (
-						<button
-							className="evaluation-reset"
-							type="button"
-							onClick={() =>
-								setSelection({
-									cycle: cycleId,
-									period: "",
-									groupId: "",
-									subject: "",
-									grade: "",
-								})
-							}
-						>
-							Restablecer
-						</button>
-					)}
-				</div>
-			)}
 			{tab === "Avance del periodo" && (
 				<EvaluationProgress
 					s={s}
@@ -242,6 +171,14 @@ export function EvaluationDashboard({
 					period={period}
 					groupId={groupId}
 					subject={subject}
+					grade={grade}
+					options={{
+						periods,
+						grades,
+						groups: availableGroups.filter((g) => !grade || g.grade === grade),
+						subjects,
+					}}
+					onFilter={change}
 					rules={s.evaluationRules}
 					onOpenGroup={onOpenGroup}
 				/>

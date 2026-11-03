@@ -1,16 +1,16 @@
 import { useState } from "react";
+import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
 import type { EvaluationRules } from "./evaluation-operations";
+import { Select } from "./evaluation-progress";
 import {
 	buildEvaluationMatrix,
 	type EvaluationData,
-	educationLevel,
-	filterEvaluationLevel,
-	gradeHistogram,
-	subjectStatistics,
 	summarizeEvaluation,
 } from "./evaluation-results";
-import "./evaluation-results-view.css";
+import type { State } from "./workflows";
+import "./group-tables.css";
 
+type Filter = "period" | "groupId" | "subject" | "grade";
 type Props = {
 	data: EvaluationData;
 	cycleId: string;
@@ -18,10 +18,17 @@ type Props = {
 	period: string;
 	subject: string;
 	groupId: string;
+	grade?: string;
+	options: {
+		periods: string[];
+		grades: string[];
+		groups: State["groups"];
+		subjects: string[];
+	};
+	onFilter: (field: Filter, value: string) => void;
 	rules: EvaluationRules;
 	onOpenGroup: (id: string) => void;
 };
-type Level = "Todos" | "Secundaria" | "Media superior";
 const number = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("es-MX", {
 	style: "percent",
@@ -35,10 +42,6 @@ const fmt = (value: number | null | undefined) =>
 	value == null ? "—" : decimal.format(value);
 const countLabel = (count: number) =>
 	`${count} ${count === 1 ? "calificación publicada" : "calificaciones publicadas"}`;
-const signed = (value: number | null) =>
-	value == null
-		? "—"
-		: `${Math.abs(value) < 0.005 ? "±" : value > 0 ? "+" : "−"}${decimal.format(Math.abs(value))}`;
 
 export function EvaluationResultsView({
 	data,
@@ -47,12 +50,13 @@ export function EvaluationResultsView({
 	period,
 	subject,
 	groupId,
+	grade = "",
+	options,
+	onFilter,
 	rules,
 	onOpenGroup,
 }: Props) {
 	const [selectedScale, setSelectedScale] = useState("");
-	const [selectedLevel, setSelectedLevel] = useState<Level>("Todos");
-	const [sort, setSort] = useState("lowest");
 	const scales = data.scales.filter((scale) =>
 		data.assignments.some(
 			(a) => a.cycleId === cycleId && a.scaleKey === scale.key,
@@ -60,519 +64,317 @@ export function EvaluationResultsView({
 	);
 	const scale = scales.find((item) => item.key === selectedScale) || scales[0];
 	const scaleKey = scale?.key || "";
-	const filters = { cycleId, scaleKey, period, subject, groupId };
-	const matches = (a: EvaluationData["assignments"][number]) =>
-		a.cycleId === cycleId &&
-		a.scaleKey === scaleKey &&
-		(!period || a.period === period) &&
-		(!subject || a.subject === subject) &&
-		(!groupId || a.groupId === groupId);
-	const levels = [
-		...new Set(
-			data.assignments.filter(matches).map((a) => educationLevel(a.grade)),
-		),
-	];
-	const level =
-		levels.length > 1 &&
-		levels.includes(selectedLevel as Exclude<Level, "Todos">)
-			? selectedLevel
-			: "Todos";
-	const scoped = filterEvaluationLevel(data, level);
+	const validGroup = options.groups.some((g) => g.id === groupId)
+		? groupId
+		: "";
+	// Grade narrows the published data before any aggregate is computed.
+	const scoped: EvaluationData = grade
+		? {
+				...data,
+				assignments: data.assignments.filter((a) => a.grade === grade),
+				records: data.records.filter((r) => r.grade === grade),
+			}
+		: data;
+	const filters = {
+		cycleId,
+		scaleKey,
+		period,
+		subject,
+		groupId: validGroup,
+	};
 	const report = summarizeEvaluation(scoped, filters);
-	const records = scoped.records.filter(matches);
-	const failureCount = records.filter((r) => r.value < rules.passing).length;
-	const rate = records.length ? failureCount / records.length : null;
-	const subjectRows = subjectStatistics(report, records, rules.passing).sort(
-		(a, b) => {
-			if (sort === "name") return a.subject.localeCompare(b.subject, "es");
-			const av = sort === "failure" ? a.failureRate : a.mean;
-			const bv = sort === "failure" ? b.failureRate : b.mean;
-			if (av == null) return bv == null ? 0 : 1;
-			if (bv == null) return -1;
-			return sort === "failure" ? bv - av : av - bv;
-		},
+	const matrix = buildEvaluationMatrix(report);
+	const records = scoped.records.filter(
+		(r) =>
+			r.cycleId === cycleId &&
+			r.scaleKey === scaleKey &&
+			(!period || r.period === period) &&
+			(!subject || r.subject === subject) &&
+			(!validGroup || r.groupId === validGroup),
 	);
-	const ranked = subjectRows
-		.filter((row) => row.mean != null)
-		.sort((a, b) => (a.mean ?? 0) - (b.mean ?? 0));
-	const lowest = ranked[0];
-	const highest = ranked[ranked.length - 1];
-	const bins = gradeHistogram(
-		records.map((r) => r.value),
-		rules.passing,
-	);
-	const maxBin = Math.max(1, ...bins.map((bin) => bin.count));
-	const evolution = report.byPeriod.filter((p) => p.mean != null);
-	const means = evolution.map((p) => p.mean ?? 0);
-	const low = Math.min(...means) - 0.5;
-	const high = Math.max(...means) + 0.5;
-	const span = high - low || 1;
-	const truncated =
-		scale?.min === 0 &&
-		scale.max === 10 &&
-		ranked.length > 0 &&
-		ranked.every((row) => (row.mean ?? 0) >= 5);
-	const axisMin = truncated ? 5 : (scale?.min ?? 0);
-	const axisMax = scale?.max ?? 10;
+	const failures = records.filter((r) => r.value < rules.passing).length;
+	const approval = records.length
+		? (records.length - failures) / records.length
+		: null;
+	// Evolution follows every filter except the term, so terms stay comparable.
+	const evolution = summarizeEvaluation(scoped, {
+		...filters,
+		period: "",
+	}).byPeriod.filter((p) => p.mean != null);
+	const lowest = matrix.groups
+		.filter((g) => g.mean != null)
+		.sort((a, b) => (a.mean ?? 0) - (b.mean ?? 0))
+		.slice(0, 5);
 	const position = (value: number) =>
-		Math.max(0, Math.min(100, ((value - axisMin) / (axisMax - axisMin)) * 100));
-	const totalPosition = (value: number) =>
 		scale
 			? Math.max(
 					0,
 					Math.min(100, ((value - scale.min) / (scale.max - scale.min)) * 100),
 				)
 			: 0;
-	const ticks = truncated ? [5, 6, 7, 8, 9, 10] : [axisMin, axisMax];
+	const tone = (mean: number | null) =>
+		mean == null
+			? "missing"
+			: mean < rules.passing
+				? "fail"
+				: mean < rules.passing + 1
+					? "near"
+					: "good";
+	const empty = !report.rows.length;
 	return (
 		<section
-			className="evaluation-results results-new"
+			className="evaluation-progress evaluation-results"
 			aria-label="Resultados publicados"
 		>
-			<header className="results-header">
+			<header className="progress-heading">
 				<div>
-					<h2>Resultados publicados</h2>
+					<h2>Resultados de {period || "todo el ciclo"}</h2>
 					<p>
-						Lo mismo que consultan las familias. Los borradores no se incluyen.
+						{scale ? scale.label : "Sin escala"} · {cycleName}
 					</p>
 				</div>
-				<div className="results-controls">
-					{scales.length > 1 && (
-						<label htmlFor="evaluation-scale">
-							Escala{" "}
-							<select
-								id="evaluation-scale"
-								value={scaleKey}
-								onChange={(event) => setSelectedScale(event.target.value)}
-							>
-								{scales.map((item) => (
-									<option key={item.key} value={item.key}>
-										{item.label}
-									</option>
-								))}
-							</select>
-						</label>
-					)}
-					{levels.length > 1 && ( // biome-ignore lint/a11y/useSemanticElements: Pressed buttons form a compact segmented control.
-						<div
-							className="results-segment"
-							role="group"
-							aria-label="Nivel educativo"
+				{scales.length > 1 && (
+					<label htmlFor="evaluation-scale" className="progress-filter">
+						<span>Escala</span>
+						<select
+							id="evaluation-scale"
+							value={scaleKey}
+							onChange={(e) => setSelectedScale(e.target.value)}
 						>
-							{(["Todos", "Secundaria", "Media superior"] as Level[]).map(
-								(item) => (
+							{scales.map((item) => (
+								<option key={item.key} value={item.key}>
+									{item.label.replace(/^Escala /, "")}
+								</option>
+							))}
+						</select>
+					</label>
+				)}
+			</header>
+			<div className="progress-layout">
+				<div className="progress-main">
+					<section
+						className="progress-card progress-stats results-stats"
+						aria-label="Resumen de resultados"
+					>
+						<dl>
+							<div data-state="groups">
+								<dt>Promedio general</dt>
+								<dd>
+									<strong className="evaluation-mean">
+										{fmt(report.mean)}
+									</strong>
+									<span>{countLabel(report.count)}</span>
+								</dd>
+							</div>
+							<div data-state="published">
+								<dt>Aprobación</dt>
+								<dd>
+									<strong>
+										{approval == null ? "—" : percent.format(approval)}
+									</strong>
+									<span>mínimo {number.format(rules.passing)}</span>
+								</dd>
+							</div>
+							<div data-state="missing">
+								<dt>Reprobatorias</dt>
+								<dd>
+									<strong>{failures}</strong>
+									<span>de {records.length}</span>
+								</dd>
+							</div>
+						</dl>
+						{evolution.length > 1 && (
+							<p className="results-evolution">
+								{evolution.map((p, index) => (
+									<span key={p.key}>
+										{index > 0 && <span aria-hidden="true"> → </span>}
+										{p.label} <strong>{fmt(p.mean)}</strong>
+									</span>
+								))}
+							</p>
+						)}
+					</section>
+					<div className="progress-filters">
+						<Select
+							id="results-grade"
+							label="Grado"
+							value={grade}
+							all="Todos"
+							items={options.grades.map((g) => ({ value: g, label: g }))}
+							onChange={(v) => onFilter("grade", v)}
+						/>
+						<Select
+							id="results-group"
+							label="Grupo"
+							value={validGroup}
+							all="Todos"
+							items={options.groups.map((g) => ({
+								value: g.id,
+								label: g.name,
+							}))}
+							onChange={(v) => onFilter("groupId", v)}
+						/>
+						<Select
+							id="results-period"
+							label="Trimestre"
+							value={period}
+							all="Todo el ciclo"
+							items={options.periods.map((p) => ({ value: p, label: p }))}
+							onChange={(v) => onFilter("period", v)}
+						/>
+						<Select
+							id="results-subject"
+							label="Materia"
+							value={subject}
+							all="Todas"
+							items={options.subjects.map((x) => ({ value: x, label: x }))}
+							onChange={(v) => onFilter("subject", v)}
+						/>
+					</div>
+					<ul
+						className="grades-legend results-legend"
+						aria-label="Leyenda de promedios"
+					>
+						<li data-tone="fail">
+							Reprobatorio (&lt; {number.format(rules.passing)})
+						</li>
+						<li data-tone="near">
+							Cerca del mínimo (&lt; {number.format(rules.passing + 1)})
+						</li>
+						<li data-tone="good">Aprobado</li>
+					</ul>
+					<DataTable
+						caption={`Promedio publicado por grupo y materia · ${cycleName}`}
+						variant="card"
+						scrollClassName="grades-scroll progress-scroll results-scroll"
+						scrollLabel="Promedio por grupo y materia"
+					>
+						<thead>
+							<tr>
+								<th scope="col">Grupo</th>
+								{matrix.subjects.map((name) => (
+									<th scope="col" key={name}>
+										{name}
+									</th>
+								))}
+								<th scope="col">Promedio</th>
+							</tr>
+						</thead>
+						<tbody>
+							{empty && (
+								<EmptyTableRow columns={matrix.subjects.length + 2}>
+									<strong>Sin resultados publicados</strong>
+									<br />
+									Publica calificaciones desde el espacio de un grupo para
+									verlas aquí.
+								</EmptyTableRow>
+							)}
+							{matrix.groups.map((group) => (
+								<tr key={group.key}>
+									<th scope="row">
+										<button
+											type="button"
+											className="progress-group-link"
+											aria-label={`Abrir grupo ${group.label}`}
+											onClick={() => onOpenGroup(group.key)}
+										>
+											{group.label}
+										</button>
+									</th>
+									{matrix.subjects.map((name) => {
+										const cell = group.cells.get(name);
+										if (!cell)
+											return (
+												<td key={name} aria-label={`${name}: No se imparte`}>
+													<span className="grade-none" />
+													<span className="evaluation-sr-only">
+														No se imparte
+													</span>
+												</td>
+											);
+										return (
+											<td
+												key={name}
+												title={
+													cell.count ? countLabel(cell.count) : "Sin publicar"
+												}
+												aria-label={`${name}: ${cell.count ? fmt(cell.mean) : "Sin publicar"}, ${countLabel(cell.count)}`}
+											>
+												<span
+													className="results-value"
+													data-tone={tone(cell.mean)}
+												>
+													{fmt(cell.mean)}
+												</span>
+											</td>
+										);
+									})}
+									<td>
+										<strong
+											className="results-total"
+											data-tone={tone(group.mean)}
+										>
+											{fmt(group.mean)}
+										</strong>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</DataTable>
+					<details className="evaluation-method">
+						<summary>Cómo se calculan los resultados</summary>
+						<p>
+							Cada calificación publicada pesa igual; no se promedian los
+							promedios de los grupos. Las faltantes no cuentan como cero, los
+							borradores quedan fuera y las escalas nunca se mezclan. Los
+							conteos son registros de calificaciones: no representan alumnos ni
+							cobertura.
+						</p>
+					</details>
+					{(data.diagnostics.excluded > 0 ||
+						data.diagnostics.duplicates > 0) && (
+						<p className="evaluation-diagnostics">
+							Diagnóstico global de los datos guardados (todos los ciclos y
+							escalas): {data.diagnostics.excluded} registros publicados
+							excluidos por datos inválidos o referencias incompletas;{" "}
+							{data.diagnostics.duplicates} duplicados válidos contados por
+							separado.
+						</p>
+					)}
+				</div>
+				<aside
+					className="progress-card results-groups"
+					aria-labelledby="results-groups-title"
+				>
+					<h3 id="results-groups-title">Grupos con menor promedio</h3>
+					{lowest.length ? (
+						<ol>
+							{lowest.map((group) => (
+								<li key={group.key}>
 									<button
 										type="button"
-										key={item}
-										aria-pressed={level === item}
-										onClick={() => setSelectedLevel(item)}
+										className="progress-group-link"
+										onClick={() => onOpenGroup(group.key)}
 									>
-										{item}
+										{group.label}
 									</button>
-								),
-							)}
-						</div>
-					)}
-				</div>
-			</header>
-			<dl
-				className="results-kpis"
-				aria-label="Resumen de resultados"
-				aria-live="polite"
-			>
-				<div>
-					<dt>Promedio general</dt>
-					<dd>
-						<strong className="evaluation-mean">{fmt(report.mean)}</strong>
-						<small>
-							{scale?.label || "Sin escala disponible"} ·{" "}
-							{countLabel(report.count)}
-						</small>
-					</dd>
-				</div>
-				<div>
-					<dt>Aprobación</dt>
-					<dd>
-						<strong>{rate == null ? "—" : percent.format(1 - rate)}</strong>
-						<small>
-							Calificaciones de {number.format(rules.passing)} o más
-						</small>
-					</dd>
-				</div>
-				<div>
-					<dt>Calificaciones reprobatorias</dt>
-					<dd>
-						<strong>{report.count ? failureCount : "—"}</strong>
-						<small>
-							{rate == null ? "—" : percent.format(rate)} por debajo de{" "}
-							{number.format(rules.passing)}
-						</small>
-					</dd>
-				</div>
-				<div>
-					<dt>Brecha entre materias</dt>
-					<dd>
-						<strong>
-							{lowest && highest
-								? fmt((highest.mean ?? 0) - (lowest.mean ?? 0))
-								: "—"}
-						</strong>
-						<small>
-							{lowest && highest
-								? `${lowest.subject} – ${highest.subject}`
-								: "Sin resultados publicados"}
-						</small>
-					</dd>
-				</div>
-			</dl>
-			{report.count === 0 && (
-				<div className="evaluation-empty" aria-live="polite">
-					<h3>Sin resultados publicados</h3>
-					<p>
-						{data.records.some(
-							(r) => r.cycleId === cycleId && r.scaleKey === scaleKey,
-						)
-							? "No hay calificaciones publicadas con estos filtros. Prueba con otro periodo, materia o grupo."
-							: "Publica calificaciones desde el espacio de un grupo para consultar sus resultados aquí."}
-					</p>
-				</div>
-			)}
-			<div className="results-columns">
-				<section
-					className="results-panel results-subjects"
-					aria-labelledby="results-subject-title"
-				>
-					<header>
-						<div>
-							<h3 id="results-subject-title">Materias</h3>
-							<p>
-								Promedio y rango entre grupos · línea punteada: aprobatoria{" "}
-								{number.format(rules.passing)}
-							</p>
-						</div>
-						<label>
-							Ordenar{" "}
-							<select
-								value={sort}
-								onChange={(event) => setSort(event.target.value)}
-							>
-								<option value="lowest">Menor promedio</option>
-								<option value="failure">Mayor reprobación</option>
-								<option value="name">Nombre</option>
-							</select>
-						</label>
-					</header>
-					<p className="results-axis-label">
-						Eje de {number.format(axisMin)} a {number.format(axisMax)}
-						{truncated ? " (rango fuera del eje recortado)" : ""} · Δ vs
-						promedio general · % reprobación
-					</p>
-					<div className="results-axis-row" aria-hidden="true">
-						<span />
-						<div className="results-axis-ticks">
-							{ticks.map((tick) => (
-								<span key={tick} style={{ left: `${position(tick)}%` }}>
-									{number.format(tick)}
-								</span>
-							))}
-						</div>
-						<span />
-						<span />
-						<span />
-					</div>
-					<div className="results-subject-list">
-						{subjectRows.map((row) => {
-							const subjectLevels = [
-								...new Set(
-									scoped.assignments
-										.filter((a) => matches(a) && a.subject === row.subject)
-										.map((a) => educationLevel(a.grade)),
-								),
-							];
-							return (
-								<div className="results-subject-row" key={row.subject}>
-									<div className="results-subject-name">
-										<strong>{row.subject}</strong>
-										{levels.length > 1 && level === "Todos" && (
-											<small>{subjectLevels.join(" · ")}</small>
-										)}
-									</div>
-									<div
-										className="results-plot"
-										role="img"
-										aria-label={`Promedio ${fmt(row.mean)}, rango entre grupos ${fmt(row.minGroupMean)} a ${fmt(row.maxGroupMean)}`}
-									>
-										<span
-											className="results-threshold"
-											style={{ left: `${position(rules.passing)}%` }}
+									<strong data-tone={tone(group.mean)}>
+										{fmt(group.mean)}
+									</strong>
+									<span className="results-bar" aria-hidden="true">
+										<i
+											data-tone={tone(group.mean)}
+											style={{ width: `${position(group.mean ?? 0)}%` }}
 										/>
-										{row.minGroupMean != null && row.maxGroupMean != null && (
-											<span
-												className="results-range"
-												style={{
-													left: `${position(row.minGroupMean)}%`,
-													width: `${position(row.maxGroupMean) - position(row.minGroupMean)}%`,
-												}}
-											/>
-										)}
-										{row.mean != null && (
-											<span
-												className="results-dot"
-												style={{ left: `${position(row.mean)}%` }}
-											/>
-										)}
-									</div>
-									<strong>{fmt(row.mean)}</strong>
-									<span
-										className={
-											row.delta == null || Math.abs(row.delta) < 0.25
-												? "results-neutral"
-												: row.delta < 0
-													? "results-negative"
-													: "results-positive"
-										}
-									>
-										{signed(row.delta)}
 									</span>
-									<span>
-										{row.failureRate == null
-											? "—"
-											: percent.format(row.failureRate)}
-									</span>
-								</div>
-							);
-						})}
-					</div>
-				</section>
-				<div className="results-side">
-					<section className="results-panel">
-						<h3>Distribución de calificaciones</h3>
-						<p>
-							Intervalos enteros · rojo cuando todo el intervalo está por debajo
-							de {number.format(rules.passing)}
-						</p>
-						<div className="results-histogram">
-							{bins.map((bin) => (
-								<div
-									key={bin.value}
-									title={`${bin.value}–${bin.value + 1}: ${bin.count}`}
-								>
-									<strong>{bin.count}</strong>
-									<span
-										className={bin.failing ? "failing" : ""}
-										style={{
-											height: `${Math.max(3, (bin.count / maxBin) * 100)}%`,
-										}}
-									/>
-									<small>{bin.value}</small>
-								</div>
+								</li>
 							))}
-						</div>
-					</section>
-					{!period && evolution.length > 1 && (
-						<section className="results-panel results-evolution">
-							<h3>Evolución por periodo</h3>
-							<p>
-								Eje de {fmt(low)} a {fmt(high)}
-							</p>
-							<svg
-								viewBox="0 0 300 80"
-								role="img"
-								aria-label="Evolución de promedios publicados por periodo"
-							>
-								<polyline
-									fill="none"
-									stroke="var(--action)"
-									strokeWidth="2"
-									points={evolution
-										.map(
-											(p, i) =>
-												`${25 + (i * 250) / (evolution.length - 1)},${65 - (((p.mean ?? 0) - low) / span) * 45}`,
-										)
-										.join(" ")}
-								/>
-								{evolution.map((p, i) => {
-									const x = 25 + (i * 250) / (evolution.length - 1);
-									const y = 65 - (((p.mean ?? 0) - low) / span) * 45;
-									return (
-										<g key={p.key}>
-											<circle cx={x} cy={y} r="3" fill="var(--action)" />
-											<text
-												x={x}
-												y={y - 8}
-												textAnchor="middle"
-												fontSize="11"
-												fill="var(--ink)"
-											>
-												{fmt(p.mean)}
-											</text>
-										</g>
-									);
-								})}
-							</svg>
-							<ol>
-								{evolution.map((p, i) => (
-									<li key={p.key}>
-										<span>{p.label}</span>
-										<strong>{fmt(p.mean)}</strong>
-										<small>
-											{i > 0
-												? `${signed((p.mean ?? 0) - (evolution[i - 1].mean ?? 0))} frente al periodo anterior`
-												: countLabel(p.count)}
-										</small>
-									</li>
-								))}
-							</ol>
-						</section>
+						</ol>
+					) : (
+						<p>Aún no hay promedios publicados.</p>
 					)}
-				</div>
+				</aside>
 			</div>
-			<section className="results-panel results-map">
-				<h3>Mapa por grupo</h3>
-				<p>Promedios publicados · {cycleName}</p>
-				<ul className="results-legend" aria-label="Leyenda del mapa">
-					<li>
-						<span className="results-swatch fail" aria-hidden="true" />
-						Reprobatorio (&lt; {number.format(rules.passing)})
-					</li>
-					<li>
-						<span className="results-swatch near" aria-hidden="true" />
-						Cerca del mínimo (&lt; {number.format(rules.passing + 1)})
-					</li>
-					<li>
-						<span className="results-swatch good" aria-hidden="true" />
-						Aprobado
-					</li>
-					<li>· No se imparte</li>
-					<li>— Sin publicar</li>
-				</ul>
-				{levels
-					.filter((item) => level === "Todos" || level === item)
-					.map((item) => {
-						const levelData = filterEvaluationLevel(scoped, item);
-						const matrix = buildEvaluationMatrix(
-							summarizeEvaluation(levelData, filters),
-						);
-						return (
-							<div key={item} className="results-map-block">
-								{levels.length > 1 && <h4>{item}</h4>}
-								<section
-									className="results-map-scroll"
-									// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable matrix needs keyboard access.
-									tabIndex={0}
-									aria-label={`Mapa por grupo ${item}, tabla con desplazamiento horizontal`}
-								>
-									<table>
-										<thead>
-											<tr>
-												<th scope="col">Grupo</th>
-												{matrix.subjects.map((name) => (
-													<th scope="col" key={name}>
-														{name}
-													</th>
-												))}
-												<th scope="col">Promedio</th>
-											</tr>
-										</thead>
-										<tbody>
-											{matrix.groups.map((group) => (
-												<tr key={group.key}>
-													<th scope="row">
-														<button
-															type="button"
-															className="evaluation-group-link"
-															aria-label={`Abrir grupo ${group.label}`}
-															onClick={() => onOpenGroup(group.key)}
-														>
-															{group.label}
-														</button>
-													</th>
-													{matrix.subjects.map((name) => {
-														const cell = group.cells.get(name);
-														const tone =
-															cell?.mean == null
-																? "missing"
-																: cell.mean < rules.passing
-																	? "fail"
-																	: cell.mean < rules.passing + 1
-																		? "near"
-																		: "good";
-														return (
-															<td
-																key={name}
-																className={`results-cell ${tone}`}
-																title={
-																	cell
-																		? countLabel(cell.count)
-																		: "No se imparte"
-																}
-																aria-label={
-																	cell
-																		? `${name}: ${fmt(cell.mean)}, ${countLabel(cell.count)}`
-																		: `${name}: No se imparte`
-																}
-															>
-																{cell ? (
-																	fmt(cell.mean)
-																) : (
-																	<>
-																		<span aria-hidden="true">·</span>
-																		<span className="evaluation-sr-only">
-																			No se imparte
-																		</span>
-																	</>
-																)}
-															</td>
-														);
-													})}
-													<td className="results-total">
-														<strong>{fmt(group.mean)}</strong>
-														{group.mean != null && (
-															<span>
-																<i
-																	style={{
-																		width: `${totalPosition(group.mean)}%`,
-																	}}
-																/>
-															</span>
-														)}
-													</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</section>
-							</div>
-						);
-					})}
-			</section>
-			<details className="evaluation-method">
-				<summary>Cómo se calculan los resultados</summary>
-				<p>
-					Cada calificación publicada tiene el mismo peso en el promedio; no se
-					promedian los promedios de los grupos. Se usa su valor actual, no su
-					historial de cambios.
-				</p>
-				<p>
-					Las calificaciones faltantes no se convierten en cero. Los borradores
-					quedan fuera y las escalas y los ciclos nunca se mezclan. Los conteos
-					son registros de calificaciones: no representan alumnos ni cobertura.
-				</p>
-				<p>
-					La aprobación es la proporción de calificaciones publicadas iguales o
-					mayores a la calificación aprobatoria configurada en el criterio de
-					riesgo.
-				</p>
-			</details>
-			{(data.diagnostics.excluded > 0 || data.diagnostics.duplicates > 0) && (
-				<p className="evaluation-diagnostics">
-					Diagnóstico global de los datos guardados (todos los ciclos y
-					escalas): {data.diagnostics.excluded} registros publicados excluidos
-					por datos inválidos o referencias incompletas;{" "}
-					{data.diagnostics.duplicates} duplicados válidos contados por
-					separado.
-				</p>
-			)}
 		</section>
 	);
 }

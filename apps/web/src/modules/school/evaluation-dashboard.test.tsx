@@ -165,7 +165,7 @@ test("progress presents publication and teacher pending with a single period", (
 	expect(html).not.toContain("<details open");
 	expect(html).not.toContain("Todos los periodos");
 	expect(renderOperational(operationalFixture(), "Resultados")).toContain(
-		"Todos los periodos",
+		"Todo el ciclo",
 	);
 });
 test("progress table shows one group and one subject with every term, average and campus access", () => {
@@ -289,35 +289,53 @@ test("risk summary pluralizes risk and evaluated counts", () => {
 	expect(plural).toContain("2 evaluados");
 });
 
-test("results show the KPI strip, ranked subjects, histogram and group map", () => {
+test("results follow the minimal layout: stats card, filters above one table, lowest groups card", () => {
 	const html = render();
 	for (const text of [
-		"Resultados publicados",
 		"Promedio general",
 		"Aprobación",
-		"Calificaciones reprobatorias",
-		"Brecha entre materias",
-		"Materias",
-		"Distribución de calificaciones",
-		"Mapa por grupo",
+		"Reprobatorias",
+		"Grupos con menor promedio",
 		"No se imparte",
 	])
 		expect(html).toContain(text);
-	expect(html).toContain('aria-label="Abrir grupo 1° A"');
-	expect(html).toContain("Reprobatorio (&lt; 6)");
-	expect(html).toContain("Cerca del mínimo (&lt; 7)");
-	expect(html).toContain('class="results-neutral">±0.0');
-	expect(html.indexOf("<strong>Matemáticas</strong>")).toBeLessThan(
-		html.indexOf("<strong>Arte</strong>"),
+	for (const removed of [
+		"Brecha entre materias",
+		"Distribución de calificaciones",
+		"Mapa por grupo",
+		"Evolución por periodo",
+		'class="evaluation-context"',
+		'aria-label="Nivel educativo"',
+	])
+		expect(html).not.toContain(removed);
+	const stats = html.indexOf(
+		'class="progress-card progress-stats results-stats"',
 	);
-	expect(html).not.toContain('aria-label="Nivel educativo"');
+	const filters = html.indexOf('class="progress-filters"');
+	const table = html.indexOf('class="ui-table-card"');
+	expect(stats).toBeGreaterThan(-1);
+	expect(stats).toBeLessThan(filters);
+	expect(filters).toBeLessThan(table);
+	for (const id of ["grade", "group", "period", "subject"])
+		expect(html).toContain(`id="results-${id}"`);
+	expect(html).toMatch(
+		/id="results-period"[^>]*><option value="" selected="">Todo el ciclo/,
+	);
+	expect(html).toContain('aria-label="Abrir grupo 1° A"');
+	expect(html).toContain('class="progress-card results-groups"');
 	const s = fixture();
 	s.groups[1].grade = "1° semestre";
-	const mixed = render(s);
-	expect(mixed).toContain('aria-label="Nivel educativo"');
-	expect(mixed).toContain("Media superior");
+	expect(render(s)).not.toContain('aria-label="Nivel educativo"');
 });
-
+test("results show the evolution between terms as one line of text", () => {
+	const s = fixture();
+	s.assignments.push({ ...s.assignments[0], id: "later", period: "Segunda" });
+	s.grades.push({ ...s.grades[0], id: "a", assignment: "later", value: 8 });
+	const html = render(s);
+	expect(html).toMatch(
+		/class="results-evolution"[^>]*>[\s\S]*Primera[\s\S]*0\.0[\s\S]*Segunda[\s\S]*8\.0/,
+	);
+});
 test("published zero remains numeric, missing and draft values are dashes", () => {
 	const html = render();
 	expect(html).toContain('class="evaluation-mean">0.0</strong>');
@@ -327,7 +345,7 @@ test("published zero remains numeric, missing and draft values are dashes", () =
 	expect(html).not.toContain("7.777");
 	expect(html).not.toContain(">95<");
 	expect(html).not.toContain('<th scope="col">Otra escala</th>');
-	expect(html).toContain("Escala 0–100");
+	expect(html).toMatch(/<option value="[^"]+">0–100<\/option>/);
 });
 
 test("single scale is context rather than an unnecessary selector", () => {

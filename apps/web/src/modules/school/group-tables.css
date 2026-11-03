@@ -955,3 +955,141 @@
 .evaluation-dashboard .risk-failed li {
 	white-space: nowrap;
 }
+
+/* Evaluation results: same layout as progress and risk. */
+.progress-stats.results-stats dl {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	margin-top: 0;
+}
+.progress-stats.results-stats dd {
+	flex-wrap: wrap;
+}
+.progress-stats.results-stats dd span {
+	font-weight: 500;
+}
+.evaluation-dashboard .results-evolution {
+	margin: 14px 0 0;
+	font-size: 14px;
+	color: var(--ink-muted);
+}
+.results-evolution strong {
+	color: var(--ink);
+}
+.results-legend li[data-tone]::before {
+	background: var(--tone-dot);
+}
+.evaluation-results [data-tone="fail"] {
+	--tone-dot: var(--palette-brick);
+	--tone-fill: var(--tone-brick-bg);
+	--tone-text: var(--tone-brick-ink);
+}
+.evaluation-results [data-tone="near"] {
+	--tone-dot: var(--palette-mustard);
+	--tone-fill: var(--tone-mustard-bg);
+	--tone-text: var(--tone-mustard-ink);
+}
+.evaluation-results [data-tone="good"] {
+	--tone-dot: #4f9466;
+	--tone-fill: transparent;
+	--tone-text: var(--ink);
+}
+.evaluation-results [data-tone="missing"] {
+	--tone-dot: transparent;
+	--tone-fill: transparent;
+	--tone-text: var(--ink-muted);
+}
+.results-value {
+	display: inline-block;
+	min-width: 44px;
+	padding: 3px 8px;
+	border-radius: 8px;
+	background: var(--tone-fill);
+	color: var(--tone-text);
+	font-size: 14px;
+	font-weight: 600;
+}
+.results-total {
+	font-size: 15px;
+	color: var(--tone-text);
+}
+.evaluation-dashboard .results-scroll .ui-data-table tbody th {
+	text-align: left;
+}
+.results-groups {
+	position: sticky;
+	top: 16px;
+	padding: 18px;
+}
+.results-groups h3 {
+	margin: 0 0 10px;
+	font-size: 17px;
+	font-weight: 650;
+}
+.results-groups ol {
+	display: grid;
+	gap: 14px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.results-groups li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 4px 12px;
+}
+.results-groups li > strong {
+	font-size: 18px;
+	font-weight: 650;
+	color: var(--tone-text);
+}
+.results-bar {
+	grid-column: 1 / -1;
+	display: block;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--surface-muted);
+	overflow: hidden;
+}
+.results-bar i {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--tone-dot);
+}
+.evaluation-dashboard .results-groups > p {
+	font-size: 14px;
+}
+.evaluation-results .evaluation-method {
+	margin-top: 16px;
+}
+@media (max-width: 1180px) {
+	.results-groups {
+		position: static;
+	}
+}
+@media (max-width: 760px) {
+	.progress-stats.results-stats dl {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+/* Visually hidden labels are absolutely positioned; keep them inside the scroller. */
+.results-scroll {
+	position: relative;
+}
+.results-legend li::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+.evaluation-dashboard .results-stats .evaluation-mean {
+	font-size: 28px;
+	font-weight: 650;
+	color: var(--tone-ink);
+}
+.evaluation-dashboard .results-groups .progress-group-link {
+	justify-self: start;
+	text-align: left;
+}
