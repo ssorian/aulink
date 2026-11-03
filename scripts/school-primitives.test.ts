@@ -33,12 +33,12 @@ for (const [component, caption, action, columns] of [
 		expect(markup.match(/<table/g)).toHaveLength(1);
 		expect(markup.match(/scope="col"/g)).toHaveLength(columns);
 		expect(markup).toContain('scope="row"');
-		expect(markup).toContain('class="ui-table-scroll"');
+		expect(markup).toMatch(/class="ui-table-scroll[ "]/);
 		expect(markup).toContain(
 			'<p class="ui-table-scroll-hint">Desliza para ver todas las columnas</p>',
 		);
 		expect(markup.indexOf('class="ui-table-scroll-hint"')).toBeLessThan(
-			markup.indexOf('class="ui-table-scroll"'),
+			markup.search(/class="ui-table-scroll[ "]/),
 		);
 		expect(markup).toContain('tabindex="0"');
 		expect(markup).toContain(action);

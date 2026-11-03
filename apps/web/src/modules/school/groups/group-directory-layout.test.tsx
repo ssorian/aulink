@@ -1,8 +1,8 @@
 // @ts-expect-error — Bun runs this test; the web app uses browser-only type declarations.
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { GroupDirectory, GroupWorkspace } from "./group-workspace";
 import { initialState } from "../shared/workflows";
+import { GroupDirectory, GroupWorkspace } from "./group-workspace";
 
 function render(s = initialState()) {
 	return renderToStaticMarkup(
@@ -13,19 +13,23 @@ function render(s = initialState()) {
 test("group directory unifies heading, count, creation, filters and table", () => {
 	const s = initialState();
 	const html = render(s);
-	expect(html).toMatch(/^<section class="group-directory"/);
+	expect(html).toMatch(/^<section[^>]*data-slot="group-directory"/);
 	expect(html).toContain('aria-label="Grupos de la escuela"');
 	const header = html.match(/<header[^>]*>(.*?)<\/header>/)?.[1];
-	expect(header).toContain("<h2>Grupos de la escuela</h2>");
+	expect(header).toMatch(/<h2[^>]*>Grupos de la escuela<\/h2>/);
 	expect(header).toContain(
 		`${s.groups.length} grupos · Alumnos con inscripción activa en cada ciclo`,
 	);
-	expect(header).toContain('class="primary"');
+	expect(header).toContain('data-variant="primary"');
 	expect(header).toContain("Crear grupo");
 	expect(header).toContain("<svg");
-	expect(html).toContain('class="group-filters"');
+	expect(html).toContain('data-slot="filter-bar"');
 	for (const name of ["Ciclo", "Grado", "Turno"])
-		expect(html).toContain(`<label>${name}<select`);
+		expect(html).toMatch(
+			new RegExp(
+				`<label[^>]*data-slot="field"[^>]*><span[^>]*>${name}</span><select[^>]*data-slot="select"`,
+			),
+		);
 	expect(html.match(/<select/g)).toHaveLength(3);
 	expect(html).not.toContain("Limpiar filtros");
 });
@@ -44,7 +48,7 @@ test("group table preserves six headers, accessible caption and scrolling", () =
 		expect(html).toContain(`<th scope="col">${name}</th>`);
 	expect(html.match(/scope="col"/g)).toHaveLength(6);
 	expect(html).toContain("<caption>Directorio de grupos</caption>");
-	expect(html).toContain('class="ui-table-scroll"');
+	expect(html).toContain('class="ui-table-scroll ');
 	expect(html).toContain('tabindex="0"');
 	expect(html).toContain("Desliza para ver todas las columnas");
 	for (const g of s.groups) {
@@ -130,12 +134,7 @@ test("group card contains the table but not directory controls", () => {
 	const card = html.slice(html.indexOf('class="ui-table-card"'));
 	expect(html).toContain('class="ui-table-card"');
 	expect(card).toContain("<table");
-	for (const outside of [
-		"<header",
-		"<select",
-		"group-filters",
-		"Crear grupo",
-	]) {
+	for (const outside of ["<header", "<select", "filter-bar", "Crear grupo"]) {
 		expect(card).not.toContain(outside);
 	}
 });
@@ -156,11 +155,12 @@ test("group students use the shared card table without a panel or inline back bu
 	);
 	expect(html).not.toContain('class="panel"');
 	expect(html).not.toContain("Volver a Grupos");
-	expect(html).toContain('<section class="group-students"');
-	expect(html).toContain("<h3>Alumnos de este grupo y ciclo</h3>");
+	expect(html).toMatch(/<section[^>]*data-slot="group-students"/);
+	expect(html).toMatch(/<h3[^>]*>Alumnos de este grupo y ciclo<\/h3>/);
 	expect(html).toContain('class="ui-table-card"');
 	expect(html).toContain('class="ui-data-table"');
 	for (const name of ["Alumno", "Matrícula", "Inscripción", "Expediente"])
 		expect(html).toContain(`<th scope="col">${name}</th>`);
-	expect(html).toContain('class="group-open"');
+	expect(html).toContain('aria-label="Abrir expediente de');
+	expect(html).toContain('data-variant="ghost"');
 });

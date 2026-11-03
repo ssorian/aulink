@@ -1,16 +1,25 @@
 import { useState } from "react";
 import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
+import { Select } from "../../../components/ui/field";
+import { cn } from "../../../lib/utils";
 import { groupScope } from "../groups/group-context";
 import { gradeAverage } from "../groups/group-table-helpers";
+import {
+	cellNote,
+	type DotKind,
+	dotFill,
+	Segmented,
+	StatusLegend,
+	stickyFirstColumn,
+	tableCells,
+} from "../groups/group-table-ui";
 import type { ViewProps } from "../shared/view-types";
-import "../shared/group-tables.css";
-import "../schedule/schedule-calendar.css";
 
-const legend = [
-	["published", "Publicado"],
-	["draft", "Borrador"],
-	["missing", "Sin captura"],
-] as const;
+const legend: { key: string; kind: DotKind; label: string }[] = [
+	{ key: "published", kind: "complete", label: "Publicado" },
+	{ key: "draft", kind: "partial", label: "Borrador" },
+	{ key: "missing", kind: "empty", label: "Sin captura" },
+];
 const number = (value: number) =>
 	value.toLocaleString("es-MX", { maximumFractionDigits: 2 });
 
@@ -29,61 +38,63 @@ export function GroupGradesTable({
 		new Set(assignments.map((a) => `${a.min}:${a.max}`)).size > 1;
 	const columns = visible.length + (period ? 1 : 2);
 	return (
-		<section className="group-grades" aria-labelledby="group-grades-title">
-			<header className="grades-toolbar">
+		<section
+			data-slot="group-grades"
+			aria-labelledby="group-grades-title"
+			className="mt-6 min-w-0"
+		>
+			<header
+				data-slot="grades-toolbar"
+				className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
+			>
 				<div>
-					<h2 id="group-grades-title">Calificaciones por alumno</h2>
-					<p>
+					<h2
+						id="group-grades-title"
+						className="m-0 text-[22px] font-semibold tracking-tight"
+					>
+						Calificaciones por alumno
+					</h2>
+					<p className="mt-0.5 text-[13px] text-muted-foreground">
 						{subject
 							? `${subject} · ${period || "Total"}`
 							: "Selecciona una materia"}
 					</p>
 				</div>
-				<div className="grades-filters">
-					<label>
-						<span className="schedule-hidden">Materia</span>
-						<select
-							value={subject}
-							onChange={(e) => {
-								setSubject(e.target.value);
-								setPeriod("");
-							}}
-						>
-							{!subjects.length && <option value="">Sin materias</option>}
-							{subjects.map((name) => (
-								<option key={name}>{name}</option>
-							))}
-						</select>
-					</label>
+				<div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:flex-col max-sm:items-stretch">
+					<Select
+						id="group-grades-subject"
+						label="Materia"
+						value={subject}
+						items={subjects.map((name) => ({ value: name, label: name }))}
+						onChange={(value) => {
+							setSubject(value);
+							setPeriod("");
+						}}
+						className="min-w-56 flex-none"
+					/>
 					{periods.length > 0 && (
-						<fieldset className="attendance-modes">
-							<legend className="schedule-hidden">Evaluación</legend>
-							{["", ...periods].map((p) => (
-								<button
-									type="button"
-									key={p || "total"}
-									aria-pressed={period === p}
-									onClick={() => setPeriod(p)}
-								>
-									{p || "Total"}
-								</button>
-							))}
-						</fieldset>
+						<Segmented
+							label="Evaluación"
+							items={["", ...periods].map((p) => ({
+								value: p,
+								label: p || "Total",
+							}))}
+							value={period}
+							onChange={setPeriod}
+						/>
 					)}
 				</div>
 			</header>
-			<ul className="grades-legend" aria-label="Estado de las calificaciones">
-				{legend.map(([state, word]) => (
-					<li key={state} data-state={state}>
-						{word}
-					</li>
-				))}
-				<li className="grades-note">Los faltantes no cuentan como cero</li>
-			</ul>
+			<StatusLegend
+				hook="data-state"
+				label="Estado de las calificaciones"
+				items={legend}
+				note="Los faltantes no cuentan como cero"
+			/>
 			<DataTable
 				caption={`Calificaciones · ${subject || "sin materia"} · ${period || "Total"}`}
 				variant="card"
-				scrollClassName="grades-scroll"
+				scrollClassName={cn(tableCells, stickyFirstColumn)}
 				scrollLabel="Calificaciones por alumno"
 			>
 				<thead>
@@ -92,7 +103,7 @@ export function GroupGradesTable({
 						{visible.map((a) => (
 							<th scope="col" key={a.id}>
 								{a.period}
-								<small>
+								<small className={cellNote}>
 									{a.min}–{a.max} · {a.teacher}
 								</small>
 							</th>
@@ -113,7 +124,7 @@ export function GroupGradesTable({
 								<tr key={student.id}>
 									<th scope="row">
 										{student.name}
-										<small>{student.matricula}</small>
+										<small className={cellNote}>{student.matricula}</small>
 									</th>
 									{visible.map((a) => {
 										const grade = scoped.grades.find(
@@ -130,7 +141,7 @@ export function GroupGradesTable({
 												aria-label={`${grade ? number(grade.value) : ""} ${state}`.trim()}
 											>
 												<span
-													className="grade-value"
+													data-slot="grade-value"
 													data-state={
 														grade
 															? grade.published
@@ -139,21 +150,38 @@ export function GroupGradesTable({
 															: "missing"
 													}
 													title={state}
+													className={cn(
+														"inline-flex items-center gap-2 text-[15px] font-semibold",
+														!grade && "font-normal text-muted-foreground",
+													)}
 												>
+													<span
+														aria-hidden="true"
+														className={cn(
+															"size-2 shrink-0 rounded-full",
+															dotFill[
+																grade
+																	? grade.published
+																		? "complete"
+																		: "partial"
+																	: "empty"
+															],
+														)}
+													/>
 													{grade ? number(grade.value) : "—"}
 												</span>
 											</td>
 										);
 									})}
 									{!period && (
-										<td className="grades-average">
-											<strong>
+										<td>
+											<strong className="text-[15px]">
 												{mixedScales || avg.value === null
 													? "—"
 													: number(avg.value)}
 											</strong>
 											{(avg.partial || avg.draft || mixedScales) && (
-												<small>
+												<small className={cellNote}>
 													{mixedScales
 														? "Escalas distintas"
 														: [

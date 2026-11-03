@@ -1,17 +1,25 @@
-import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
-import { Icon } from "../../../components/ui/icon";
-import "./group-directory.css";
 import { useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
+import { Select } from "../../../components/ui/field";
+import { FilterBar } from "../../../components/ui/filter-bar";
+import { Icon } from "../../../components/ui/icon";
 import { WorkspaceTabs } from "../../../components/ui/workspace-tabs";
-import { GroupAttendanceTable } from "./group-attendance-table";
 import { GroupGradesTable } from "../grades/group-grades-table";
 import { ScheduleCalendar } from "../schedule/schedule-calendar";
-import "../shared/group-tables.css";
-import { groupScope, registrationContext } from "./group-context";
 import { field, options, reason } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
 import { activeGroup } from "../shared/workflows";
+import { GroupAttendanceTable } from "./group-attendance-table";
+import { groupScope, registrationContext } from "./group-context";
+import { tableCells } from "./group-table-ui";
 
+/** Directory and student tables: auto layout, 800px minimum so columns stay readable. */
+const listTable = `${tableCells} [&_table]:min-w-[800px] [&_th:last-child]:w-px`;
+const heading = "m-0 mb-1 text-xl font-semibold tracking-tight";
+const subheading = "m-0 text-[13px] tabular-nums text-muted-foreground";
+const sectionHeader =
+	"mb-5 flex flex-wrap items-center justify-between gap-4 max-md:flex-col max-md:items-stretch";
 const tabs = ["Alumnos", "Horario", "Asistencia", "Calificaciones"];
 export function GroupWorkspace({
 	s,
@@ -54,17 +62,21 @@ export function GroupWorkspace({
 		);
 	return (
 		<>
-			<section className="workspace-heading">
+			<section
+				data-slot="workspace-heading"
+				className="my-6 flex items-center justify-between gap-5 max-md:flex-col max-md:items-start max-md:gap-3.5"
+			>
 				<div>
-					<h2>{g.name}</h2>
-					<p>
+					<h2 className="m-0 text-[28px] leading-normal max-md:text-2xl">
+						{g.name}
+					</h2>
+					<p className="text-sm leading-[1.7] text-muted-foreground">
 						{g.grade || "Grado sin configurar"} ·{" "}
 						{g.shift || "Turno sin configurar"} · {cycle}
 					</p>
 				</div>
-				<div className="actions">
-					<button
-						type="button"
+				<div className="flex flex-wrap gap-2">
+					<Button
 						onClick={() =>
 							open(
 								"group-edit",
@@ -84,10 +96,10 @@ export function GroupWorkspace({
 						}
 					>
 						Editar grupo
-					</button>
-					<button type="button" onClick={() => onNotice(g.id)}>
+					</Button>
+					<Button onClick={() => onNotice(g.id)}>
 						Crear comunicado del grupo
-					</button>
+					</Button>
 				</div>
 			</section>
 			<WorkspaceTabs
@@ -97,19 +109,22 @@ export function GroupWorkspace({
 				onChange={setTab}
 			/>
 			{tab === "Alumnos" && (
-				<section className="group-students" aria-label="Alumnos del grupo">
-					<header className="group-students-header">
+				<section
+					data-slot="group-students"
+					aria-label="Alumnos del grupo"
+					className="mt-6 max-w-full min-w-0"
+				>
+					<header className={sectionHeader}>
 						<div>
-							<h3>Alumnos de este grupo y ciclo</h3>
-							<p>
+							<h3 className={heading}>Alumnos de este grupo y ciclo</h3>
+							<p className={subheading}>
 								{scoped.students.length}{" "}
 								{scoped.students.length === 1 ? "alumno" : "alumnos"} en {cycle}
 							</p>
 						</div>
-						<div className="actions">
-							<button
-								className="primary"
-								type="button"
+						<div className="flex flex-wrap gap-2">
+							<Button
+								variant="primary"
 								onClick={() =>
 									contextualOpen("enroll", "Inscribir alumno existente", [
 										options(
@@ -123,9 +138,8 @@ export function GroupWorkspace({
 								}
 							>
 								Inscribir alumno existente
-							</button>
-							<button
-								type="button"
+							</Button>
+							<Button
 								onClick={() => {
 									const c = registrationContext(s, g.id);
 									contextualOpen(
@@ -138,9 +152,8 @@ export function GroupWorkspace({
 								}}
 							>
 								Registrar nuevo alumno
-							</button>
-							<button
-								type="button"
+							</Button>
+							<Button
 								onClick={() =>
 									contextualOpen(
 										"transfer",
@@ -165,13 +178,14 @@ export function GroupWorkspace({
 								}
 							>
 								Cambiar de grupo
-							</button>
+							</Button>
 						</div>
 					</header>
 					<DataTable
 						caption={`Alumnos de ${context}`}
 						variant="card"
 						scrollLabel="Alumnos del grupo, desplazamiento horizontal"
+						scrollClassName={listTable}
 					>
 						<thead>
 							<tr>
@@ -192,15 +206,16 @@ export function GroupWorkspace({
 											: "Histórico · trasladado a otro grupo del ciclo"}
 									</td>
 									<td>
-										<button
+										<Button
 											id={`group-${groupId}-student-${x.id}`}
-											type="button"
-											className="group-open"
+											variant="ghost"
+											size="sm"
+											className="whitespace-nowrap"
 											aria-label={`Abrir expediente de ${x.name}`}
 											onClick={() => onStudent(x.id)}
 										>
 											Abrir expediente
-										</button>
+										</Button>
 									</td>
 								</tr>
 							))}
@@ -241,6 +256,11 @@ export function GroupWorkspace({
 		</>
 	);
 }
+const distinct = (values: (string | undefined)[]) =>
+	[...new Set(values.filter(Boolean) as string[])].map((value) => ({
+		value,
+		label: value,
+	}));
 export function GroupDirectory({
 	s,
 	open,
@@ -256,18 +276,21 @@ export function GroupDirectory({
 			(!shift || g.shift === shift),
 	);
 	return (
-		<section className="group-directory" aria-label="Grupos de la escuela">
-			<header className="group-directory-header">
+		<section
+			data-slot="group-directory"
+			aria-label="Grupos de la escuela"
+			className="max-w-full min-w-0"
+		>
+			<header className={sectionHeader}>
 				<div>
-					<h2>Grupos de la escuela</h2>
-					<p>
+					<h2 className={heading}>Grupos de la escuela</h2>
+					<p className={subheading}>
 						{list.length} {list.length === 1 ? "grupo" : "grupos"} · Alumnos con
 						inscripción activa en cada ciclo
 					</p>
 				</div>
-				<button
-					className="primary"
-					type="button"
+				<Button
+					variant="primary"
 					onClick={() =>
 						open(
 							"group",
@@ -284,44 +307,43 @@ export function GroupDirectory({
 				>
 					<Icon name="plus" size={18} />
 					Crear grupo
-				</button>
+				</Button>
 			</header>
-			<div className="group-filters">
-				<label>
-					Ciclo
-					<select value={cycle} onChange={(e) => setCycle(e.target.value)}>
-						<option value="">Todos</option>
-						{s.cycles.map((c) => (
-							<option key={c.id} value={c.id}>
-								{c.name}
-							</option>
-						))}
-					</select>
-				</label>
-				<label>
-					Grado
-					<select value={grade} onChange={(e) => setGrade(e.target.value)}>
-						<option value="">Todos</option>
-						{[...new Set(s.groups.map((g) => g.grade).filter(Boolean))].map(
-							(x) => (
-								<option key={x}>{x}</option>
-							),
-						)}
-					</select>
-				</label>
-				<label>
-					Turno
-					<select value={shift} onChange={(e) => setShift(e.target.value)}>
-						<option value="">Todos</option>
-						{[...new Set(s.groups.map((g) => g.shift).filter(Boolean))].map(
-							(x) => (
-								<option key={x}>{x}</option>
-							),
-						)}
-					</select>
-				</label>
-			</div>
-			<DataTable caption="Directorio de grupos" variant="card">
+			<FilterBar
+				label="Filtros de grupos"
+				className="mt-0 mb-4 border-b border-border pb-5 max-md:flex-col"
+			>
+				<Select
+					id="group-filter-cycle"
+					label="Ciclo"
+					value={cycle}
+					all="Todos"
+					items={s.cycles.map((c) => ({ value: c.id, label: c.name }))}
+					onChange={setCycle}
+					className="md:flex-[2_1_280px]"
+				/>
+				<Select
+					id="group-filter-grade"
+					label="Grado"
+					value={grade}
+					all="Todos"
+					items={distinct(s.groups.map((g) => g.grade))}
+					onChange={setGrade}
+				/>
+				<Select
+					id="group-filter-shift"
+					label="Turno"
+					value={shift}
+					all="Todos"
+					items={distinct(s.groups.map((g) => g.shift))}
+					onChange={setShift}
+				/>
+			</FilterBar>
+			<DataTable
+				caption="Directorio de grupos"
+				variant="card"
+				scrollClassName={listTable}
+			>
 				<thead>
 					<tr>
 						<th scope="col">Grupo</th>
@@ -350,14 +372,15 @@ export function GroupDirectory({
 								}
 							</td>
 							<td>
-								<button
-									type="button"
-									className="group-open"
+								<Button
+									variant="ghost"
+									size="sm"
+									className="whitespace-nowrap"
 									aria-label={`Abrir grupo ${g.name}`}
 									onClick={() => onSelect(g.id)}
 								>
 									Abrir grupo
-								</button>
+								</Button>
 							</td>
 						</tr>
 					))}

@@ -16,7 +16,7 @@ test("rendered tables expose scoped evidence, accessible days and draft grades",
  expect(attendance).toContain("<table");
  expect(attendance).toContain("Ana Sofía Mendoza Ruiz · 2026-10-19: Entrada sin salida");
  expect(attendance).not.toContain("Leonardo Castillo Vega");
- expect((attendance.match(/class=\"day-square\"/g)||[]).length).toBe(7);
+ expect((attendance.match(/data-slot=\"day-square\"/g)||[]).length).toBe(7);
  s.assignments=[{id:"a",subject:"Historia",period:"P1",teacher:"Demo",min:0,max:10,group:"g1"}];
  s.grades=[{id:"r",student:"s1",assignment:"a",value:8,published:false,history:[]}];
  const grades=renderToStaticMarkup(createElement(GroupGradesTable,{s,groupId:"g1",open:()=>{}}));

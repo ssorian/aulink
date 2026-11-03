@@ -1,24 +1,41 @@
 import { useState } from "react";
+import { Button } from "../../../components/ui/button";
 import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
-import { groupScope } from "./group-context";
-import { attendanceStatus, rangeDays } from "./group-table-helpers";
+import { MiniMonth } from "../../../components/ui/mini-month";
+import { cn } from "../../../lib/utils";
 import { schoolToday } from "../schedule/schedule-helpers";
-import { MiniMonth } from "../schedule/schedule-sidebar";
 import { field, reason } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
-import "../shared/group-tables.css";
-import "../schedule/schedule-calendar.css";
+import { groupScope } from "./group-context";
+import { attendanceStatus, rangeDays } from "./group-table-helpers";
+import {
+	cellNote,
+	type DotKind,
+	dotFill,
+	Segmented,
+	StatusLegend,
+	stickyFirstColumn,
+	tableCells,
+} from "./group-table-ui";
 
 const modes = ["Día", "Semana", "Mes"] as const;
 /** Short legend words; the full status stays in each square's accessible name. */
-const legend = [
-	["C", "Entrada y salida"],
-	["E", "Sin salida"],
-	["F", "Inasistencia"],
-	["?", "Por revisar"],
-	["—", "Sin registro"],
-] as const;
-const codeOf = (status: string) =>
+const legend: { key: string; kind: DotKind; label: string }[] = [
+	{ key: "C", kind: "complete", label: "Entrada y salida" },
+	{ key: "E", kind: "partial", label: "Sin salida" },
+	{ key: "F", kind: "absent", label: "Inasistencia" },
+	{ key: "?", kind: "review", label: "Por revisar" },
+	{ key: "—", kind: "empty", label: "Sin registro" },
+];
+const squareKind = {
+	C: "complete",
+	E: "partial",
+	F: "absent",
+	"?": "review",
+	"—": "none",
+} as const;
+const modeItems = modes.map((m) => ({ value: m, label: m }));
+const codeOf = (status: string): keyof typeof squareKind =>
 	status === "Entrada y salida"
 		? "C"
 		: status === "Entrada sin salida"
@@ -85,46 +102,48 @@ export function GroupAttendanceTable({
 			: fmt(day, { weekday: "short", day: "numeric" });
 	return (
 		<section
-			className="group-attendance"
+			data-slot="group-attendance"
 			aria-labelledby="group-attendance-title"
+			className="mt-6 grid items-start gap-5 min-[1241px]:grid-cols-[248px_minmax(0,1fr)]"
 		>
-			<div className="attendance-main">
-				<header className="attendance-toolbar">
-					<div>
-						<h2 id="group-attendance-title">Asistencia por alumno</h2>
-						<p aria-live="polite">{rangeTitle(days, mode)}</p>
-					</div>
-					<fieldset className="attendance-modes">
-						<legend className="schedule-hidden">Vista</legend>
-						{modes.map((m) => (
-							<button
-								type="button"
-								key={m}
-								aria-pressed={mode === m}
-								onClick={() => {
-									setMode(m);
-									setSelected(null);
-								}}
-							>
-								{m}
-							</button>
-						))}
-					</fieldset>
-				</header>
-				<ul
-					className="attendance-legend"
-					aria-label="Significado de los colores"
+			<div data-slot="attendance-main" className="min-w-0 min-[1241px]:order-2">
+				<header
+					data-slot="attendance-toolbar"
+					className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
 				>
-					{legend.map(([code, word]) => (
-						<li key={code} data-status={code}>
-							{word}
-						</li>
-					))}
-				</ul>
+					<div>
+						<h2
+							id="group-attendance-title"
+							className="m-0 text-[22px] font-semibold tracking-tight"
+						>
+							Asistencia por alumno
+						</h2>
+						<p
+							aria-live="polite"
+							className="mt-0.5 text-[13px] text-muted-foreground first-letter:uppercase"
+						>
+							{rangeTitle(days, mode)}
+						</p>
+					</div>
+					<Segmented
+						label="Vista"
+						items={modeItems}
+						value={mode as (typeof modes)[number]}
+						onChange={(m) => {
+							setMode(m);
+							setSelected(null);
+						}}
+					/>
+				</header>
+				<StatusLegend label="Significado de los colores" items={legend} />
 				<DataTable
 					caption={`Asistencia del grupo · ${rangeTitle(days, mode)}`}
 					variant="card"
-					scrollClassName="attendance-scroll"
+					scrollClassName={cn(
+						tableCells,
+						stickyFirstColumn,
+						"[&_td]:text-center [&_thead_th:not(:first-child)]:text-center",
+					)}
 					scrollLabel="Asistencia por alumno y día"
 				>
 					<thead>
@@ -135,6 +154,7 @@ export function GroupAttendanceTable({
 									scope="col"
 									key={day}
 									data-today={day === schoolToday(s.school.timezone)}
+									className="data-[today=true]:text-primary"
 								>
 									{heading(day)}
 								</th>
@@ -146,7 +166,7 @@ export function GroupAttendanceTable({
 							<tr key={student.id}>
 								<th scope="row">
 									{student.name}
-									<small>{student.matricula}</small>
+									<small className={cellNote}>{student.matricula}</small>
 								</th>
 								{days.map((day) => {
 									const status = attendanceStatus(
@@ -154,12 +174,13 @@ export function GroupAttendanceTable({
 											(e) => e.student === student.id && e.date === day,
 										),
 									);
+									const code = codeOf(status);
 									return (
 										<td key={day}>
 											<button
 												type="button"
-												className="day-square"
-												data-status={codeOf(status)}
+												data-slot="day-square"
+												data-status={code}
 												title={`${fmt(day, { weekday: "long", day: "numeric", month: "long" })}: ${status}`}
 												aria-label={`${student.name} · ${day}: ${status}`}
 												aria-pressed={
@@ -169,6 +190,10 @@ export function GroupAttendanceTable({
 												onClick={() =>
 													setSelected({ student: student.id, date: day })
 												}
+												className={cn(
+													"relative inline-block size-[22px] min-h-0 min-w-0 cursor-pointer rounded-[5px] border-0 p-0 align-middle before:absolute before:-inset-[11px] before:content-[''] hover:brightness-90 aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
+													dotFill[squareKind[code]],
+												)}
 											/>
 										</td>
 									);
@@ -184,11 +209,12 @@ export function GroupAttendanceTable({
 				</DataTable>
 				{selected && (
 					<section
-						className="attendance-detail"
+						data-slot="attendance-detail"
 						aria-label="Detalle del día"
 						aria-live="polite"
+						className="mt-4 pt-1"
 					>
-						<h3>
+						<h3 className="m-0 mb-1 text-base font-semibold first-letter:uppercase">
 							{scoped.students.find((x) => x.id === selected.student)?.name} ·{" "}
 							{fmt(selected.date, {
 								weekday: "long",
@@ -197,30 +223,37 @@ export function GroupAttendanceTable({
 							})}
 						</h3>
 						{!events.length && (
-							<p>Sin registros. No se infiere inasistencia.</p>
+							<p className="text-sm text-muted-foreground">
+								Sin registros. No se infiere inasistencia.
+							</p>
 						)}
 						{events.map((e) => (
-							<article className="list-row" key={e.id}>
-								<p>
+							<article
+								key={e.id}
+								className="grid gap-2 border-b border-border py-4 last:border-b-0"
+							>
+								<p className="text-sm">
 									Original inmutable: {e.time} · {e.kind} · ID {e.id}
 								</p>
-								<button
-									type="button"
-									onClick={() =>
-										open(
-											"adjust",
-											`Justificar / corregir ${e.id}`,
-											[field("value", "Resultado del ajuste"), reason],
-											{ event: e.id },
-										)
-									}
-								>
-									Justificar / corregir con motivo
-								</button>
+								<div>
+									<Button
+										size="sm"
+										onClick={() =>
+											open(
+												"adjust",
+												`Justificar / corregir ${e.id}`,
+												[field("value", "Resultado del ajuste"), reason],
+												{ event: e.id },
+											)
+										}
+									>
+										Justificar / corregir con motivo
+									</Button>
+								</div>
 								{s.adjustments
 									.filter((a) => a.event === e.id)
 									.map((a) => (
-										<p key={a.id}>
+										<p key={a.id} className="text-sm text-muted-foreground">
 											Ajuste: {a.value} · Motivo: {a.reason} · Responsable:{" "}
 											{a.author}
 										</p>
@@ -230,7 +263,10 @@ export function GroupAttendanceTable({
 					</section>
 				)}
 			</div>
-			<aside className="attendance-aside" aria-label="Elegir periodo">
+			<aside
+				aria-label="Elegir periodo"
+				className="min-[1241px]:order-1 max-[1240px]:max-w-80"
+			>
 				<MiniMonth
 					selected={date}
 					today={schoolToday(s.school.timezone)}

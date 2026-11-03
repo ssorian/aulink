@@ -285,7 +285,5 @@ test("the follow-up group picker is a compact filter, not a panel", () => {
 		/>,
 	);
 	expect(out).not.toContain("scope-selector");
-	expect(out).toMatch(
-		/<label for="followup-group" class="progress-filter"><span>Grupo<\/span>/,
-	);
+	expect(out).toMatch(/<label data-slot="field" for="followup-group"[^>]*>/);
 });

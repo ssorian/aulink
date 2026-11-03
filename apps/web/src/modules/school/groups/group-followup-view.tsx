@@ -1,8 +1,11 @@
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Select } from "../../../components/ui/field";
+import { FilterBar } from "../../../components/ui/filter-bar";
 import { ConductView } from "../conduct/conduct-view";
-import { groupScope } from "./group-context";
 import { GroupGradesTable } from "../grades/group-grades-table";
-import { Empty, options } from "../shared/view-helpers";
+import { options } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
+import { groupScope } from "./group-context";
 
 export function GroupFollowupView({
 	s,
@@ -36,25 +39,21 @@ export function GroupFollowupView({
 		);
 	return (
 		<>
-			<div className="progress-filters followup-scope">
-				<label htmlFor="followup-group" className="progress-filter">
-					<span>Grupo</span>
-					<select
-						id="followup-group"
-						value={groupId}
-						onChange={(event) => onGroup(event.target.value)}
-					>
-						<option value="">Selecciona un grupo</option>
-						{s.groups.map((g) => (
-							<option key={g.id} value={g.id}>
-								{g.name} · {s.cycles.find((c) => c.id === g.cycle)?.name}
-							</option>
-						))}
-					</select>
-				</label>
-			</div>
+			<FilterBar label="Grupo a consultar" className="mt-2 mb-5 max-w-[420px]">
+				<Select
+					id="followup-group"
+					label="Grupo"
+					value={groupId}
+					all="Selecciona un grupo"
+					items={s.groups.map((g) => ({
+						value: g.id,
+						label: `${g.name} · ${s.cycles.find((c) => c.id === g.cycle)?.name}`,
+					}))}
+					onChange={onGroup}
+				/>
+			</FilterBar>
 			{!group ? (
-				<Empty
+				<EmptyState
 					title={
 						s.groups.length ? "Sin grupo seleccionado" : "Aún no hay grupos"
 					}

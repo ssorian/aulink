@@ -2,8 +2,8 @@
 import { expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { GroupGradesTable } from "./group-grades-table";
 import { initialState } from "../shared/workflows";
+import { GroupGradesTable } from "./group-grades-table";
 
 function render() {
 	const s = initialState();
@@ -59,19 +59,21 @@ test("filters sit on top and a short dot legend replaces the long explanation", 
 	expect(html).not.toContain(
 		"Promedio simple por materia, solo con la misma escala",
 	);
-	expect(html.indexOf('class="grades-toolbar"')).toBeLessThan(
+	expect(html.indexOf('data-slot="grades-toolbar"')).toBeLessThan(
 		html.indexOf('class="ui-table-card"'),
 	);
 	expect(html).toMatch(/aria-pressed="true"[^>]*>Total</);
 	expect(html).toMatch(/aria-pressed="false"[^>]*>P1</);
 	for (const word of ["Publicado", "Borrador", "Sin captura"])
-		expect(html).toMatch(new RegExp(`data-state="[^"]+">${word}<`));
+		expect(html).toMatch(
+			new RegExp(`data-state="[^"]+"[^>]*>(?:<span[^>]*></span>)?${word}<`),
+		);
 });
 
 test("a draft grade shows its value with a state dot and keeps the state in its accessible name", () => {
 	const html = render();
 	expect(html).toMatch(
-		/<span class="grade-value" data-state="draft" title="Borrador">8<\/span>/,
+		/<span[^>]*data-slot="grade-value"[^>]*data-state="draft"[^>]*title="Borrador"[^>]*>(?:<span[^>]*><\/span>)?8<\/span>/,
 	);
 	expect(html).toContain("Parcial");
 });
