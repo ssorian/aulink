@@ -20,6 +20,82 @@ const audiences = [
 	{ value: "student", label: "Alumno" },
 ];
 
+const initials = (name: string) =>
+	name
+		.split(/\s+/)
+		.filter((word) => /^[\p{L}\d]/u.test(word))
+		.slice(0, 2)
+		.map((word) => word[0])
+		.join("")
+		.toUpperCase();
+/** Notices store no author or date: the audience is who the post speaks to. */
+function poster(s: ViewProps["s"], notice: ViewProps["s"]["notices"][number]) {
+	const cycle = (id?: string) =>
+		s.cycles.find((c) => c.id === id)?.name || "Ciclo no disponible";
+	if (notice.audience === "school")
+		return {
+			badge: initials(s.school.name),
+			name: "Toda la escuela",
+			context: s.school.name,
+		};
+	if (notice.audience === "group") {
+		const group = s.groups.find((g) => g.id === notice.target);
+		return {
+			badge: (group?.name || "?").replace(/[^\p{L}\d]/gu, "").slice(0, 3),
+			name: group?.name || "Grupo no disponible",
+			context: `Grupo · ${cycle(group?.cycle)}`,
+		};
+	}
+	const student = s.students.find((x) => x.id === notice.target);
+	return {
+		badge: initials(student?.name || "?"),
+		name: student?.name || "Alumno no disponible",
+		context: "Alumno y sus tutores",
+	};
+}
+function TutorList({
+	names,
+	published,
+}: {
+	names: string[];
+	published: boolean;
+}) {
+	const shown = names.slice(0, 4);
+	return (
+		<details className="publication-recipients">
+			<summary>
+				<span className="tutor-stack" aria-hidden="true">
+					{shown.map((name) => (
+						<span className="tutor-avatar" key={name}>
+							{initials(name)}
+						</span>
+					))}
+					{names.length > shown.length && (
+						<span className="tutor-avatar tutor-more">
+							+{names.length - shown.length}
+						</span>
+					)}
+				</span>
+				<span>
+					{`${names.length} tutor${names.length === 1 ? " verificado" : "es verificados"} · ${published ? "al publicar" : "previstos"}`}
+				</span>
+			</summary>
+			{names.length > 0 && (
+				<ul className="tutor-grid">
+					{names.map((name) => (
+						<li className="tutor-chip" key={name}>
+							<span className="tutor-avatar" aria-hidden="true">
+								{initials(name)}
+							</span>
+							{name}
+						</li>
+					))}
+				</ul>
+			)}
+		</details>
+	);
+}
+
 export function CommunicationsView({
 	s,
 	open,
@@ -144,112 +220,109 @@ export function CommunicationsView({
 					onChange={setAudience}
 				/>
 			</div>
-			<section
-				className="progress-card notices-list"
-				aria-label="Lista de comunicados"
-			>
-				{!s.notices.length ? (
-					<p className="notices-empty">
-						Tu primer comunicado empieza como borrador. Define la audiencia y
-						revisa los tutores antes de publicar.
-					</p>
-				) : !visible.length ? (
-					<p className="notices-empty">Ningún comunicado con estos filtros.</p>
-				) : (
-					<ul>
-						{visible.map(({ notice: n, summary }) => (
-							<li className="notice-row" key={n.id}>
-								<div className="notice-body">
-									<p className="notice-meta">
-										<span
-											className="notice-state"
-											data-state={
-												n.published
-													? "published"
-													: summary.canPublish
-														? "draft"
-														: "blocked"
-											}
-										>
-											{n.published ? "Publicado" : "Borrador"}
-										</span>
-										<span className="publication-audience">
-											{summary.audience}
-										</span>
+			{!s.notices.length ? (
+				<p className="progress-card notices-empty">
+					Tu primer comunicado empieza como borrador. Define la audiencia y
+					revisa los tutores antes de publicar.
+				</p>
+			) : !visible.length ? (
+				<p className="progress-card notices-empty">
+					Ningún comunicado con estos filtros.
+				</p>
+			) : (
+				<div className="notices-list">
+					{visible.map(({ notice: n, summary }) => {
+						const who = poster(s, n);
+						const tone = n.published
+							? "published"
+							: summary.canPublish
+								? "draft"
+								: "blocked";
+						return (
+							<article
+								className="progress-card notice-card"
+								data-notice={n.id}
+								data-state={tone}
+								key={n.id}
+							>
+								<header className="notice-head">
+									<span className="notice-avatar" aria-hidden="true">
+										{who.badge}
+									</span>
+									<span className="notice-author">{who.name}</span>
+									<span className="notice-context">· {who.context}</span>
+									<span className="notice-state" data-state={tone}>
+										{n.published ? "Publicado" : "Borrador"}
+									</span>
+								</header>
+								<h3>{summary.preview.title}</h3>
+								<p className="notice-excerpt">{summary.preview.text}</p>
+								{!n.published && !summary.canPublish && (
+									<p
+										className="notice-warning"
+										id={`publication-empty-${n.id}`}
+									>
+										Sin tutores verificados en esta audiencia. Edita el borrador
+										o revisa los vínculos de tutores antes de publicar.
 									</p>
-									<h3>{summary.preview.title}</h3>
-									<p className="notice-text">{summary.preview.text}</p>
-									<details className="publication-recipients">
-										<summary>
-											{`${summary.recipients.length} tutor${summary.recipients.length === 1 ? " verificado" : "es verificados"} · ${n.published ? "al publicar" : "previstos"}`}
-										</summary>
-										<ul>
-											{summary.recipients.map((name) => (
-												<li key={name}>{name}</li>
-											))}
-										</ul>
-									</details>
-									{!n.published && !summary.canPublish && (
-										<p
-											className="notice-warning"
-											id={`publication-empty-${n.id}`}
-										>
-											Sin tutores verificados en esta audiencia. Edita el
-											borrador o revisa los vínculos de tutores antes de
-											publicar.
-										</p>
-									)}
-								</div>
-								{!n.published && (
-									<div className="notice-actions">
-										<button
-											type="button"
-											onClick={() =>
-												open("notice", `Editar ${n.title}`, fields, {
-													...n,
-													published: String(n.published),
-													recipients: "",
-													id: n.id,
-												})
-											}
-										>
-											<Icon name="edit" size={16} />
-											Editar borrador
-										</button>
-										<button
-											type="button"
-											disabled={!summary.canPublish}
-											aria-describedby={
-												!summary.canPublish
-													? `publication-empty-${n.id}`
-													: undefined
-											}
-											onClick={() =>
-												open(
-													"notice-publish",
-													`Publicar: ${n.title}`,
-													[],
-													{ id: n.id },
-													[
-														summary.audience,
-														`Vista previa familiar: ${summary.preview.title}`,
-														summary.preview.text,
-														`${summary.recipients.length} tutores verificados:`,
-														...summary.recipients,
-													],
-												)
-											}
-										>
-											<Icon name="send" size={16} />
-											Revisar publicación
-										</button>
-									</div>
 								)}
-							</li>
-						))}
-					</ul>
-				)}
-			</section>
+								<footer className="notice-footer">
+									<TutorList
+										names={summary.recipients}
+										published={n.published}
+									/>
+									{!n.published && (
+										<div className="notice-actions">
+											<button
+												type="button"
+												onClick={() =>
+													open("notice", `Editar ${n.title}`, fields, {
+														...n,
+														published: String(n.published),
+														recipients: "",
+														id: n.id,
+													})
+												}
+											>
+												<Icon name="edit" size={16} />
+												Editar borrador
+											</button>
+											<button
+												type="button"
+												className="primary"
+												disabled={!summary.canPublish}
+												aria-describedby={
+													!summary.canPublish
+														? `publication-empty-${n.id}`
+														: undefined
+												}
+												onClick={() =>
+													open(
+														"notice-publish",
+														`Publicar: ${n.title}`,
+														[],
+														{ id: n.id },
+														[
+															summary.audience,
+															`Vista previa familiar: ${summary.preview.title}`,
+															summary.preview.text,
+															`${summary.recipients.length} tutores verificados:`,
+															...summary.recipients,
+														],
+													)
+												}
+											>
+												<Icon name="send" size={16} />
+												Revisar publicación
+											</button>
+										</div>
+									)}
+								</footer>
+							</article>
+						);
+					})}
+				</div>
+			)}
 		</section>
 	);
 }
