@@ -14,6 +14,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - S9: "Todo junto (Recomendado)": el layout nuevo incorpora la crítica: confirmar en el panel con Deshacer (cambios de una fecha), color fijo por materia sin chocar con estados, teclado (flechas, foco retenido en el panel, anuncio al guardar, aviso de choque al arrastrar), jerarquía (aviso compacto, textos ≥12 px de apoyo), panel sin "Programada" redundante y que no se cierra con scroll, clases de 30 min legibles, zona horaria legible, estado vacío, nombres claros.
 - S10: Fin de jornada = "Línea en la grilla (Recomendado)": línea punteada a la hora de fin de jornada en cada día con etiqueta pequeña.
 - S11: Crítica de layout aplicada con alcance "Todo (P1, P2 y P3)" y fin de semana "Dejarlas como están": lateral en orden mini mes → Cambios → Materias compactas (una línea, docente en tooltip); cabecera en una sola fila; línea de fin de jornada discreta cuando coincide con el final de un bloque y etiqueta a la izquierda; calendario primero en el orden del DOM; horas del eje alineadas; selector de vista con borde; leyenda del mini mes en una línea; cabecera de días más baja.
+- S12: "Sabes que, si haz mas angosto sabado y domingp" — sábado y domingo angostos cuando no tienen clases ni cambios; recuperan su ancho si tienen alguno.
 
 ## Tasks
 - T1 [S4,S6] Modelo: docente/suplente por fecha, editar materia/titular de una recurrencia, eliminar recurrencia; pruebas en scripts/group-schedule.test.ts. Route: inline. Risk: item 1 (formato guardado, aditivo). Commit: b789d4f ✅
@@ -23,6 +24,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - T5 [S9] `run` directo desde el calendario + Deshacer auditable (reaplica el estado previo, nunca borra registros). Route: inline. Commit: 45734b5 ✅
 - T6 [S7,S8,S9,S10] Layout con columna lateral, cabecera nueva, grilla nueva (colores por materia, hora actual, fin de jornada, pasado atenuado, choque al arrastrar), panel con formularios en sitio, teclado. Route: inline. Commit: (commit de layout) ✅
 - T8 [S11] Ajustes de layout de la crítica. Route: inline. Commit: (commit de ajustes de layout) ✅
+- T9 [S12] Fin de semana angosto. Route: inline. Commit: (commit fin de semana) ✅
 - T7 [S7-S10] Verificación: pruebas, typecheck, biome, navegador escritorio/móvil, detector impeccable. Route: inline. Commit: sin código ✅
 
 ## Log
@@ -39,3 +41,5 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - L11 pendiente conocido: los títulos de diálogo de la estructura siguen con el sufijo de grupo/ciclo que agrega group-workspace (compartido con otras pestañas; no se tocó). Arrastre HTML5 sin soporte táctil.
 - L12 (usuario): "Ok, me gusta mucho mas pero ahora critica el layout" + captura. Decisiones: "Todo (P1, P2 y P3)"; fin de semana "Dejarlas como están".
 - L13 evidencia T8: RED 3 pruebas (orden DOM, materias compactas, línea discreta, cabecera en una fila); GREEN 24/24 horario. Suite 312 pass / 7 fail preexistentes. typecheck OK; Biome 0 errores, 5 avisos de especificidad CSS. Detector layout: [] exit 0. Navegador 1633/1400/390: cabecera en una fila (la etiqueta "Semana N" pasó a la línea de zona horaria para entrar a 1400), orden de Tab arranca en el calendario, eje de horas alineado, móvil sin desbordamiento. Corregido: `.app{overflow-wrap:anywhere}` global partía palabras en bloques. Limitación: la leyenda del mini mes ocupa dos líneas (no entra en 212 px a 12 px); la lateral sigue ~300 px más alta que la grilla con 8 materias.
+- L14 (usuario): "Sabes que, si haz mas angosto sabado y domingp" (cambia la decisión de L12 "Dejarlas como están"). Interpretado con la opción recomendada: angostas cuando están vacías.
+- L15 evidencia T9: RED 1 prueba; GREEN 25/25 horario. typecheck OK; Biome 0 errores (7 avisos de especificidad CSS). Navegador 1400: SÁB/DOM a 56 px en ambas vistas, días hábiles ~121 px; en Estructura el "+" queda bajo la abreviatura.

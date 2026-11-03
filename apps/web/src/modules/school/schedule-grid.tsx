@@ -33,6 +33,8 @@ export type GridColumn = {
 		subtle?: boolean;
 		band?: { start: string; end: string };
 	};
+	/** Saturday and Sunday collapse to a narrow column while they hold no class. */
+	weekend?: boolean;
 	/** Weekly structure only: accessible "add class" action in the heading. */
 	add?: () => void;
 	summary?: string;
@@ -155,6 +157,17 @@ export function ScheduleGrid({
 		if (next) document.getElementById(next.id)?.focus();
 	}
 	const dragged = drag.current?.item;
+	const compact = new Set(
+		columns
+			.filter(
+				(column) =>
+					column.weekend && !items.some((item) => item.column === column.key),
+			)
+			.map((column) => column.key),
+	);
+	const template = `56px ${columns
+		.map((column) => (compact.has(column.key) ? "56px" : "minmax(92px, 1fr)"))
+		.join(" ")}`;
 	return (
 		<section
 			className="schedule-scroll"
@@ -162,11 +175,18 @@ export function ScheduleGrid({
 			// biome-ignore lint/a11y/noNoninteractiveTabindex: El calendario necesita foco para desplazamiento horizontal y vertical con teclado.
 			tabIndex={0}
 		>
-			<div className="schedule-grid">
+			<div
+				className="schedule-grid"
+				style={{
+					gridTemplateColumns: template,
+					minWidth: 56 + columns.length * 92 - compact.size * 36,
+				}}
+			>
 				<div className="schedule-corner" />
 				{columns.map((column) => (
 					<div
 						className="schedule-day-heading"
+						data-compact={compact.has(column.key)}
 						key={column.key}
 						data-today={column.today === true}
 					>
@@ -180,7 +200,7 @@ export function ScheduleGrid({
 								Inhábil
 							</span>
 						)}
-						{column.summary && (
+						{column.summary && !compact.has(column.key) && (
 							<span className="schedule-day-summary">{column.summary}</span>
 						)}
 						{column.add && (
@@ -207,6 +227,7 @@ export function ScheduleGrid({
 					<section
 						key={column.key}
 						className="schedule-day"
+						data-compact={compact.has(column.key)}
 						data-off={Boolean(column.holiday)}
 						data-today={column.today === true}
 						data-drop={drop?.column === column.key}

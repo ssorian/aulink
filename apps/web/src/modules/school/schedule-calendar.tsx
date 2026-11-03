@@ -364,6 +364,7 @@ export function ScheduleCalendar({
 			date,
 			label: weekday(date),
 			short: weekday(date).slice(0, 3).toUpperCase(),
+			weekend: ["Sábado", "Domingo"].includes(weekday(date)),
 			day: String(Number(date.slice(8))),
 			today: date === today,
 			holiday: holiday?.reason,
@@ -533,6 +534,7 @@ export function ScheduleCalendar({
 			key: day,
 			label: day,
 			short: day.slice(0, 3).toUpperCase(),
+			weekend: day === "Sábado" || day === "Domingo",
 			summary: count
 				? `${count} ${count === 1 ? "clase" : "clases"}`
 				: "Sin clases",

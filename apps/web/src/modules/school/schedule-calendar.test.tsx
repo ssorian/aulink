@@ -220,3 +220,20 @@ test("week header is a single row with the view switch and create action", () =>
 	expect(head).toContain("Agendar clase");
 	expect(html).not.toContain('class="schedule-toolbar"');
 });
+
+test("empty Saturday and Sunday get narrow columns; a weekend class widens its day", () => {
+	const { s } = fixture();
+	s.schedules = [{ ...s.schedules[0], day: "Lunes" }];
+	const columns = (html: string) =>
+		html.match(
+			/class="schedule-grid" style="grid-template-columns:([^;"]+)/,
+		)?.[1];
+	expect(columns(render(s))).toBe(
+		`56px ${"minmax(92px, 1fr) ".repeat(5)}56px 56px`,
+	);
+	expect(render(s)).toMatch(/class="schedule-day-heading" data-compact="true"/);
+	s.schedules.push({ ...s.schedules[0], id: "sat", day: "Sábado" });
+	expect(columns(render(s, "structure"))).toBe(
+		`56px ${"minmax(92px, 1fr) ".repeat(6)}56px`,
+	);
+});
