@@ -2,13 +2,13 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { chipLabel, chipTone } from "../shared/chip-tooltip";
+import { initialState } from "../shared/workflows";
 import {
 	filterStaff,
 	StaffRoleAction,
 	StaffView,
 	staffWorkload,
 } from "./staff-view";
-import { initialState } from "../shared/workflows";
 
 function render(empty = false) {
 	const s = initialState();
@@ -80,16 +80,27 @@ function render(empty = false) {
 
 test("staff panel unifies heading, count and primary action with visible disclaimer", () => {
 	const html = render();
-	expect(html).toMatch(/^<section class="staff-directory"/);
-	expect(html).not.toContain('class="panel staff-directory"');
+	expect(html).toMatch(/^<section data-slot="staff-directory"/);
+	expect(html).not.toContain('class="panel');
 	const header = html.match(/<header[^>]*>(.*?)<\/header>/)?.[1];
 	expect(header).toContain("Personal de la escuela");
 	expect(header).toContain("2 de 2 registros");
-	expect(header).toContain('class="primary"');
+	expect(header).toContain('data-variant="primary"');
 	expect(header).toContain("Agregar personal");
 	expect(header).toContain("<svg");
-	expect(html).toContain(
-		'<p class="staff-disclaimer">Estas responsabilidades no implementan autorización. No se envían invitaciones.</p>',
+	expect(html).toMatch(
+		/<p data-slot="staff-disclaimer"[^>]*>Estas responsabilidades no implementan autorización. No se envían invitaciones.<\/p>/,
+	);
+});
+
+test("staff summarizes the registry in a stat card above the filters", () => {
+	const html = render();
+	expect(html).toContain('data-slot="stat-grid"');
+	expect(html.indexOf('data-slot="stat-grid"')).toBeLessThan(
+		html.indexOf('data-slot="filter-bar"'),
+	);
+	expect(html.indexOf('data-slot="filter-bar"')).toBeLessThan(
+		html.indexOf("<table"),
 	);
 });
 
@@ -104,26 +115,28 @@ test("staff keeps semantic columns, row headers, caption and keyboard scrolling"
 		"Horas/semana",
 		"Acciones",
 	])
-		expect(html).toContain(`<th scope="col">${name}</th>`);
+		expect(html).toMatch(new RegExp(`<th scope="col"[^>]*>${name}</th>`));
 	expect(html).not.toContain('<th scope="col">Historial</th>');
-	expect(html).toContain(
-		'<th scope="row"><span class="directory-identity">Ana Ejemplo</span></th>',
+	expect(html).toMatch(
+		/<th scope="row"[^>]*><span data-slot="staff-identity"[^>]*>(<span data-slot="avatar"[^>]*>[^<]*<\/span>)?<span>Ana Ejemplo<\/span><\/span><\/th>/,
 	);
 	expect(html).toContain('class="ui-table-scroll"');
 	expect(html).toContain('tabindex="0"');
 	expect(html).toContain("Desliza para ver todas las columnas");
 });
 
-test("staff actions use the brick open button and name the person", () => {
+test("staff actions use the icon button and name the person", () => {
 	const html = render();
 	for (const name of ["Ana Ejemplo", "Luis Ejemplo"])
 		expect(html).toMatch(
 			new RegExp(
-				`<button type="button" class="directory-open" aria-label="Cambiar responsabilidad de ${name}"><svg[^>]*aria-hidden="true"[\\s\\S]*?</svg></button>`,
+				`<button data-slot="button" data-variant="icon" type="button" class="[^"]*" aria-label="Cambiar responsabilidad de ${name}"><svg[^>]*aria-hidden="true"[\\s\\S]*?</svg></button>`,
 			),
 		);
 	expect(html).not.toContain("<details");
-	expect(html).toContain('<span class="staff-history-count">2 cambios</span>');
+	expect(html).toMatch(
+		/<span data-slot="staff-history-count"[^>]*>2 cambios<\/span>/,
+	);
 });
 
 test("open passes every history entry to the dialog", () => {
@@ -233,8 +246,8 @@ test("subjects and groups open a tooltip of colored cards", () => {
 			new RegExp(`<li class="chip tone-[a-z]+">${name}</li>`),
 		);
 	expect(html).not.toContain("Matemáticas, Física");
-	expect(html).toContain("<td>2.5</td>");
-	expect(html).toContain("<td>—</td><td>—</td><td>—</td>");
+	expect(html).toMatch(/<td[^>]*>2\.5<\/td>/);
+	expect(html).toMatch(/<td[^>]*>—<\/td><td[^>]*>—<\/td><td[^>]*>—<\/td>/);
 });
 
 test("singular labels and stable colors per name", () => {

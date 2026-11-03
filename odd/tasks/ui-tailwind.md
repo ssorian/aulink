@@ -29,7 +29,7 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - T7 [S1,S3] Groups (workspace, attendance/grades tables, directory).
 - T8 [S1,S3] Schedule (calendar, grid, sidebar, day actions, chip tooltip).
 - T9 [S1,S3,S7] Students (directory + profile to minimal style).
-- T10 [S1,S3,S7] Staff + credentials directories.
+- T10 [S1,S3,S7] Staff + credentials directories. Route: worker. Commit: (T10 commit) ✅
 - T11 [S1,S3] Setup, cycle calendar, flow dialog.
 - T12 [S1,S3,S7] Shell + Inicio; delete remaining .css except styles.css.
 - T13 Verification: suite, typecheck, Biome, detector, browser desktop+390.
@@ -41,3 +41,4 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - L4: T2 done. Visual-diff harness outside the repo (/tmp/aulink-vd: shoot.mjs = 17 screens x 1440/390 full-page via playwright-core on :3101; diff.py; cmp.py). Baseline noise ≤0.03% at 1440. After layering, all screens identical/noise except: group workspace shifted 16px because module `.group-back` (brick button, previously beaten by global `button.group-back`) now won -> dead module rule removed; perfil and "Agregar materia" show 2-4px gap/padding shifts (module rules now beat generic global button rules) — accepted, those screens are redone in T8/T9. Suite 329/6 known, typecheck clean.
 - L5: T4 done by worker: 85 git mv renames into 12 folders, 70 files with import-only edits, Field type moved to shared/view-types (re-exported by flow-dialog). bun test scripts/ apps/web/src/modules 327/6 before and after (same failing set); typecheck and Biome clean; visual diff vs base identical to T2 (only the known perfil/Agregar materia 2-4px shifts).
 - L6: T3 done by worker: tone.ts, button, card, stat, field (Field+Select), filter-bar, badge, legend, avatar (+AvatarStack), empty-state, meter, ranked-bars, mini-month (ported, day cells now 44px), dialog; lib/initials.ts; primitives.test.tsx 16 pass (RED observed: missing modules). Unrequested Biome reformat of data-table/panel reverted. Delivery: branch already past ~400 lines; slices = commits per task, PRs chained per module group (foundation T2-T4, then one PR per T5..T12).
+- L7: T10 done by worker: Personal and Terminales restyled to minimal (stats card with Registros/Docentes/Con materias asignadas and Equipos/Habilitados/Desactivados, FilterBar, DataTable with Avatar+Badge, icon action); staff-view.css deleted; staff-layout.test hooks -> data-slot/data-variant (RED 8/4 then GREEN 12/12). ChipTooltip (shared) unchanged. Stale school-primitives failures kept; proposed fixes: 4->6 columns (x2), find the icon button by aria-label, replace the <details> assertion with the open() payload — pending user decision.
