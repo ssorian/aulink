@@ -1,11 +1,13 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { Card, CardTitle } from "../../../components/ui/card";
 import { Icon } from "../../../components/ui/icon";
-import {
-	ClassPanel,
-	type GridColumn,
-	type GridItem,
-	ScheduleGrid,
-} from "./schedule-grid";
+import { field, options } from "../shared/view-helpers";
+import type { ViewProps } from "../shared/view-types";
+import type { State } from "../shared/workflows";
+import { ClassPanel } from "./class-panel";
+import { coverWords, hash, hm, longDate, shortDate } from "./schedule-format";
+import { type GridColumn, type GridItem, ScheduleGrid } from "./schedule-grid";
 import {
 	addDays,
 	clock,
@@ -18,110 +20,26 @@ import {
 	weekday,
 	weekdays,
 } from "./schedule-helpers";
+import { dayMarks } from "./schedule-marks";
+import { SchedulePanelBody } from "./schedule-panel-body";
 import {
 	type ChangeRow,
-	type DayMarks,
 	MiniMonth,
 	SubjectFilter,
 	WeekChanges,
 } from "./schedule-sidebar";
-import { field, options } from "../shared/view-helpers";
-import type { ViewProps } from "../shared/view-types";
-import type { State } from "../shared/workflows";
-import "./schedule-calendar.css";
+import { ScheduleToast } from "./schedule-toast";
+import { subjectTones } from "./schedule-tones";
+import { ScheduleToolbar, type ScheduleView } from "./schedule-toolbar";
+import type { PanelMode, PanelState, Slot, ToastState } from "./schedule-types";
+
+export { subjectTones };
 
 const disclaimer =
 	"Solo simulación local; no se comunica a terminales ni autoriza entrega de menores";
 const schoolWeek = [...weekdays.slice(1), weekdays[0]];
-const fmt = (date: string, options: Intl.DateTimeFormatOptions) =>
-	new Intl.DateTimeFormat("es-MX", { ...options, timeZone: "UTC" }).format(
-		new Date(`${date}T12:00:00Z`),
-	);
-/** "lun 2 nov" */
-const shortDate = (date: string) =>
-	fmt(date, { weekday: "short", day: "numeric", month: "short" }).replace(
-		/\./g,
-		"",
-	);
-const longDate = (date: string) =>
-	fmt(date, { weekday: "long", day: "numeric", month: "long" });
-function weekTitle(first: string, last: string) {
-	const sameMonth = first.slice(0, 7) === last.slice(0, 7);
-	const start = fmt(
-		first,
-		sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" },
-	);
-	return `${start} – ${fmt(last, { day: "numeric", month: "short", year: "numeric" })}`.replace(
-		/\./g,
-		"",
-	);
-}
-function isoWeek(date: string) {
-	const d = new Date(`${date}T12:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));
-	const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-	return (
-		1 +
-		Math.round(
-			((d.getTime() - firstThursday.getTime()) / 86400000 -
-				3 +
-				((firstThursday.getUTCDay() + 6) % 7)) /
-				7,
-		)
-	);
-}
-function zoneName(timezone: string) {
-	try {
-		const name = new Intl.DateTimeFormat("es-MX", {
-			timeZone: timezone,
-			timeZoneName: "longGeneric",
-		})
-			.formatToParts(new Date())
-			.find((part) => part.type === "timeZoneName")?.value;
-		return name ? name.charAt(0).toUpperCase() + name.slice(1) : timezone;
-	} catch {
-		return timezone;
-	}
-}
-function hash(value: string) {
-	let h = 0;
-	for (const char of value) h = (h * 31 + char.charCodeAt(0)) | 0;
-	return Math.abs(h);
-}
-/**
- * One colour per subject across the school, in order of first creation, so a
- * subject keeps its colour in every group and new subjects never repaint old ones.
- */
-export function subjectTones(s: State) {
-	const order: string[] = [];
-	for (const a of s.assignments) {
-		const subject = a.subject.trim().toLowerCase();
-		if (!order.includes(subject)) order.push(subject);
-	}
-	return (subject: string) =>
-		Math.max(order.indexOf(subject.trim().toLowerCase()), 0) % 8;
-}
-/** "07:30" → "7:30" */
-const hm = (time: string) => time.replace(/^0(\d)/, "$1");
 const occurrenceKey = (item: Occurrence) =>
 	JSON.stringify([item.schedule, item.originDate, item.status]);
-const coverWords = { substitute: "Suplente", teacher: "Cubre" };
-type Slot = State["schedules"][number];
-type Mode = "view" | "cancel" | "move" | "staff" | "restore";
-type Panel =
-	| {
-			kind: "occurrence";
-			item: Occurrence;
-			key: string;
-			anchor: HTMLElement;
-			mode: Mode;
-			draft?: { date: string; start: string; end: string };
-	  }
-	| { kind: "slot"; slot: Slot; key: string; anchor: HTMLElement };
-type Toast = {
-	text: string;
-	undo?: { kind: string; data: Record<string, string> };
-};
 
 export function ScheduleCalendar({
 	s,
@@ -134,12 +52,12 @@ export function ScheduleCalendar({
 	groupId: string;
 	open: ViewProps["open"];
 	run?: (kind: string, data: Record<string, string>) => void;
-	initialView?: "dates" | "structure";
+	initialView?: ScheduleView;
 }) {
 	const [view, setView] = useState(initialView);
-	const [panel, setPanel] = useState<Panel | null>(null);
+	const [panel, setPanel] = useState<PanelState | null>(null);
 	const [error, setError] = useState("");
-	const [toast, setToast] = useState<Toast | null>(null);
+	const [toast, setToast] = useState<ToastState | null>(null);
 	const [announce, setAnnounce] = useState("");
 	const [hidden, setHidden] = useState(new Set<string>());
 	const closePanel = useCallback(() => {
@@ -440,38 +358,7 @@ export function ScheduleCalendar({
 				} satisfies GridItem;
 			}),
 	);
-	const marks: DayMarks = new Map();
-	const mark = (date: string, value: "cancel" | "move" | "cover") => {
-		if (!marks.has(date)) marks.set(date, new Set());
-		marks.get(date)?.add(value);
-	};
-	for (const slot of slots) {
-		const seen = new Map<string, State["scheduleChanges"][number]>();
-		for (const change of s.scheduleChanges.filter(
-			(c) => c.schedule === slot.id,
-		))
-			seen.set(change.date, change);
-		for (const change of seen.values()) {
-			if (change.action === "cancel") mark(change.date, "cancel");
-			if (change.action === "move") {
-				mark(change.date, "move");
-				mark(change.targetDate, "move");
-			}
-		}
-		const covers = new Map<string, State["scheduleStaffing"][number]>();
-		for (const record of s.scheduleStaffing.filter(
-			(c) => c.schedule === slot.id,
-		))
-			covers.set(record.date, record);
-		for (const record of covers.values())
-			if (record.role !== "titular") {
-				const moved = seen.get(record.date);
-				mark(
-					moved?.action === "move" ? moved.targetDate : record.date,
-					"cover",
-				);
-			}
-	}
+	const marks = dayMarks(s, slots);
 	function openFromList(key: string) {
 		const item = byKey.get(key);
 		if (!item) return;
@@ -627,241 +514,10 @@ export function ScheduleCalendar({
 				: `${subject} del ${shortDate(item.originDate)} restaurada.`,
 		);
 	}
-	function setMode(mode: Mode) {
+	function setMode(mode: PanelMode) {
 		setError("");
 		setPanel((current) =>
 			current?.kind === "occurrence" ? { ...current, mode } : current,
-		);
-	}
-	function panelBody() {
-		if (!panel) return null;
-		if (panel.kind === "slot") {
-			const { slot } = panel;
-			return (
-				<div className="schedule-panel-body">
-					<p className="schedule-panel-meta">
-						Cada {slot.day.toLowerCase()} · {slot.start}–{slot.end}
-					</p>
-					<p>Titular: {titular(slot.assignment) || "Sin docente"}</p>
-					<div className="schedule-panel-actions">
-						<button type="button" data-autofocus onClick={() => schedule(slot)}>
-							Editar
-						</button>
-						<button
-							type="button"
-							data-tone="danger"
-							onClick={() => removeSlot(slot)}
-						>
-							Eliminar
-						</button>
-					</div>
-				</div>
-			);
-		}
-		const { item, mode, draft } = panel;
-		const live = item.status === "active" || item.status === "moved";
-		const errorLine = error && (
-			<p className="schedule-panel-error" role="alert">
-				{error}
-			</p>
-		);
-		const reasonField = (placeholder: string) => (
-			<label>
-				Motivo
-				<textarea
-					name="reason"
-					rows={2}
-					required
-					placeholder={placeholder}
-					data-autofocus={
-						mode === "cancel" || mode === "restore" ? true : undefined
-					}
-				/>
-			</label>
-		);
-		const footer = (primary: string, danger = false) => (
-			<div className="schedule-panel-actions">
-				<button type="button" onClick={() => setMode("view")}>
-					Volver
-				</button>
-				<button type="submit" className={danger ? "danger" : "primary"}>
-					{primary}
-				</button>
-			</div>
-		);
-		if (mode === "view")
-			return (
-				<div className="schedule-panel-body">
-					<p className="schedule-panel-meta">
-						{longDate(item.date)} · {item.start}–{item.end}
-					</p>
-					{item.coverRole ? (
-						<p>
-							<strong>
-								{coverWords[item.coverRole]}: {item.teacher}
-							</strong>
-							<br />
-							Titular: {titular(item.assignment)}
-						</p>
-					) : (
-						<p>Docente: {item.teacher || "Sin docente"}</p>
-					)}
-					{item.status !== "active" && (
-						<p className="schedule-panel-status" data-status={item.status}>
-							{item.status === "cancel"
-								? "Cancelada"
-								: item.status === "move"
-									? "Reagendada a otra fecha"
-									: `Reagendada desde el ${shortDate(item.originDate)}`}
-							{item.reason ? ` · ${item.reason}` : ""}
-						</p>
-					)}
-					<div className="schedule-panel-actions">
-						{live && (
-							<>
-								<button
-									type="button"
-									data-autofocus
-									onClick={() => setMode("staff")}
-								>
-									Cambiar docente
-								</button>
-								<button type="button" onClick={() => setMode("move")}>
-									Reagendar
-								</button>
-								<button
-									type="button"
-									data-tone="danger"
-									onClick={() => setMode("cancel")}
-								>
-									Cancelar clase
-								</button>
-							</>
-						)}
-						{item.status !== "active" && (
-							<button type="button" onClick={() => setMode("restore")}>
-								Restaurar
-							</button>
-						)}
-					</div>
-				</div>
-			);
-		if (mode === "staff")
-			return (
-				<form className="schedule-panel-body" onSubmit={submitPanel} noValidate>
-					<p className="schedule-panel-meta">
-						Solo el {longDate(item.date)}. Titular: {titular(item.assignment)}.
-					</p>
-					<fieldset className="schedule-choice">
-						<legend>Cambio</legend>
-						{(
-							[
-								["substitute", "Suplente"],
-								["teacher", "Otro docente"],
-								["titular", "Volver al titular"],
-							] as const
-						).map(([value, text]) => (
-							<label key={value}>
-								<input
-									type="radio"
-									name="role"
-									value={value}
-									defaultChecked={(item.coverRole || "substitute") === value}
-									disabled={value === "titular" && !item.coverRole}
-								/>
-								{text}
-							</label>
-						))}
-					</fieldset>
-					<label>
-						Docente para esta fecha
-						<select
-							name="teacher"
-							defaultValue={item.coverRole ? item.teacher : ""}
-							data-autofocus
-						>
-							<option value="">Selecciona…</option>
-							{teachers
-								.filter((t) => t !== titular(item.assignment))
-								.map((t) => (
-									<option key={t} value={t}>
-										{t}
-									</option>
-								))}
-						</select>
-					</label>
-					{reasonField("Ej. licencia médica del titular")}
-					{errorLine}
-					{footer("Guardar")}
-				</form>
-			);
-		if (mode === "move")
-			return (
-				<form className="schedule-panel-body" onSubmit={submitPanel} noValidate>
-					<p className="schedule-panel-meta">
-						Solo cambia la clase del {longDate(item.originDate)}.
-					</p>
-					<div className="schedule-panel-row">
-						<label>
-							Fecha
-							<input
-								type="date"
-								name="targetDate"
-								defaultValue={draft?.date || item.date}
-								data-autofocus={draft ? undefined : true}
-							/>
-						</label>
-					</div>
-					<div className="schedule-panel-row">
-						<label>
-							Inicio
-							<input
-								type="time"
-								name="start"
-								defaultValue={draft?.start || item.start}
-							/>
-						</label>
-						<label>
-							Fin
-							<input
-								type="time"
-								name="end"
-								defaultValue={draft?.end || item.end}
-							/>
-						</label>
-					</div>
-					<label>
-						Motivo
-						<textarea
-							name="reason"
-							rows={2}
-							required
-							placeholder="Ej. junta de academia"
-							data-autofocus={draft ? true : undefined}
-						/>
-					</label>
-					{errorLine}
-					{footer("Reagendar")}
-				</form>
-			);
-		return (
-			<form className="schedule-panel-body" onSubmit={submitPanel} noValidate>
-				<p className="schedule-panel-meta">
-					{mode === "cancel"
-						? `Se cancela solo el ${longDate(item.date)}. Queda visible como evidencia.`
-						: `Vuelve a su horario original del ${longDate(item.originDate)}.`}
-				</p>
-				{reasonField(
-					mode === "cancel"
-						? "Ej. suspensión por junta"
-						: "Ej. se resolvió el aviso",
-				)}
-				{errorLine}
-				{footer(
-					mode === "cancel" ? "Cancelar clase" : "Restaurar",
-					mode === "cancel",
-				)}
-			</form>
 		);
 	}
 
@@ -874,94 +530,30 @@ export function ScheduleCalendar({
 		: "";
 	return (
 		<section
-			className="schedule-calendar"
+			data-slot="schedule-calendar"
+			className="mt-6 min-w-0 text-foreground tabular-nums max-[760px]:mt-4 [&_:focus-visible]:outline-3 [&_:focus-visible]:outline-offset-2 [&_:focus-visible]:outline-primary"
 			aria-labelledby="schedule-calendar-heading"
 		>
-			<div className="schedule-layout">
-				<div className="schedule-main">
-					<header className="schedule-head">
-						<div className="schedule-head-title">
-							{view === "dates" && (
-								<div className="schedule-step">
-									<button
-										type="button"
-										className="schedule-icon-button schedule-prev"
-										aria-label="Semana anterior"
-										onClick={() => {
-											closePanel();
-											setSelectedDate(addDays(selectedDate, -7));
-										}}
-									>
-										<Icon name="chevron" />
-									</button>
-									<button
-										type="button"
-										className="schedule-icon-button"
-										aria-label="Semana siguiente"
-										onClick={() => {
-											closePanel();
-											setSelectedDate(addDays(selectedDate, 7));
-										}}
-									>
-										<Icon name="chevron" />
-									</button>
-								</div>
-							)}
-							<div>
-								<h2 id="schedule-calendar-heading" aria-live="polite">
-									{view === "dates"
-										? weekTitle(dates[0], dates[6])
-										: "Estructura semanal"}
-								</h2>
-								<p className="schedule-zone">
-									{view === "dates"
-										? `Semana ${isoWeek(monday)} · ${zoneName(s.school.timezone)}`
-										: "Plantilla que se repite cada semana"}
-								</p>
-							</div>
-						</div>
-						<div className="schedule-head-actions">
-							{view === "dates" && !dates.includes(today) && (
-								<button
-									type="button"
-									className="schedule-today"
-									onClick={() => setSelectedDate(today)}
-								>
-									Ir a hoy
-								</button>
-							)}
-							<fieldset className="schedule-views">
-								<legend className="schedule-hidden">Vista del horario</legend>
-								{(
-									[
-										["dates", "Por fechas"],
-										["structure", "Estructura semanal"],
-									] as const
-								).map(([id, text]) => (
-									<button
-										type="button"
-										key={id}
-										aria-pressed={view === id}
-										onClick={() => {
-											closePanel();
-											setView(id);
-										}}
-									>
-										{text}
-									</button>
-								))}
-							</fieldset>
-							<button
-								type="button"
-								className={`schedule-create ${view === "structure" ? "primary" : ""}`}
-								disabled={!assignments.length}
-								onClick={() => schedule()}
-							>
-								<Icon name="plus" size={18} />
-								Agendar clase
-							</button>
-						</div>
-					</header>
+			<div className="grid items-start gap-5 min-[1241px]:grid-cols-[248px_minmax(0,1fr)]">
+				<div data-slot="schedule-main" className="min-w-0 min-[1241px]:order-2">
+					<ScheduleToolbar
+						view={view}
+						dates={dates}
+						monday={monday}
+						today={today}
+						timezone={s.school.timezone}
+						canCreate={assignments.length > 0}
+						onStep={(days) => {
+							closePanel();
+							setSelectedDate(addDays(selectedDate, days));
+						}}
+						onToday={() => setSelectedDate(today)}
+						onView={(next) => {
+							closePanel();
+							setView(next);
+						}}
+						onCreate={() => schedule()}
+					/>
 					<ScheduleGrid
 						key={view}
 						columns={columns}
@@ -979,21 +571,26 @@ export function ScheduleCalendar({
 						}
 						empty={
 							!assignments.length ? (
-								<div className="schedule-empty">
-									<h3>Este grupo aún no tiene materias</h3>
-									<p>
+								<Card
+									padding="none"
+									className="absolute inset-x-6 top-24 z-50 mx-auto max-w-[420px] rounded-2xl p-6 text-center shadow-[0_12px_32px_-12px_rgb(31_45_54/0.25)]"
+								>
+									<CardTitle className="mb-1.5 text-lg">
+										Este grupo aún no tiene materias
+									</CardTitle>
+									<p className="mb-4 text-sm text-muted-foreground">
 										Agrega una materia con su docente; después podrás acomodar
 										sus clases en la semana.
 									</p>
-									<button
-										type="button"
-										className="primary"
+									<Button
+										variant="primary"
+										className="px-[18px]"
 										onClick={addSubject}
 									>
 										<Icon name="plus" size={18} />
 										Agregar materia
-									</button>
-								</div>
+									</Button>
+								</Card>
 							) : undefined
 						}
 						onSelect={(item, anchor) => {
@@ -1062,9 +659,14 @@ export function ScheduleCalendar({
 						}
 					/>
 				</div>
-				<aside className="schedule-aside" aria-label="Filtros del horario">
+				<aside
+					data-slot="schedule-aside"
+					aria-label="Filtros del horario"
+					className="grid min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-4 max-[1240px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] min-[1241px]:order-1"
+				>
 					{view === "dates" && (
 						<MiniMonth
+							className="[&_header_button]:size-8 [&_header_button]:min-h-8"
 							selected={selectedDate}
 							today={today}
 							marks={marks}
@@ -1086,7 +688,9 @@ export function ScheduleCalendar({
 							setHidden(next);
 						}}
 					/>
-					<p className="schedule-disclaimer">{disclaimer}</p>
+					<p className="m-0 px-1 text-xs leading-normal text-muted-foreground max-[1240px]:col-span-full">
+						{disclaimer}
+					</p>
 				</aside>
 			</div>
 			{panel && (
@@ -1096,28 +700,26 @@ export function ScheduleCalendar({
 					title={panelTitle}
 					onClose={closePanel}
 				>
-					{panelBody()}
+					<SchedulePanelBody
+						panel={panel}
+						teachers={teachers}
+						titular={titular}
+						error={error}
+						onMode={setMode}
+						onSubmit={submitPanel}
+						onEditSlot={() => panel.kind === "slot" && schedule(panel.slot)}
+						onRemoveSlot={() => panel.kind === "slot" && removeSlot(panel.slot)}
+					/>
 				</ClassPanel>
 			)}
 			{toast && (
-				<div className="schedule-toast">
-					<p>{toast.text}</p>
-					{toast.undo && (
-						<button type="button" onClick={undoLast}>
-							Deshacer
-						</button>
-					)}
-					<button
-						type="button"
-						className="schedule-icon-button"
-						aria-label="Cerrar aviso"
-						onClick={() => setToast(null)}
-					>
-						<Icon name="close" size={16} />
-					</button>
-				</div>
+				<ScheduleToast
+					toast={toast}
+					onUndo={undoLast}
+					onClose={() => setToast(null)}
+				/>
 			)}
-			<p className="schedule-hidden" aria-live="polite">
+			<p className="sr-only" aria-live="polite">
 				{announce}
 			</p>
 		</section>

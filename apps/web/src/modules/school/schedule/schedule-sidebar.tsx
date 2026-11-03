@@ -1,169 +1,18 @@
-import { type KeyboardEvent, useEffect, useState } from "react";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Card, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Icon } from "../../../components/ui/icon";
-import { addDays } from "./schedule-helpers";
+import { cn } from "../../../lib/utils";
+import { toneVars } from "./schedule-tones";
 
-export type DayMarks = Map<string, Set<"cancel" | "move" | "cover">>;
-const initials = ["L", "M", "M", "J", "V", "S", "D"];
-const dayNames = [
-	"lunes",
-	"martes",
-	"miércoles",
-	"jueves",
-	"viernes",
-	"sábado",
-	"domingo",
-];
-const markLabels = {
-	cancel: "cancelación",
-	move: "reagenda",
-	cover: "suplencia",
-};
-const monthTitle = (month: string) =>
-	new Intl.DateTimeFormat("es-MX", {
-		month: "long",
-		year: "numeric",
-		timeZone: "UTC",
-	}).format(new Date(`${month}-15T12:00:00Z`));
-const mondayOf = (date: string) =>
-	addDays(date, -((new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7));
-const shiftMonth = (month: string, offset: number) => {
-	const date = new Date(`${month}-15T12:00:00Z`);
-	date.setUTCMonth(date.getUTCMonth() + offset);
-	return date.toISOString().slice(0, 7);
-};
+// The month picker is a shared primitive; groups still import it from here.
+export { type DayMarks, MiniMonth } from "../../../components/ui/mini-month";
 
-/** Month picker: arrows move by day or week, PageUp/PageDown by month. */
-export function MiniMonth({
-	selected,
-	today,
-	marks = new Map(),
-	onSelect,
-	label = "Elegir semana",
-	inRange,
-	legend = true,
-}: {
-	selected: string;
-	today: string;
-	marks?: DayMarks;
-	onSelect: (date: string) => void;
-	label?: string;
-	/** Which days the current view covers; defaults to the selected week. */
-	inRange?: (date: string) => boolean;
-	legend?: boolean;
-}) {
-	const [month, setMonth] = useState(selected.slice(0, 7));
-	const [focus, setFocus] = useState(selected);
-	useEffect(() => {
-		setMonth(selected.slice(0, 7));
-		setFocus(selected);
-	}, [selected]);
-	const shownMonth = month;
-	const first = mondayOf(`${shownMonth}-01`);
-	const days = Array.from({ length: 42 }, (_, i) => addDays(first, i));
-	const week = mondayOf(selected);
-	const covered = inRange || ((date: string) => mondayOf(date) === week);
-	const tabbable = days.includes(focus)
-		? focus
-		: days.includes(selected)
-			? selected
-			: `${shownMonth}-01`;
-	function move(e: KeyboardEvent<HTMLButtonElement>, date: string) {
-		const step = {
-			ArrowLeft: -1,
-			ArrowRight: 1,
-			ArrowUp: -7,
-			ArrowDown: 7,
-		}[e.key];
-		let next = step ? addDays(date, step) : "";
-		if (e.key === "PageUp" || e.key === "PageDown") {
-			const offset = e.key === "PageUp" ? -1 : 1;
-			next = `${shiftMonth(date.slice(0, 7), offset)}-${date.slice(8)}`;
-			if (next.slice(8) > "28") next = `${next.slice(0, 8)}28`;
-		}
-		if (!next) return;
-		e.preventDefault();
-		setFocus(next);
-		setMonth(next.slice(0, 7));
-		requestAnimationFrame(() =>
-			document
-				.querySelector<HTMLElement>(`.schedule-mini [data-date="${next}"]`)
-				?.focus(),
-		);
-	}
-	return (
-		<section className="schedule-card schedule-mini" aria-label={label}>
-			<header>
-				<h3>{monthTitle(shownMonth)}</h3>
-				<div>
-					<button
-						type="button"
-						className="schedule-icon-button schedule-prev"
-						aria-label="Mes anterior"
-						onClick={() => setMonth(shiftMonth(shownMonth, -1))}
-					>
-						<Icon name="chevron" size={18} />
-					</button>
-					<button
-						type="button"
-						className="schedule-icon-button"
-						aria-label="Mes siguiente"
-						onClick={() => setMonth(shiftMonth(shownMonth, 1))}
-					>
-						<Icon name="chevron" size={18} />
-					</button>
-				</div>
-			</header>
-			<fieldset className="schedule-mini-grid">
-				<legend className="schedule-hidden">{monthTitle(shownMonth)}</legend>
-				{initials.map((letter, i) => (
-					<span key={dayNames[i]} aria-hidden="true">
-						{letter}
-					</span>
-				))}
-				{days.map((date) => {
-					const dayMarks = [...(marks.get(date) || [])];
-					return (
-						<button
-							type="button"
-							key={date}
-							data-date={date}
-							data-outside={date.slice(0, 7) !== shownMonth}
-							data-week={covered(date)}
-							data-range-start={covered(date) && !covered(addDays(date, -1))}
-							data-range-end={covered(date) && !covered(addDays(date, 1))}
-							data-today={date === today}
-							aria-pressed={covered(date)}
-							aria-label={`${Number(date.slice(8))} de ${monthTitle(date.slice(0, 7))}${date === today ? ", hoy" : ""}${dayMarks.length ? `, con ${dayMarks.map((m) => markLabels[m]).join(" y ")}` : ""}`}
-							tabIndex={date === tabbable ? 0 : -1}
-							onKeyDown={(e) => move(e, date)}
-							onFocus={() => setFocus(date)}
-							onClick={() => {
-								setFocus(date);
-								onSelect(date);
-							}}
-						>
-							{Number(date.slice(8))}
-							{dayMarks.length > 0 && (
-								<span className="schedule-marks" aria-hidden="true">
-									{dayMarks.map((mark) => (
-										<i key={mark} data-mark={mark} />
-									))}
-								</span>
-							)}
-						</button>
-					);
-				})}
-			</fieldset>
-			{legend && (
-				<p className="schedule-marks-legend">
-					<span data-mark="cancel">Cancelada</span>
-					<span data-mark="move">Reagendada</span>
-					<span data-mark="cover">Suplencia</span>
-				</p>
-			)}
-		</section>
-	);
-}
+const sideCard = "rounded-2xl px-[18px] pt-[18px] pb-4";
+const sideTitle =
+	"text-base font-[650] tracking-[-0.01em] whitespace-nowrap first-letter:uppercase";
+const sideHeader = "mb-3 flex-nowrap gap-2";
+const sideEmpty = "m-0 text-[13px] text-muted-foreground";
 
 export type SubjectRow = {
 	id: string;
@@ -191,26 +40,41 @@ export function SubjectFilter({
 	onAdd: () => void;
 }) {
 	return (
-		<section
-			className="schedule-card schedule-subjects"
+		<Card
+			padding="none"
+			className={sideCard}
 			aria-labelledby="schedule-subjects-title"
 		>
-			<header>
-				<h3 id="schedule-subjects-title">Materias</h3>
-				<span>Horas por semana</span>
-			</header>
+			<CardHeader className={sideHeader}>
+				<CardTitle id="schedule-subjects-title" className={sideTitle}>
+					Materias
+				</CardTitle>
+				<span className="text-xs text-muted-foreground">Horas por semana</span>
+			</CardHeader>
 			{rows.length ? (
-				<ul>
+				<ul className="m-0 grid list-none gap-0.5 p-0">
 					{rows.map((row) => (
 						<li key={row.id}>
-							<label title={row.teacher} data-tone={row.tone}>
+							<label
+								data-slot="schedule-subject"
+								title={row.teacher}
+								data-tone={row.tone}
+								style={toneVars(row.tone)}
+								className="grid min-h-9 cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg px-1.5 py-0.5 text-sm hover:bg-background"
+							>
 								<input
 									type="checkbox"
 									checked={!hidden.has(row.id)}
 									onChange={() => onToggle(row.id)}
+									className="peer m-0 size-[18px] min-h-0 p-0 accent-(--block-line)"
 								/>
-								<span className="schedule-subject-name">{row.subject}</span>
-								<span className="schedule-subject-hours">
+								<span
+									data-slot="schedule-subject-name"
+									className="min-w-0 truncate leading-tight peer-not-checked:text-muted-foreground peer-not-checked:line-through"
+								>
+									{row.subject}
+								</span>
+								<span className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
 									<Icon name="clock" size={14} />
 									{hoursText(row.minutes)}
 								</span>
@@ -219,13 +83,17 @@ export function SubjectFilter({
 					))}
 				</ul>
 			) : (
-				<p>Este grupo aún no tiene materias.</p>
+				<p className={sideEmpty}>Este grupo aún no tiene materias.</p>
 			)}
-			<button type="button" className="schedule-link" onClick={onAdd}>
+			<Button
+				variant="link"
+				className="mt-2 min-h-11 px-1.5 text-sm"
+				onClick={onAdd}
+			>
 				<Icon name="plus" size={16} />
 				Agregar materia
-			</button>
-		</section>
+			</Button>
+		</Card>
 	);
 }
 
@@ -236,33 +104,58 @@ export type ChangeRow = {
 	text: string;
 	onOpen: () => void;
 };
+const markFill = {
+	cancel: "bg-destructive",
+	move: "bg-mustard",
+	cover: "bg-[#7b72c4]",
+};
 export function WeekChanges({ rows }: { rows: ChangeRow[] }) {
 	return (
-		<section
-			className="schedule-card schedule-changes"
+		<Card
+			padding="none"
+			className={sideCard}
 			aria-labelledby="schedule-changes-title"
 		>
-			<header>
-				<h3 id="schedule-changes-title">Cambios de la semana</h3>
-				{rows.length > 0 && <span>{rows.length}</span>}
-			</header>
+			<CardHeader className={sideHeader}>
+				<CardTitle id="schedule-changes-title" className={sideTitle}>
+					Cambios de la semana
+				</CardTitle>
+				{rows.length > 0 && (
+					<Badge className="min-w-6 justify-center px-2 py-0.5 text-foreground">
+						{rows.length}
+					</Badge>
+				)}
+			</CardHeader>
 			{rows.length ? (
-				<ul>
+				<ul className="m-0 grid list-none gap-0.5 p-0">
 					{rows.map((row) => (
 						<li key={row.key}>
-							<button type="button" onClick={row.onOpen} data-mark={row.mark}>
-								<span className="schedule-change-text">
-									<strong>{row.subject}</strong>
+							<Button
+								variant="ghost"
+								data-mark={row.mark}
+								className="grid min-h-12 w-full grid-cols-[auto_minmax(0,1fr)_auto] justify-normal gap-2.5 rounded-[10px] p-1.5 text-left font-normal text-muted-foreground hover:bg-background"
+								onClick={row.onOpen}
+							>
+								<span
+									aria-hidden="true"
+									className={cn("size-2 rounded-full", markFill[row.mark])}
+								/>
+								<span className="min-w-0 text-xs leading-[1.35] wrap-anywhere">
+									<strong className="block text-sm font-semibold text-foreground">
+										{row.subject}
+									</strong>
 									{row.text}
 								</span>
 								<Icon name="chevron" size={16} />
-							</button>
+							</Button>
 						</li>
 					))}
 				</ul>
 			) : (
-				<p>Sin cancelaciones, reagendas ni suplencias esta semana.</p>
+				<p className={sideEmpty}>
+					Sin cancelaciones, reagendas ni suplencias esta semana.
+				</p>
 			)}
-		</section>
+		</Card>
 	);
 }

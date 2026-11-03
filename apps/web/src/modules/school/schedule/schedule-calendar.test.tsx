@@ -2,9 +2,9 @@
 import { expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { apply, initialState } from "../shared/workflows";
 import { ScheduleCalendar } from "./schedule-calendar";
 import { schoolToday, weekday } from "./schedule-helpers";
-import { apply, initialState } from "../shared/workflows";
 
 function fixture() {
 	const s = initialState();
@@ -48,11 +48,11 @@ const render = (
 		}),
 	);
 const blocks = (html: string) =>
-	html.match(/<button\b[^>]*class="schedule-block[^>]*>/g) || [];
+	html.match(/<button\b[^>]*data-slot="schedule-block"[^>]*>/g) || [];
 
 test("only the calendar and its header remain; the lower panels are gone", () => {
 	const html = render(fixture().s);
-	expect(html).toContain('class="schedule-scroll"');
+	expect(html).toContain('data-slot="schedule-scroll"');
 	expect(html).toContain("Materias");
 	expect(html).toContain("Cambios de la semana");
 	expect(html).toContain('aria-label="Elegir semana"');
@@ -92,7 +92,7 @@ test("dated classes open an options panel and can be dragged; ghosts cannot", ()
 	expect(ghost).toContain('data-ghost="cancel"');
 	expect(ghost).toContain("Cancelada");
 	expect(render(canceled)).toMatch(
-		/<strong>Matemáticas<\/strong>[\s\S]*Cancelada/,
+		/<strong[^>]*>Matemáticas<\/strong>[\s\S]*Cancelada/,
 	);
 });
 
@@ -117,12 +117,16 @@ test("time scale, seven columns and the end-of-day line inside the grid", () => 
 	const { s } = fixture();
 	const html = render(s);
 	expect(html).toContain("height:512px");
-	expect((html.match(/class="schedule-day-heading"/g) || []).length).toBe(7);
+	expect((html.match(/data-slot="schedule-day-heading"/g) || []).length).toBe(
+		7,
+	);
 	expect(html).toContain("7:00–15:00");
-	expect(html).toMatch(/class="schedule-end-line"[^>]*><span>Fin 15:00</);
+	expect(html).toMatch(
+		/data-slot="schedule-end-line"[^>]*><span[^>]*>Fin 15:00</,
+	);
 	s.scheduleWindows = [{ group: "g1", before: 10, after: 5 }];
 	expect(render(s)).toContain("Salida 14:50–15:05");
-	expect(render(s)).toContain('class="schedule-end-band"');
+	expect(render(s)).toContain('data-slot="schedule-end-band"');
 });
 
 test("a subject keeps one colour across periods and differs from other subjects", () => {
@@ -153,7 +157,8 @@ test("a subject keeps one colour across periods and differs from other subjects"
 	expect(tones[0]).toBe(tones[1]);
 	expect(tones[2]).not.toBe(tones[0]);
 	expect(
-		render(s).match(/schedule-subject-name">Matemáticas</g) || [],
+		render(s).match(/data-slot="schedule-subject-name"[^>]*>Matemáticas</g) ||
+			[],
 	).toHaveLength(1);
 });
 
@@ -163,7 +168,7 @@ test("an empty group explains the next step inside the calendar", () => {
 	s.schedules = [];
 	const html = render(s);
 	expect(html).toContain("Este grupo aún no tiene materias");
-	expect(html).toMatch(/class="primary"[^>]*>.*Agregar materia/);
+	expect(html).toMatch(/data-variant="primary"[^>]*>.*Agregar materia/);
 });
 
 test("the view switch offers dates and the weekly structure", () => {
@@ -192,8 +197,8 @@ test("structure view shows weekdays without dates, empty slots and the titular",
 
 test("the calendar leads the reading order and the side column puts changes before subjects", () => {
 	const html = render(fixture().s);
-	expect(html.indexOf('class="schedule-main"')).toBeLessThan(
-		html.indexOf('class="schedule-aside"'),
+	expect(html.indexOf('data-slot="schedule-main"')).toBeLessThan(
+		html.indexOf('data-slot="schedule-aside"'),
 	);
 	expect(html.indexOf("Cambios de la semana")).toBeLessThan(
 		html.indexOf("schedule-subjects-title"),
@@ -205,20 +210,22 @@ test("the calendar leads the reading order and the side column puts changes befo
 test("the end-of-day line stays subtle when it matches the last class", () => {
 	const { s } = fixture();
 	expect(render(s)).toMatch(
-		/class="schedule-end-line" data-subtle="true"[^>]*><span>Fin 15:00</,
+		/data-slot="schedule-end-line"[^>]*data-subtle="true"[^>]*><span[^>]*>Fin 15:00</,
 	);
 	s.scheduleWindows = [{ group: "g1", before: 10, after: 5 }];
-	expect(render(s)).toMatch(/class="schedule-end-line" data-subtle="false"/);
+	expect(render(s)).toMatch(
+		/data-slot="schedule-end-line"[^>]*data-subtle="false"/,
+	);
 });
 
 test("week header is a single row with the view switch and create action", () => {
 	const html = render(fixture().s);
 	const head = html.match(
-		/<header class="schedule-head">[\s\S]*?<\/header>/,
+		/<header data-slot="schedule-head"[\s\S]*?<\/header>/,
 	)?.[0];
 	expect(head).toContain("Por fechas");
 	expect(head).toContain("Agendar clase");
-	expect(html).not.toContain('class="schedule-toolbar"');
+	expect(html).not.toContain('data-slot="schedule-toolbar"');
 });
 
 test("empty Saturday and Sunday get narrow columns; a weekend class widens its day", () => {
@@ -226,12 +233,14 @@ test("empty Saturday and Sunday get narrow columns; a weekend class widens its d
 	s.schedules = [{ ...s.schedules[0], day: "Lunes" }];
 	const columns = (html: string) =>
 		html.match(
-			/class="schedule-grid" style="grid-template-columns:([^;"]+)/,
+			/data-slot="schedule-grid"[^>]*style="grid-template-columns:([^;"]+)/,
 		)?.[1];
 	expect(columns(render(s))).toBe(
 		`56px ${"minmax(92px, 1fr) ".repeat(5)}56px 56px`,
 	);
-	expect(render(s)).toMatch(/class="schedule-day-heading" data-compact="true"/);
+	expect(render(s)).toMatch(
+		/data-slot="schedule-day-heading"[^>]*data-compact="true"/,
+	);
 	s.schedules.push({ ...s.schedules[0], id: "sat", day: "Sábado" });
 	expect(columns(render(s, "structure"))).toBe(
 		`56px ${"minmax(92px, 1fr) ".repeat(6)}56px`,

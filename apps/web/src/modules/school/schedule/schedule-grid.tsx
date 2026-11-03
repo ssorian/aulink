@@ -2,13 +2,16 @@ import {
 	type DragEvent,
 	type KeyboardEvent,
 	type ReactNode,
-	useEffect,
-	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 import { Icon } from "../../../components/ui/icon";
+import type { Tone } from "../../../components/ui/tone";
+import { cn } from "../../../lib/utils";
 import { clock, minutes } from "./schedule-helpers";
+import { toneVars } from "./schedule-tones";
 
 export const hourHeight = 64;
 /** Drops snap to quarter hours; a class can never end past 23:59. */
@@ -168,57 +171,103 @@ export function ScheduleGrid({
 	const template = `56px ${columns
 		.map((column) => (compact.has(column.key) ? "56px" : "minmax(92px, 1fr)"))
 		.join(" ")}`;
+	const gridHead =
+		"bg-[color-mix(in_srgb,var(--surface-muted)_55%,var(--surface))]";
 	return (
 		<section
-			className="schedule-scroll"
+			data-slot="schedule-scroll"
+			className="relative max-h-[720px] scroll-pt-24 overflow-auto rounded-2xl border border-border bg-card [scrollbar-color:var(--control-line)_var(--surface)] [scrollbar-width:thin] max-[760px]:max-h-[560px]"
 			aria-label={label}
 			// biome-ignore lint/a11y/noNoninteractiveTabindex: El calendario necesita foco para desplazamiento horizontal y vertical con teclado.
 			tabIndex={0}
 		>
 			<div
-				className="schedule-grid"
+				data-slot="schedule-grid"
+				className="grid pb-3"
 				style={{
 					gridTemplateColumns: template,
 					minWidth: 56 + columns.length * 92 - compact.size * 36,
 				}}
 			>
-				<div className="schedule-corner" />
+				<div
+					className={cn(
+						"sticky top-0 left-0 z-40 border-b border-border",
+						gridHead,
+					)}
+				/>
 				{columns.map((column) => (
 					<div
-						className="schedule-day-heading"
+						data-slot="schedule-day-heading"
 						data-compact={compact.has(column.key)}
 						key={column.key}
 						data-today={column.today === true}
+						className={cn(
+							"sticky top-0 z-30 flex min-h-[68px] flex-col items-center border-b border-l border-border px-1 pt-2.5 pb-2",
+							gridHead,
+							compact.has(column.key) && "px-0",
+						)}
 					>
-						<span className="schedule-day-short" title={column.label}>
+						<span
+							className={cn(
+								"text-xs font-semibold tracking-[0.06em] text-muted-foreground",
+								column.today && "text-primary",
+							)}
+							title={column.label}
+						>
 							{column.short}
 						</span>
-						{column.day && <time dateTime={column.date}>{column.day}</time>}
-						{column.today && <span className="schedule-hidden">, hoy</span>}
+						{column.day && (
+							<time
+								dateTime={column.date}
+								className={cn(
+									"text-2xl leading-[1.1] font-[650] tracking-[-0.02em]",
+									column.today && "text-primary",
+								)}
+							>
+								{column.day}
+							</time>
+						)}
+						{column.today && <span className="sr-only">, hoy</span>}
 						{column.holiday && (
-							<span className="schedule-day-tag" title={column.holiday}>
+							<Badge
+								className="bg-card px-2 py-px font-normal text-muted-foreground"
+								title={column.holiday}
+							>
 								Inhábil
-							</span>
+							</Badge>
 						)}
 						{column.summary && !compact.has(column.key) && (
-							<span className="schedule-day-summary">{column.summary}</span>
+							<span className="text-xs text-muted-foreground">
+								{column.summary}
+							</span>
 						)}
 						{column.add && (
-							<button
-								type="button"
-								className="schedule-day-add"
+							<Button
+								variant="icon"
+								className={cn(
+									"absolute top-2 right-1.5 size-8 min-h-8 rounded-lg hover:bg-card",
+									compact.has(column.key) && "static mt-0.5",
+								)}
 								aria-label={`Agregar clase el ${column.label.toLowerCase()}`}
 								title={`Agregar clase el ${column.label.toLowerCase()}`}
 								onClick={column.add}
 							>
 								<Icon name="plus" size={16} />
-							</button>
+							</Button>
 						)}
 					</div>
 				))}
-				<div className="schedule-axis" style={{ height }}>
+				<div
+					data-slot="schedule-axis"
+					className="sticky left-0 z-20 mt-2.5 bg-card"
+					style={{ height }}
+				>
 					{hours.map((hour) => (
-						<span key={hour} style={{ top: (hour - range.start) * hourHeight }}>
+						<span
+							key={hour}
+							className="absolute right-2.5 -translate-y-1/2 text-xs font-medium text-muted-foreground"
+							style={{ top: (hour - range.start) * hourHeight }}
+						>
 							{String(hour).padStart(2, "0")}:00
 						</span>
 					))}
@@ -226,11 +275,16 @@ export function ScheduleGrid({
 				{columns.map((column) => (
 					<section
 						key={column.key}
-						className="schedule-day"
+						data-slot="schedule-day"
 						data-compact={compact.has(column.key)}
 						data-off={Boolean(column.holiday)}
 						data-today={column.today === true}
 						data-drop={drop?.column === column.key}
+						className={cn(
+							"group/day relative mt-2.5 border-l border-border/70",
+							column.holiday && "bg-background",
+							drop?.column === column.key && "bg-selection/35",
+						)}
 						style={{ height }}
 						aria-label={
 							column.date ? `${column.label} ${column.date}` : column.label
@@ -271,7 +325,8 @@ export function ScheduleGrid({
 										type="button"
 										key={hour}
 										tabIndex={-1}
-										className="schedule-slot"
+										data-slot="schedule-slot"
+										className="absolute inset-x-0 z-[1] h-16 min-h-0 cursor-copy rounded-none border-0 border-t border-border/60 bg-transparent p-0 hover:bg-selection/40 hover:after:absolute hover:after:top-2 hover:after:left-2.5 hover:after:text-xs hover:after:font-semibold hover:after:text-primary hover:after:content-['Agregar_clase'] group-data-[compact=true]/day:hover:after:content-none"
 										aria-label={`Agregar clase · ${column.label} ${clock(hour * 60)}`}
 										style={{ top: (hour - range.start) * hourHeight }}
 										onClick={() => onCreate(column.key, clock(hour * 60))}
@@ -279,14 +334,16 @@ export function ScheduleGrid({
 								) : (
 									<div
 										key={hour}
-										className="schedule-hour-line"
+										data-slot="schedule-hour-line"
+										className="absolute inset-x-0 border-t border-border/60"
 										style={{ top: (hour - range.start) * hourHeight }}
 									/>
 								),
 							)}
 						{column.end?.band && (
 							<div
-								className="schedule-end-band"
+								data-slot="schedule-end-band"
+								className="absolute inset-x-0 z-[1] bg-primary/7"
 								aria-hidden="true"
 								style={{
 									top: top(column.end.band.start),
@@ -296,11 +353,15 @@ export function ScheduleGrid({
 						)}
 						{column.end && (
 							<div
-								className="schedule-end-line"
+								data-slot="schedule-end-line"
 								data-subtle={column.end.subtle === true}
+								className={cn(
+									"absolute inset-x-0 z-[2] border-t border-dashed border-input",
+									column.end.subtle && "border-t-transparent",
+								)}
 								style={{ top: top(column.end.at) }}
 							>
-								<span>
+								<span className="absolute top-[3px] left-2 rounded-md bg-card px-1.5 text-xs whitespace-nowrap text-muted-foreground">
 									{column.end.band
 										? `Salida ${column.end.band.start}–${column.end.band.end}`
 										: `Fin ${column.end.at}`}
@@ -314,12 +375,17 @@ export function ScheduleGrid({
 									type="button"
 									key={item.key}
 									id={item.id}
-									className="schedule-block"
+									data-slot="schedule-block"
 									data-tone={item.tone}
 									data-ghost={item.ghost}
 									data-past={item.past}
 									data-short={minutes(item.end) - minutes(item.start) < 60}
 									data-dragging={dragged?.key === item.key && drop !== null}
+									className={blockClass(
+										item,
+										activeKey === item.key,
+										dragged?.key === item.key && drop !== null,
+									)}
 									aria-haspopup="dialog"
 									aria-expanded={activeKey === item.key}
 									aria-label={item.label}
@@ -340,6 +406,7 @@ export function ScheduleGrid({
 									}}
 									onClick={(e) => onSelect(item, e.currentTarget)}
 									style={{
+										...toneVars(item.tone),
 										top: top(item.start),
 										height: top(item.end) - top(item.start),
 										left: item.side === "right" ? "50%" : 4,
@@ -347,31 +414,58 @@ export function ScheduleGrid({
 										zIndex: index + 3,
 									}}
 								>
-									<strong>{item.title}</strong>
+									<strong
+										className={cn(
+											"max-w-full shrink-0 text-[13px] font-[650] break-normal hyphens-auto",
+											item.badge ? "line-clamp-1" : "line-clamp-2",
+											short(item) && "min-w-0 shrink",
+										)}
+									>
+										{item.title}
+									</strong>
 									{item.badge && (
-										<span
-											className="schedule-badge"
+										<Badge
+											tone={badgeTones[item.badge.tone]}
 											data-tone={item.badge.tone}
+											className={cn(
+												"max-w-full shrink-0 overflow-hidden px-1.5 py-0 text-ellipsis",
+												short(item) &&
+													"order-first size-2 bg-current p-0 text-[0px]",
+											)}
 										>
 											{item.badge.text}
-										</span>
+										</Badge>
 									)}
-									<span className="schedule-time">{item.time}</span>
+									<span
+										className={cn(
+											"max-w-full shrink-0 overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap",
+											short(item) ? "m-0" : "mt-auto",
+										)}
+									>
+										{item.time}
+									</span>
 								</button>
 							))}
 						{now?.column === column.key &&
 							now.minutes >= range.start * 60 &&
 							now.minutes <= range.end * 60 && (
 								<div
-									className="schedule-now"
+									data-slot="schedule-now"
+									className="pointer-events-none absolute inset-x-0 z-[60] h-0.5 bg-primary before:absolute before:-top-1 before:-left-[5px] before:size-2.5 before:rounded-full before:bg-primary before:content-['']"
 									aria-hidden="true"
 									style={{ top: y(now.minutes) }}
 								/>
 							)}
 						{drop?.column === column.key && dragged && (
 							<div
-								className="schedule-drop"
+								data-slot="schedule-drop"
 								data-conflict={Boolean(drop.conflict)}
+								className={cn(
+									"pointer-events-none absolute inset-x-1 z-[70] flex flex-col rounded-lg border-2 border-dashed px-2 py-1.5 text-xs font-[650]",
+									drop.conflict
+										? "border-destructive bg-destructive-bg/85 text-destructive"
+										: "border-primary bg-selection/75 text-primary",
+								)}
 								aria-hidden="true"
 								style={{
 									top: y(drop.start),
@@ -385,7 +479,11 @@ export function ScheduleGrid({
 								{clock(
 									drop.start + minutes(dragged.end) - minutes(dragged.start),
 								)}
-								{drop.conflict && <small>Choca con {drop.conflict}</small>}
+								{drop.conflict && (
+									<small className="text-xs font-medium">
+										Choca con {drop.conflict}
+									</small>
+								)}
 							</div>
 						)}
 					</section>
@@ -396,126 +494,34 @@ export function ScheduleGrid({
 	);
 }
 
-/**
- * Floating panel anchored to a class block. It keeps focus inside, follows the
- * block while the page or grid scrolls, and closes on Escape or an outside click.
- */
-export function ClassPanel({
-	anchor,
-	title,
-	children,
-	onClose,
-}: {
-	anchor: HTMLElement;
-	title: string;
-	children: ReactNode;
-	onClose: () => void;
-}) {
-	const ref = useRef<HTMLDivElement>(null);
-	const [position, setPosition] = useState({ top: 0, left: 0, ready: false });
-	useLayoutEffect(() => {
-		const panel = ref.current;
-		if (!panel) return;
-		const place = () => {
-			const box = anchor.getBoundingClientRect();
-			const width = panel.offsetWidth;
-			const right = box.right + 8;
-			const left =
-				right + width <= window.innerWidth - 8
-					? right
-					: Math.max(8, box.left - width - 8);
-			const top = Math.min(
-				Math.max(8, box.top),
-				window.innerHeight - panel.offsetHeight - 8,
-			);
-			setPosition({ top: Math.max(8, top), left, ready: true });
-		};
-		place();
-		const observer = new ResizeObserver(place);
-		observer.observe(panel);
-		document.addEventListener("scroll", place, true);
-		window.addEventListener("resize", place);
-		return () => {
-			observer.disconnect();
-			document.removeEventListener("scroll", place, true);
-			window.removeEventListener("resize", place);
-		};
-	}, [anchor]);
-	useEffect(() => {
-		const panel = ref.current;
-		(
-			panel?.querySelector<HTMLElement>("[data-autofocus]") ||
-			panel?.querySelector<HTMLElement>(".schedule-panel-body button")
-		)?.focus();
-	}, []);
-	useEffect(() => {
-		const close = (event: Event) => {
-			const node = event.target as Node | null;
-			if (node && (ref.current?.contains(node) || anchor.contains(node)))
-				return;
-			if (node instanceof Element && node.closest("dialog, .flow-dialog"))
-				return;
-			onClose();
-		};
-		const onEscape = (event: globalThis.KeyboardEvent) => {
-			if (event.key !== "Escape" || document.querySelector("dialog[open]"))
-				return;
-			event.preventDefault();
-			anchor.focus();
-			onClose();
-		};
-		document.addEventListener("pointerdown", close);
-		document.addEventListener("keydown", onEscape);
-		return () => {
-			document.removeEventListener("pointerdown", close);
-			document.removeEventListener("keydown", onEscape);
-		};
-	}, [anchor, onClose]);
-	function keep(e: KeyboardEvent<HTMLDivElement>) {
-		if (e.key !== "Tab") return;
-		const focusable = [
-			...(ref.current?.querySelectorAll<HTMLElement>(
-				"button:not(:disabled), input, select, textarea",
-			) || []),
-		];
-		const first = focusable[0];
-		const last = focusable.at(-1);
-		if (e.shiftKey && document.activeElement === first) {
-			e.preventDefault();
-			last?.focus();
-		} else if (!e.shiftKey && document.activeElement === last) {
-			e.preventDefault();
-			first?.focus();
-		}
-	}
-	return (
-		<div
-			ref={ref}
-			className="schedule-panel"
-			role="dialog"
-			aria-label={title}
-			onKeyDown={keep}
-			style={{
-				top: position.top,
-				left: position.left,
-				visibility: position.ready ? "visible" : "hidden",
-			}}
-		>
-			<header>
-				<h3>{title}</h3>
-				<button
-					type="button"
-					className="schedule-panel-close"
-					aria-label="Cerrar"
-					onClick={() => {
-						anchor.focus();
-						onClose();
-					}}
-				>
-					<Icon name="close" size={16} />
-				</button>
-			</header>
-			{children}
-		</div>
+const short = (item: GridItem) => minutes(item.end) - minutes(item.start) < 60;
+const badgeTones: Record<GridBadge["tone"], Tone> = {
+	cover: "lilac",
+	moved: "warning",
+	move: "warning",
+	cancel: "danger",
+};
+const blockShadow =
+	"hover:shadow-[0_4px_14px_-4px_color-mix(in_srgb,var(--block-line)_70%,transparent)]";
+function blockClass(item: GridItem, active: boolean, dragging: boolean) {
+	return cn(
+		"absolute flex min-h-0 flex-col items-start gap-0.5 overflow-hidden rounded-lg px-2 pt-[7px] pb-1.5 pl-2.5 text-left leading-tight font-normal transition-shadow duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]",
+		item.ghost
+			? [
+					"cursor-pointer border border-l-4 border-dashed border-input bg-card text-muted-foreground [border-left-style:solid]",
+					item.ghost === "cancel" ? "border-brick" : "border-mustard",
+					item.ghost === "cancel" && "[&_strong]:line-through",
+				]
+			: [
+					"border-0 border-l-4 border-solid border-(color:--block-line) bg-(color:--block-bg) text-(color:--block-ink)",
+					item.past &&
+						"border-l-[color-mix(in_srgb,var(--block-line)_45%,var(--surface))] bg-[color-mix(in_srgb,var(--block-bg)_45%,var(--surface))]",
+					item.draggable ? "cursor-grab" : "cursor-pointer",
+				],
+		short(item) && "flex-row items-center gap-1.5 py-0.5",
+		blockShadow,
+		active &&
+			"shadow-[0_4px_14px_-4px_color-mix(in_srgb,var(--block-line)_70%,transparent)] outline-2 outline-offset-1 outline-(color:--block-line)",
+		dragging && "opacity-40",
 	);
 }

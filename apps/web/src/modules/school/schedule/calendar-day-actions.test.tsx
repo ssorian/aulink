@@ -1,8 +1,9 @@
 // @ts-expect-error — Bun test types are not part of the browser app.
 import { expect, test } from "bun:test";
-import { openCalendarDayAction } from "./calendar-day-actions";
 import type { ViewProps } from "../shared/view-types";
 import { initialState } from "../shared/workflows";
+import { openCalendarDayAction } from "./calendar-day-actions";
+
 test("day actions prefill dates and create reviewable drafts with contextual audience validation", () => {
 	const s = initialState();
 	const calls: Parameters<ViewProps["open"]>[] = [];
@@ -27,7 +28,8 @@ test("day actions prefill dates and create reviewable drafts with contextual aud
 	const event = calls[2];
 	expect(event[3]?.audience).toBe("school");
 	expect(event[2].find((f) => f.key === "text")?.rows).toBe(8);
-	const target = event[2].find((f) => f.key === "target")!;
+	const target = event[2].find((f) => f.key === "target");
+	if (!target) throw new Error("the event form needs a target field");
 	expect(target.optional).toBe(true);
 	expect(target.validate?.("", { audience: "school" })).toBeUndefined();
 	expect(target.validate?.("", { audience: "group" })).toBeTruthy();
