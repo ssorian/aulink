@@ -48,3 +48,89 @@ test("a draft with no verified tutors keeps its publication safeguard", () => {
 		/disabled="" aria-describedby="publication-empty-empty"/,
 	);
 });
+
+function sampleNotices() {
+	const s = initialState();
+	s.notices = [
+		{
+			id: "draft",
+			title: "Reunión",
+			text: "Mañana",
+			audience: "group",
+			target: "g1",
+			published: false,
+			recipients: [],
+		},
+		{
+			id: "empty",
+			title: "Sin destinatarios",
+			text: "Prueba",
+			audience: "group",
+			target: "g2",
+			published: false,
+			recipients: [],
+		},
+		{
+			id: "sent",
+			title: "Materiales",
+			text: "Traer colores",
+			audience: "school",
+			target: "",
+			published: true,
+			recipients: ["Mariana Ruiz Salcedo", "Otro Tutor"],
+		},
+	];
+	return s;
+}
+test("communications follow the minimal layout: heading action, stats card, filters, one list card", () => {
+	const html = renderToStaticMarkup(
+		<CommunicationsView s={sampleNotices()} open={() => {}} />,
+	);
+	expect(html).not.toContain('class="panel"');
+	expect(html).not.toContain('class="publication-status"');
+	const stats = html.indexOf(
+		'class="progress-card progress-stats notices-stats"',
+	);
+	const filters = html.indexOf('class="progress-filters notices-filters"');
+	const list = html.indexOf('class="progress-card notices-list"');
+	expect(stats).toBeGreaterThan(-1);
+	expect(stats).toBeLessThan(filters);
+	expect(filters).toBeLessThan(list);
+	expect(html).toMatch(
+		/<div data-state="draft"><dt>Borradores<\/dt><dd><strong>2<\/strong>/,
+	);
+	expect(html).toMatch(
+		/<div data-state="published"><dt>Publicados<\/dt><dd><strong>1<\/strong>/,
+	);
+	expect(html).toMatch(
+		/<div data-state="reached"><dt>Tutores alcanzados<\/dt><dd><strong>2<\/strong>/,
+	);
+	expect(html).toMatch(
+		/<div data-state="blocked"><dt>Sin destinatarios<\/dt><dd><strong>1<\/strong>/,
+	);
+	expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</);
+	expect(html).toContain('id="notices-audience"');
+	expect((html.match(/class="notice-row"/g) || []).length).toBe(3);
+	expect(html).toMatch(/class="notice-state" data-state="draft">Borrador</);
+});
+test("drafts with no tutors are listed first so they are fixed before publishing", () => {
+	const html = renderToStaticMarkup(
+		<CommunicationsView s={sampleNotices()} open={() => {}} />,
+	);
+	expect(html.indexOf("Sin destinatarios</h3>")).toBeLessThan(
+		html.indexOf("Reunión</h3>"),
+	);
+	expect(html.indexOf("Reunión</h3>")).toBeLessThan(
+		html.indexOf("Materiales</h3>"),
+	);
+});
+test("an empty school explains the first step inside the list card", () => {
+	const s = initialState();
+	s.notices = [];
+	const html = renderToStaticMarkup(
+		<CommunicationsView s={s} open={() => {}} />,
+	);
+	expect(html).toMatch(
+		/class="progress-card notices-list"[\s\S]*Tu primer comunicado empieza como borrador/,
+	);
+});

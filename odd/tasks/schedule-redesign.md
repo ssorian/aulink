@@ -20,6 +20,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - S15: "Tambien estiliza de forma similar esta parte" (Evaluación › Alumnos en riesgo).
 - S16: "Ahora vamos a replantear resultados ... que deberia mostrar resultados siguiendo el patron minimalista que hemos estado trabajando". Decisiones: tabla "Grupos × materias (Recomendado)"; card derecha "Grupos con menor promedio"; evolución "Línea de texto (Recomendado)".
 - S17: "estaria bien que solo se vea las materias que tiene el grupo" / "Creo que no me gusta la tabla, porque la podriamos reemplazar". Decisiones: "Barras según el filtro (Recomendado)"; card derecha "Materias con más reprobación (Recomendado)".
+- S18: "Me gusto, ahora dale un estilo similar a esta vista" (Vida escolar › Comunicados).
 
 ## Tasks
 - T1 [S4,S6] Modelo: docente/suplente por fecha, editar materia/titular de una recurrencia, eliminar recurrencia; pruebas en scripts/group-schedule.test.ts. Route: inline. Risk: item 1 (formato guardado, aditivo). Commit: b789d4f ✅
@@ -35,6 +36,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - T12 [S15] Alumnos en riesgo con el esquema de Avance. Route: inline. Commit: (commit riesgo) ✅
 - T13 [S16] Resultados minimalista. Route: inline. Commit: (commit resultados) ✅
 - T14 [S17] Resultados con barras por grupo o por materias del grupo. Route: inline. Commit: (commit barras) ✅
+- T15 [S18] Comunicados con card de estadísticas, filtros y una lista. Route: inline. Commit: (commit comunicados) ✅
 - T7 [S7-S10] Verificación: pruebas, typecheck, biome, navegador escritorio/móvil, detector impeccable. Route: inline. Commit: sin código ✅
 
 ## Log
@@ -60,3 +62,4 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - L20 (usuario): S15 + captura. Evidencia T12: RED 2; GREEN 20/20 evaluación; suite 325 pass / 6 fail preexistentes; detector [] exit 0; navegador 1450/390. Decisiones: barra compartida queda solo en Resultados; selector de nivel en Riesgo reemplazado por Grado; título "Riesgo de <trimestre>" para no repetir el h1.
 - L21 evidencia T13: RED 3; GREEN 21/21 evaluación; suite 326 pass / 6 fail preexistentes; detector [] exit 0; navegador 1450/390 sin desbordamiento. Corregido: texto oculto "No se imparte" (absolute) escapaba del scroller y estiraba la página a 2956 px. Se elimina evaluation-results-view.css (sin uso) y la barra de filtros compartida (ya ninguna pestaña la usa).
 - L22 evidencia T14: RED 4; GREEN 24/24 evaluación; detector [] exit 0; navegador 1450/390 sin desbordamiento; con 2° A se listan solo sus 8 materias.
+- L23 evidencia T15: RED 3; GREEN 61/61 (ui-refinement, student-profile, calendar-workflows); detector [] exit 0; navegador 1600/390 sin desbordamiento. Decisiones: sin card lateral; borradores sin destinatarios primero; "Tutores alcanzados" = tutores únicos de comunicados publicados.
