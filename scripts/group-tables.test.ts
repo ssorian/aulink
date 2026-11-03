@@ -21,9 +21,9 @@ test("rendered tables expose scoped evidence, accessible days and draft grades",
  s.grades=[{id:"r",student:"s1",assignment:"a",value:8,published:false,history:[]}];
  const grades=renderToStaticMarkup(createElement(GroupGradesTable,{s,groupId:"g1",open:()=>{}}));
  expect(grades).toContain("Borrador");
- expect(grades).toContain("Incluye borradores");
- expect(grades).toContain("Corregir con motivo");
- expect(grades).toContain("Capturar P1");
+ expect(grades).toContain("Con borradores");
+ expect(grades).not.toContain("Corregir con motivo");
+ expect(grades).not.toContain("Capturar P1");
  const workspace=renderToStaticMarkup(createElement(GroupWorkspace,{s,groupId:"g1",open:()=>{},onBack:()=>{},onStudent:()=>{},onNotice:()=>{},tab:"Alumnos",setTab:()=>{}}));
  for (const [markup,label] of [[attendance,"Asistencia por alumno y día"],[grades,"Calificaciones por alumno"],[workspace,"Alumnos del grupo"]]) {
   const region=markup.match(/<section\b[^>]*class="(?:group-table-scroll|ui-table-scroll)[^"]*"[^>]*>/)?.[0];
