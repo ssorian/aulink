@@ -351,6 +351,7 @@ export function ScheduleCalendar({
 			if (window)
 				end = {
 					at: window.last,
+					subtle: window.start === window.end,
 					...(window.start !== window.end
 						? { band: { start: window.start, end: window.end } }
 						: {}),
@@ -875,32 +876,6 @@ export function ScheduleCalendar({
 			aria-labelledby="schedule-calendar-heading"
 		>
 			<div className="schedule-layout">
-				<aside className="schedule-aside" aria-label="Filtros del horario">
-					{view === "dates" && (
-						<MiniMonth
-							selected={selectedDate}
-							today={today}
-							marks={marks}
-							onSelect={(date) => {
-								closePanel();
-								setSelectedDate(date);
-							}}
-						/>
-					)}
-					<SubjectFilter
-						rows={subjectRows}
-						hidden={hidden}
-						onAdd={addSubject}
-						onToggle={(id) => {
-							const next = new Set(hidden);
-							if (next.has(id)) next.delete(id);
-							else next.add(id);
-							setHidden(next);
-						}}
-					/>
-					{view === "dates" && <WeekChanges rows={changeRows} />}
-					<p className="schedule-disclaimer">{disclaimer}</p>
-				</aside>
 				<div className="schedule-main">
 					<header className="schedule-head">
 						<div className="schedule-head-title">
@@ -938,56 +913,53 @@ export function ScheduleCalendar({
 								</h2>
 								<p className="schedule-zone">
 									{view === "dates"
-										? zoneName(s.school.timezone)
+										? `Semana ${isoWeek(monday)} · ${zoneName(s.school.timezone)}`
 										: "Plantilla que se repite cada semana"}
 								</p>
 							</div>
-							{view === "dates" && (
-								<span className="schedule-pill">Semana {isoWeek(monday)}</span>
-							)}
 						</div>
-						{view === "dates" && !dates.includes(today) && (
-							<button
-								type="button"
-								className="schedule-today"
-								onClick={() => setSelectedDate(today)}
-							>
-								Ir a hoy
-							</button>
-						)}
-					</header>
-					<div className="schedule-toolbar">
-						<fieldset className="schedule-views">
-							<legend className="schedule-hidden">Vista del horario</legend>
-							{(
-								[
-									["dates", "Por fechas"],
-									["structure", "Estructura semanal"],
-								] as const
-							).map(([id, text]) => (
+						<div className="schedule-head-actions">
+							{view === "dates" && !dates.includes(today) && (
 								<button
 									type="button"
-									key={id}
-									aria-pressed={view === id}
-									onClick={() => {
-										closePanel();
-										setView(id);
-									}}
+									className="schedule-today"
+									onClick={() => setSelectedDate(today)}
 								>
-									{text}
+									Ir a hoy
 								</button>
-							))}
-						</fieldset>
-						<button
-							type="button"
-							className={`schedule-create ${view === "structure" ? "primary" : ""}`}
-							disabled={!assignments.length}
-							onClick={() => schedule()}
-						>
-							<Icon name="plus" size={18} />
-							Agendar clase
-						</button>
-					</div>
+							)}
+							<fieldset className="schedule-views">
+								<legend className="schedule-hidden">Vista del horario</legend>
+								{(
+									[
+										["dates", "Por fechas"],
+										["structure", "Estructura semanal"],
+									] as const
+								).map(([id, text]) => (
+									<button
+										type="button"
+										key={id}
+										aria-pressed={view === id}
+										onClick={() => {
+											closePanel();
+											setView(id);
+										}}
+									>
+										{text}
+									</button>
+								))}
+							</fieldset>
+							<button
+								type="button"
+								className={`schedule-create ${view === "structure" ? "primary" : ""}`}
+								disabled={!assignments.length}
+								onClick={() => schedule()}
+							>
+								<Icon name="plus" size={18} />
+								Agendar clase
+							</button>
+						</div>
+					</header>
 					<ScheduleGrid
 						key={view}
 						columns={columns}
@@ -1088,6 +1060,32 @@ export function ScheduleCalendar({
 						}
 					/>
 				</div>
+				<aside className="schedule-aside" aria-label="Filtros del horario">
+					{view === "dates" && (
+						<MiniMonth
+							selected={selectedDate}
+							today={today}
+							marks={marks}
+							onSelect={(date) => {
+								closePanel();
+								setSelectedDate(date);
+							}}
+						/>
+					)}
+					{view === "dates" && <WeekChanges rows={changeRows} />}
+					<SubjectFilter
+						rows={subjectRows}
+						hidden={hidden}
+						onAdd={addSubject}
+						onToggle={(id) => {
+							const next = new Set(hidden);
+							if (next.has(id)) next.delete(id);
+							else next.add(id);
+							setHidden(next);
+						}}
+					/>
+					<p className="schedule-disclaimer">{disclaimer}</p>
+				</aside>
 			</div>
 			{panel && (
 				<ClassPanel

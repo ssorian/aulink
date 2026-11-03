@@ -191,16 +191,13 @@ export function SubjectFilter({
 				<ul>
 					{rows.map((row) => (
 						<li key={row.id}>
-							<label data-tone={row.tone}>
+							<label title={row.teacher} data-tone={row.tone}>
 								<input
 									type="checkbox"
 									checked={!hidden.has(row.id)}
 									onChange={() => onToggle(row.id)}
 								/>
-								<span className="schedule-subject-name">
-									{row.subject}
-									<small>{row.teacher}</small>
-								</span>
+								<span className="schedule-subject-name">{row.subject}</span>
 								<span className="schedule-subject-hours">
 									<Icon name="clock" size={14} />
 									{hoursText(row.minutes)}

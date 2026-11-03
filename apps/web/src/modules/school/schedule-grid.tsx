@@ -27,7 +27,12 @@ export type GridColumn = {
 	today?: boolean;
 	holiday?: string;
 	/** End of the effective school day, drawn as a dashed line. */
-	end?: { at: string; band?: { start: string; end: string } };
+	end?: {
+		at: string;
+		/** Without an exit window the line only repeats the last block's edge. */
+		subtle?: boolean;
+		band?: { start: string; end: string };
+	};
 	/** Weekly structure only: accessible "add class" action in the heading. */
 	add?: () => void;
 	summary?: string;
@@ -271,6 +276,7 @@ export function ScheduleGrid({
 						{column.end && (
 							<div
 								className="schedule-end-line"
+								data-subtle={column.end.subtle === true}
 								style={{ top: top(column.end.at) }}
 							>
 								<span>

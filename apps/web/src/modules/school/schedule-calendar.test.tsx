@@ -189,3 +189,34 @@ test("structure view shows weekdays without dates, empty slots and the titular",
 	expect(html).toContain("Docente del grupo");
 	expect(html).toContain("1 clase");
 });
+
+test("the calendar leads the reading order and the side column puts changes before subjects", () => {
+	const html = render(fixture().s);
+	expect(html.indexOf('class="schedule-main"')).toBeLessThan(
+		html.indexOf('class="schedule-aside"'),
+	);
+	expect(html.indexOf("Cambios de la semana")).toBeLessThan(
+		html.indexOf("schedule-subjects-title"),
+	);
+	expect(html).toMatch(/<label[^>]*title="Docente del grupo"[^>]*data-tone=/);
+	expect(html).not.toContain("<small>Docente del grupo</small>");
+});
+
+test("the end-of-day line stays subtle when it matches the last class", () => {
+	const { s } = fixture();
+	expect(render(s)).toMatch(
+		/class="schedule-end-line" data-subtle="true"[^>]*><span>Fin 15:00</,
+	);
+	s.scheduleWindows = [{ group: "g1", before: 10, after: 5 }];
+	expect(render(s)).toMatch(/class="schedule-end-line" data-subtle="false"/);
+});
+
+test("week header is a single row with the view switch and create action", () => {
+	const html = render(fixture().s);
+	const head = html.match(
+		/<header class="schedule-head">[\s\S]*?<\/header>/,
+	)?.[0];
+	expect(head).toContain("Por fechas");
+	expect(head).toContain("Agendar clase");
+	expect(html).not.toContain('class="schedule-toolbar"');
+});
