@@ -8,7 +8,6 @@ export type SchoolPage =
 	| "Ciclos y calendario"
 	| EvaluationPage
 	| "Comunicados"
-	| "Asistencia"
 	| "Conducta"
 	| "Configuración"
 	| "Terminales";
@@ -52,8 +51,8 @@ export const schoolNavigation: NavigationSection[] = [
 	{
 		label: "Vida escolar",
 		icon: "heart",
-		description: "Comunicación, asistencia y acompañamiento de la comunidad.",
-		pages: ["Comunicados", "Asistencia", "Conducta"],
+		description: "Comunicación y acompañamiento de la comunidad.",
+		pages: ["Comunicados", "Conducta"],
 	},
 	{
 		label: "Administración",

@@ -155,7 +155,7 @@ export function SchoolApp() {
 				? groupId
 				: page === "Comunicados"
 					? noticeGroup
-					: page === "Asistencia" || page === "Conducta"
+					: page === "Conducta"
 						? followupGroup
 						: page === "Alumnos" && !profile
 							? groupFilter
@@ -498,7 +498,7 @@ export function SchoolApp() {
 									/>
 								</div>
 							)}
-							{(page === "Asistencia" || page === "Conducta") && (
+							{page === "Conducta" && (
 								<GroupFollowupView
 									s={s}
 									open={open}

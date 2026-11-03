@@ -1,7 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { AttendanceDashboard } from "./attendance-dashboard";
 import { ConductView } from "./conduct-view";
-import { GroupAttendanceTable } from "./group-attendance-table";
 import { groupScope } from "./group-context";
 import { GroupGradesTable } from "./group-grades-table";
 import { Empty, options } from "./view-helpers";
@@ -14,17 +11,10 @@ export function GroupFollowupView({
 	groupId,
 	onGroup,
 }: Pick<ViewProps, "s" | "open"> & {
-	mode: "Calificaciones" | "Asistencia" | "Conducta";
+	mode: "Calificaciones" | "Conducta";
 	groupId: string;
 	onGroup: (id: string) => void;
 }) {
-	const [period, setPeriod] = useState<{ date: string; mode: string }>();
-	const detail = useRef<HTMLHeadingElement>(null);
-	useEffect(() => {
-		if (mode === "Asistencia" && groupId) {
-			detail.current?.focus();
-		}
-	}, [mode, groupId]);
 	const group = s.groups.find((g) => g.id === groupId);
 	const cycle = s.cycles.find((c) => c.id === group?.cycle);
 	const scoped = groupScope(s, groupId);
@@ -43,38 +33,6 @@ export function GroupFollowupView({
 			{ ...values, group: groupId },
 			[`${group?.name} · ${cycle?.name}`, ...preview],
 			description,
-		);
-	if (mode === "Asistencia")
-		return (
-			<>
-				<AttendanceDashboard
-					s={s}
-					onOpenGroup={(id, selectedPeriod) => {
-						setPeriod(selectedPeriod);
-						onGroup(id);
-					}}
-				/>
-				{group && (
-					<>
-						<div className="attendance-detail-heading">
-							<h2 ref={detail} tabIndex={-1}>
-								Detalle de {group.name} · {cycle?.name}
-							</h2>
-							<button type="button" onClick={() => onGroup("")}>
-								Cerrar detalle
-							</button>
-						</div>
-						<GroupAttendanceTable
-							key={`${groupId}-${period?.date}-${period?.mode}`}
-							s={s}
-							open={contextualOpen}
-							groupId={groupId}
-							initialDate={period?.date}
-							initialMode={period?.mode}
-						/>
-					</>
-				)}
-			</>
 		);
 	return (
 		<>

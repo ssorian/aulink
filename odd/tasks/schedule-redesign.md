@@ -23,6 +23,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - S18: "Me gusto, ahora dale un estilo similar a esta vista" (Vida escolar › Comunicados).
 - S19: "Me gustaria algo asi para los comunicados, tipo post ... Tambien mejora este listado de tutures, esta muy feo ... tambien que cada comunicado tenga su propia card".
 - S20: "Me gusta mucho, dale un toque similar a conducta".
+- S21: "Sabes que, elimina ese apartado, creo que es redundante verlo si tenemos muchas opciones para ver asistencia en otras vistas" — confirmado: "Toda la página Vida escolar › Asistencia".
 
 ## Tasks
 - T1 [S4,S6] Modelo: docente/suplente por fecha, editar materia/titular de una recurrencia, eliminar recurrencia; pruebas en scripts/group-schedule.test.ts. Route: inline. Risk: item 1 (formato guardado, aditivo). Commit: b789d4f ✅
@@ -41,6 +42,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - T15 [S18] Comunicados con card de estadísticas, filtros y una lista. Route: inline. Commit: (commit comunicados) ✅
 - T16 [S19] Comunicados como posts con card propia y tutores en avatares. Route: inline. Commit: (commit posts) ✅
 - T17 [S20] Conducta con encabezado, card de estadísticas, filtros y posts. Route: inline. Commit: (commit conducta) ✅
+- T18 [S21] Quitar Vida escolar › Asistencia (página, panel y resumen escolar). Route: inline. Commit: (commit quitar asistencia) ✅
 - T7 [S7-S10] Verificación: pruebas, typecheck, biome, navegador escritorio/móvil, detector impeccable. Route: inline. Commit: sin código ✅
 
 ## Log
@@ -69,3 +71,4 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - L23 evidencia T15: RED 3; GREEN 61/61 (ui-refinement, student-profile, calendar-workflows); detector [] exit 0; navegador 1600/390 sin desbordamiento. Decisiones: sin card lateral; borradores sin destinatarios primero; "Tutores alcanzados" = tutores únicos de comunicados publicados.
 - L24 evidencia T16: RED 3; GREEN 7/7 ui-refinement; detector [] exit 0; navegador 1600/390 sin desbordamiento. Sin autor ni fecha en el modelo: la cabecera usa la audiencia (no se inventa "hace N días"). Corregido: regla global `footer` añadía borde/margen al pie de card.
 - L25 evidencia T17: RED 4; GREEN 48/48 conducta+expediente; detector [] exit 0; navegador 1630/390 en Vida escolar › Conducta. Expediente del alumno no revisado en navegador (navegación del script no llegó); cubierto por pruebas de render. El selector "Grupo y ciclo" (compartido con Calificaciones de seguimiento) pasa a filtro compacto.
+- L26: el rediseño propuesto de Asistencia se descartó sin commit. Se eliminan attendance-dashboard.tsx/.css, attendance-summary.ts (solo lo usaba el panel) y scripts/attendance-dashboard.test.ts. La asistencia sigue en la pestaña del grupo y en el expediente. Suite 329 pass / 6 fail preexistentes; la aserción nueva de navegación queda detrás de la falla preexistente "Calificaciones", verificada aparte: schoolNavigation ya no incluye "Asistencia".

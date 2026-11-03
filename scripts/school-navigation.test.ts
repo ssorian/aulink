@@ -24,9 +24,10 @@ test("contextual destinations highlight their owning section", () => {
 	expect(sectionFor("Grupos").label).toBe("Gestión académica");
 	expect(sectionFor("Ciclos y calendario").label).toBe("Gestión académica");
 	expect(sectionFor("Calificaciones").label).toBe("Evaluación");
-	for (const page of ["Comunicados", "Asistencia", "Conducta"] as const) {
+	for (const page of ["Comunicados", "Conducta"] as const) {
 		expect(sectionFor(page).label).toBe("Vida escolar");
 	}
+	expect(schoolNavigation.flatMap((section) => section.pages)).not.toContain("Asistencia");
 	expect(sectionFor("Terminales").label).toBe("Administración");
 });
 
@@ -37,11 +38,6 @@ test("follow-up views require explicit group context and isolate student records
 		expect(render(mode, "")).toContain("Selecciona un grupo para consultar sus registros.");
 		expect(render(mode, "")).not.toContain("<table");
 	}
-	expect(render("Asistencia", "")).toContain("Panorama escolar");
-	expect(render("Asistencia", "")).not.toContain("Ana Sofía Mendoza Ruiz");
-	const attendance = render("Asistencia", "g1");
-	expect(attendance).toContain("Ana Sofía Mendoza Ruiz");
-	expect(attendance).not.toContain("Leonardo Castillo Vega");
 	s.groups = [];
 	expect(render("Conducta", "")).toContain("Crea un grupo en Gestión académica");
 });
