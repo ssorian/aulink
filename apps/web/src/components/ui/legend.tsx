@@ -1,13 +1,23 @@
 import { cn } from "../../lib/utils";
-import { type Tone, toneFill } from "./tone";
+import { type Tone, toneFill, toneRing } from "./tone";
+
+export type LegendItem = {
+	tone: Tone;
+	label: string;
+	hollow?: boolean;
+	id?: string;
+};
 
 export function Legend({
 	label,
 	items,
+	hook,
 	className,
 }: {
 	label: string;
-	items: { tone: Tone; label: string }[];
+	/** `hollow` draws a ring instead of a fill; `id` is exposed through `hook`. */
+	items: LegendItem[];
+	hook?: "data-status" | "data-state";
 	className?: string;
 }) {
 	return (
@@ -23,11 +33,16 @@ export function Legend({
 				<li
 					key={item.label}
 					data-tone={item.tone}
+					{...(hook && item.id ? { [hook]: item.id } : {})}
+					data-hollow={item.hollow ? "true" : undefined}
 					className="inline-flex items-center gap-1.5"
 				>
 					<span
 						aria-hidden="true"
-						className={cn("size-2 shrink-0 rounded-full", toneFill[item.tone])}
+						className={cn(
+							"size-2 shrink-0 rounded-full",
+							item.hollow ? toneRing[item.tone] : toneFill[item.tone],
+						)}
 					/>
 					{item.label}
 				</li>

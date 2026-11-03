@@ -158,6 +158,22 @@ test("Legend lists items with an accessible name", () => {
 	expect(html).toContain("Falta");
 });
 
+test("Legend hollow items draw a ring instead of a fill and expose a hook key", () => {
+	const html = render(
+		<Legend
+			label="Estados"
+			hook="data-status"
+			items={[
+				{ tone: "success", label: "Publicada", id: "published" },
+				{ tone: "neutral", label: "Sin captura", id: "missing", hollow: true },
+			]}
+		/>,
+	);
+	expect(html).toMatch(/data-status="published"[^>]*>/);
+	expect(html).toMatch(/data-status="missing"[^>]*data-hollow="true"/);
+	expect(html.match(/data-hollow/g)).toHaveLength(1);
+});
+
 test("Avatar shows initials; AvatarStack overflows to +N", () => {
 	const a = render(<Avatar name="Ana López" size="lg" />);
 	expect(a).toContain('data-slot="avatar"');

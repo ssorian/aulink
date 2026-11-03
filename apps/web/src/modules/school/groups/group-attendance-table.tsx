@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
+import { Legend, type LegendItem } from "../../../components/ui/legend";
 import { MiniMonth } from "../../../components/ui/mini-month";
 import { cn } from "../../../lib/utils";
 import { schoolToday } from "../schedule/schedule-helpers";
@@ -10,22 +11,20 @@ import { groupScope } from "./group-context";
 import { attendanceStatus, rangeDays } from "./group-table-helpers";
 import {
 	cellNote,
-	type DotKind,
 	dotFill,
 	Segmented,
-	StatusLegend,
 	stickyFirstColumn,
 	tableCells,
 } from "./group-table-ui";
 
 const modes = ["Día", "Semana", "Mes"] as const;
 /** Short legend words; the full status stays in each square's accessible name. */
-const legend: { key: string; kind: DotKind; label: string }[] = [
-	{ key: "C", kind: "complete", label: "Entrada y salida" },
-	{ key: "E", kind: "partial", label: "Sin salida" },
-	{ key: "F", kind: "absent", label: "Inasistencia" },
-	{ key: "?", kind: "review", label: "Por revisar" },
-	{ key: "—", kind: "empty", label: "Sin registro" },
+const legend: LegendItem[] = [
+	{ id: "C", tone: "success", label: "Entrada y salida" },
+	{ id: "E", tone: "mustard", label: "Sin salida" },
+	{ id: "F", tone: "brick", label: "Inasistencia" },
+	{ id: "?", tone: "neutral", label: "Por revisar" },
+	{ id: "—", tone: "neutral", label: "Sin registro", hollow: true },
 ];
 const squareKind = {
 	C: "complete",
@@ -135,7 +134,12 @@ export function GroupAttendanceTable({
 						}}
 					/>
 				</header>
-				<StatusLegend label="Significado de los colores" items={legend} />
+				<Legend
+					hook="data-status"
+					label="Significado de los colores"
+					items={legend}
+					className="mb-3"
+				/>
 				<DataTable
 					caption={`Asistencia del grupo · ${rangeTitle(days, mode)}`}
 					variant="card"

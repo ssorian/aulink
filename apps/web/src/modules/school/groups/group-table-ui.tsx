@@ -48,9 +48,9 @@ export function Segmented<T extends string>({
 	);
 }
 
-/** Dot legend whose dots can be hollow ("sin registro"); fills are theme tokens. */
+/** Square fills for attendance/grade cells; theme tokens only. */
 export const dotFill = {
-	complete: "bg-[#5a9e6e]",
+	complete: "bg-success-fill",
 	partial: "bg-mustard",
 	absent: "bg-brick",
 	review: "bg-input",
@@ -58,38 +58,3 @@ export const dotFill = {
 	empty: "bg-transparent shadow-[inset_0_0_0_1px_var(--control-line)]",
 } as const;
 export type DotKind = keyof typeof dotFill;
-
-export function StatusLegend({
-	label,
-	items,
-	note,
-	hook = "data-status",
-}: {
-	hook?: "data-status" | "data-state";
-	label: string;
-	items: readonly { key: string; kind: DotKind; label: string }[];
-	note?: string;
-}) {
-	return (
-		<ul
-			data-slot="legend"
-			aria-label={label}
-			className="m-0 mb-3 flex list-none flex-wrap gap-x-4 gap-y-1.5 p-0 text-xs text-muted-foreground"
-		>
-			{items.map((item) => (
-				<li
-					key={item.key}
-					{...{ [hook]: item.key }}
-					className="inline-flex items-center gap-1.5"
-				>
-					<span
-						aria-hidden="true"
-						className={cn("size-2 shrink-0 rounded-full", dotFill[item.kind])}
-					/>
-					{item.label}
-				</li>
-			))}
-			{note && <li className="sm:ml-auto">{note}</li>}
-		</ul>
-	);
-}

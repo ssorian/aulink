@@ -41,6 +41,7 @@
   --sidebar-text: #f2f8fa;
   --sidebar-muted: #c9dbe2;
   --success: #256044;
+  --success-fill: #4f9466;
   --success-bg: #edf5ef;
   --warning: #7a5420;
   --warning-bg: #fdf3df;
@@ -77,6 +78,7 @@
 	--color-ring: var(--focus);
 	--color-selection: var(--selection);
 	--color-success: var(--success);
+	--color-success-fill: var(--success-fill);
 	--color-success-bg: var(--success-bg);
 	--color-warning: var(--warning);
 	--color-warning-bg: var(--warning-bg);

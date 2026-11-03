@@ -63,7 +63,7 @@ Styled only with Tailwind utilities over the `@theme` tokens (`bg-card`, `border
 - **Field / Select:** `Field id label` wraps any control whose id equals `id`. `Select id label value items all? onChange(value)`: label tied by `htmlFor`, disabled with “Sin opciones” when `items` is empty.
 - **FilterBar:** `label` required; a `fieldset` row that wraps its children.
 - **Badge:** `tone`.
-- **Legend:** `label` (accessible list name) and `items: {tone, label}[]` rendered as dot list.
+- **Legend:** `label` (accessible list name) and `items: {tone, label, hollow?, id?}[]` rendered as dot list. `hollow` draws a ring in the tone colour (neutral → `input`) instead of a fill; `hook="data-status"|"data-state"` exposes each `id`. `success` fills use the mid green `bg-success-fill`; `text-success` stays the dark ink.
 - **Avatar / AvatarStack:** `Avatar name size sm|md|lg tone` shows `initials(name)`. `AvatarStack names max=3 size` shows the rest as `+N`; the stack is labelled with all names.
 - **EmptyState:** `text` required, `title="Sin registros"`, `icon` (an `IconName`, default `book`), optional `action`.
 - **Meter:** `percent` (clamped 0–100, NaN→0), `label`, `tone`; `role="meter"` with `aria-valuenow`.

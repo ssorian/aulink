@@ -1,24 +1,23 @@
 import { useState } from "react";
 import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
 import { Select } from "../../../components/ui/field";
+import { Legend, type LegendItem } from "../../../components/ui/legend";
 import { cn } from "../../../lib/utils";
 import { groupScope } from "../groups/group-context";
 import { gradeAverage } from "../groups/group-table-helpers";
 import {
 	cellNote,
-	type DotKind,
 	dotFill,
 	Segmented,
-	StatusLegend,
 	stickyFirstColumn,
 	tableCells,
 } from "../groups/group-table-ui";
 import type { ViewProps } from "../shared/view-types";
 
-const legend: { key: string; kind: DotKind; label: string }[] = [
-	{ key: "published", kind: "complete", label: "Publicado" },
-	{ key: "draft", kind: "partial", label: "Borrador" },
-	{ key: "missing", kind: "empty", label: "Sin captura" },
+const legend: LegendItem[] = [
+	{ id: "published", tone: "success", label: "Publicado" },
+	{ id: "draft", tone: "mustard", label: "Borrador" },
+	{ id: "missing", tone: "neutral", label: "Sin captura", hollow: true },
 ];
 const number = (value: number) =>
 	value.toLocaleString("es-MX", { maximumFractionDigits: 2 });
@@ -85,12 +84,14 @@ export function GroupGradesTable({
 					)}
 				</div>
 			</header>
-			<StatusLegend
-				hook="data-state"
-				label="Estado de las calificaciones"
-				items={legend}
-				note="Los faltantes no cuentan como cero"
-			/>
+			<div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+				<Legend
+					hook="data-state"
+					label="Estado de las calificaciones"
+					items={legend}
+				/>
+				<p className="m-0 sm:ml-auto">Los faltantes no cuentan como cero</p>
+			</div>
 			<DataTable
 				caption={`Calificaciones · ${subject || "sin materia"} · ${period || "Total"}`}
 				variant="card"

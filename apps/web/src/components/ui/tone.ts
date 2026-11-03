@@ -40,7 +40,23 @@ export const toneFill: Record<Tone, string> = {
 	brown: "bg-brown",
 	peach: "bg-peach",
 	lemon: "bg-lemon",
-	success: "bg-success",
+	success: "bg-success-fill",
 	warning: "bg-mustard",
 	danger: "bg-destructive",
+};
+
+/** Hollow dot: transparent fill with an inset ring in the tone colour. */
+export const toneRing: Record<Tone, string> = {
+	neutral: "ring-1 ring-inset ring-input",
+	teal: "ring-1 ring-inset ring-teal",
+	lilac: "ring-1 ring-inset ring-lilac",
+	sky: "ring-1 ring-inset ring-sky",
+	mustard: "ring-1 ring-inset ring-mustard",
+	brick: "ring-1 ring-inset ring-brick",
+	brown: "ring-1 ring-inset ring-brown",
+	peach: "ring-1 ring-inset ring-peach",
+	lemon: "ring-1 ring-inset ring-lemon",
+	success: "ring-1 ring-inset ring-success-fill",
+	warning: "ring-1 ring-inset ring-mustard",
+	danger: "ring-1 ring-inset ring-destructive",
 };

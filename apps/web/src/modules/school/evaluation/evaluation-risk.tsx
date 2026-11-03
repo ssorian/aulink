@@ -3,6 +3,7 @@ import { Card } from "../../../components/ui/card";
 import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
 import { Select } from "../../../components/ui/field";
 import { FilterBar } from "../../../components/ui/filter-bar";
+import { Legend } from "../../../components/ui/legend";
 import { Stat, StatGrid } from "../../../components/ui/stat";
 import { toneSurface } from "../../../components/ui/tone";
 import { cn } from "../../../lib/utils";
@@ -198,26 +199,20 @@ export function EvaluationRisk({
 					onChange={(v) => onFilter("subject", v)}
 				/>
 			</FilterBar>
-			<ul
-				data-slot="legend"
-				aria-label="Calificaciones reprobadas"
-				className="m-0 -mt-0.5 mb-3 flex list-none flex-wrap gap-x-4.5 gap-y-1.5 p-0 text-[13px] text-muted-foreground"
-			>
-				<li data-state="published" className="inline-flex items-center gap-1.5">
-					<span
-						aria-hidden="true"
-						className="size-2 shrink-0 rounded-full bg-brick"
-					/>
-					Publicada
-				</li>
-				<li data-state="draft" className="inline-flex items-center gap-1.5">
-					<span
-						aria-hidden="true"
-						className="size-2 shrink-0 rounded-full ring-[1.5px] ring-brick ring-inset"
-					/>
-					Borrador, aún no visible para familias
-				</li>
-			</ul>
+			<Legend
+				label="Calificaciones reprobadas"
+				hook="data-state"
+				className="-mt-0.5 mb-3 gap-x-4.5 text-[13px]"
+				items={[
+					{ id: "published", tone: "brick", label: "Publicada" },
+					{
+						id: "draft",
+						tone: "brick",
+						label: "Borrador, aún no visible para familias",
+						hollow: true,
+					},
+				]}
+			/>
 			<DataTable
 				caption="Alumnos en riesgo"
 				variant="card"

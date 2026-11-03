@@ -55,7 +55,7 @@ const stateTone = {
 	missing: "brick",
 } as const;
 const gradeDot = {
-	published: "before:bg-success",
+	published: "before:bg-success-fill",
 	draft: "before:bg-mustard",
 	missing: "before:ring-1 before:ring-input before:ring-inset",
 } as const;

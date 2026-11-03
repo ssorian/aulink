@@ -58,7 +58,7 @@ const fmt = (value: number | null | undefined) =>
 const rowTone = {
 	fail: { fill: "bg-brick", mean: "text-brick-ink" },
 	near: { fill: "bg-mustard", mean: "text-mustard-ink" },
-	good: { fill: "bg-success", mean: "text-foreground" },
+	good: { fill: "bg-success-fill", mean: "text-foreground" },
 	missing: { fill: "", mean: "text-muted-foreground" },
 } as const;
 const legendTones: Record<"fail" | "near" | "good", Tone> = {
