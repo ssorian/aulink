@@ -3,22 +3,6 @@
 	max-width: 100%;
 }
 
-.group-back {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	min-height: 44px;
-	margin-bottom: 16px;
-	background: var(--palette-brick);
-	border-color: var(--palette-brick);
-	color: #fff;
-}
-
-.group-back:hover {
-	background: var(--tone-brick-ink);
-	border-color: var(--tone-brick-ink);
-}
-
 .group-students {
 	min-width: 0;
 	max-width: 100%;
