@@ -7,7 +7,7 @@ import { initialState } from "../apps/web/src/modules/school/shared/workflows";
 const requireWeb = createRequire(new URL("../apps/web/package.json", import.meta.url));
 const { createElement } = requireWeb("react");
 const { renderToStaticMarkup } = requireWeb("react-dom/server");
-import { schoolNavigation, sectionFor } from "../apps/web/src/modules/school/shell/navigation";
+import { evaluationPages, schoolNavigation, sectionFor } from "../apps/web/src/modules/school/shell/navigation";
 
 test("six administrator sections own unique existing destinations", () => {
 	expect(schoolNavigation.map((section) => section.label)).toEqual([
@@ -23,7 +23,8 @@ test("contextual destinations highlight their owning section", () => {
 	expect(sectionFor("Personal").label).toBe("Comunidad escolar");
 	expect(sectionFor("Grupos").label).toBe("Gestión académica");
 	expect(sectionFor("Ciclos y calendario").label).toBe("Gestión académica");
-	expect(sectionFor("Calificaciones").label).toBe("Evaluación");
+	for (const page of evaluationPages)
+		expect(sectionFor(page).label).toBe("Evaluación");
 	for (const page of ["Comunicados", "Conducta"] as const) {
 		expect(sectionFor(page).label).toBe("Vida escolar");
 	}

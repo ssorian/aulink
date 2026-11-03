@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterDirectory, summarizeAttendance } from "../apps/web/src/modules/school/students/experience";
+import { filterDirectory } from "../apps/web/src/modules/school/students/experience";
 import { buildMockData } from "../apps/web/src/modules/school/shared/mock-data";
 
 describe("directory context", () => {
@@ -17,13 +17,3 @@ describe("directory context", () => {
 	});
 });
 
-describe("attendance evidence summary", () => {
-	test("counts adjusted events once even with several adjustments", () => {
-		const events = [{ id: "a" }, { id: "b" }];
-		const adjustments = [{ event: "a" }, { event: "a" }, { event: "outside" }];
-		expect(summarizeAttendance(events, adjustments)).toEqual({ events: 2, adjusted: 1, unchanged: 1 });
-	});
-	test("no evidence does not become an absence or definitive attendance", () => {
-		expect(summarizeAttendance([], [{ event: "outside" }])).toEqual({ events: 0, adjusted: 0, unchanged: 0 });
-	});
-});

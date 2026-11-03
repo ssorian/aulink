@@ -16,7 +16,7 @@ const render = (component: unknown, s = initialState()) =>
 	);
 
 for (const [component, caption, action, columns] of [
-	[StaffView, "Directorio del personal", "Cambiar responsabilidad", 4],
+	[StaffView, "Directorio del personal", "Cambiar responsabilidad", 6],
 	[GroupDirectory, "Directorio de grupos", "Abrir grupo", 6],
 	[DevicesView, "Registro de equipos", "Desactivar equipo", 4],
 ] as const) {
@@ -122,11 +122,18 @@ test("staff history preserves value, reason and author", () => {
 			],
 		},
 	];
-	const markup = render(StaffView, s);
-	expect(markup).toContain("<details>");
-	expect(markup).toContain("Ver historial de Docente Ejemplo");
+	// The table shows a change count; the full history travels to the dialog.
+	expect(render(StaffView, s)).toContain("1 cambio");
+	const calls: unknown[][] = [];
+	const action = StaffRoleAction({
+		person: s.staff[0],
+		open: (...args: unknown[]) => {
+			calls.push(args);
+		},
+	});
+	action.props.onClick();
 	for (const text of ["Dirección", "Cambio de función", "Control escolar"])
-		expect(markup).toContain(text);
+		expect(String(calls[0][5])).toContain(text);
 });
 
 test("directory row actions retain their open payloads", () => {
@@ -147,9 +154,13 @@ test("directory row actions retain their open payloads", () => {
 			return;
 		}
 		if (!node || typeof node !== "object" || !("props" in node)) return;
-		const props = node.props as { children?: unknown; onClick?: () => void };
+		const props = node.props as {
+			children?: unknown;
+			onClick?: () => void;
+			"aria-label"?: string;
+		};
 		if (
-			props.children === "Cambiar responsabilidad" ||
+			props["aria-label"]?.startsWith("Cambiar responsabilidad") ||
 			props.children === "Desactivar equipo"
 		)
 			props.onClick?.();
