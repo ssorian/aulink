@@ -45,7 +45,7 @@ function Meter({ counts }: { counts: ProgressCounts }) {
 	);
 }
 
-function Select({
+export function Select({
 	id,
 	label,
 	value,

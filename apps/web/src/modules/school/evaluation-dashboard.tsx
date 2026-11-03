@@ -130,7 +130,7 @@ export function EvaluationDashboard({
 					onChange={setTab}
 				/>
 			)}
-			{tab !== "Avance del periodo" && (
+			{tab === "Resultados" && (
 				<div className="evaluation-context">
 					<label htmlFor="evaluation-period">
 						Periodo:
@@ -218,7 +218,14 @@ export function EvaluationDashboard({
 			{tab === "Alumnos en riesgo" && (
 				<EvaluationRisk
 					s={s}
-					filters={{ cycleId, period, groupId, subject }}
+					filters={{ cycleId, period, groupId, subject, grade }}
+					options={{
+						periods,
+						grades,
+						groups: availableGroups.filter((g) => !grade || g.grade === grade),
+						subjects,
+					}}
+					onFilter={change}
 					onOpenStudent={onOpenStudent}
 					onOpenGroup={onOpenGroup}
 					open={open}

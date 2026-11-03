@@ -17,6 +17,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - S12: "Sabes que, si haz mas angosto sabado y domingp" — sábado y domingo angostos cuando no tienen clases ni cambios; recuperan su ancho si tienen alguno.
 - S13: "Aplica igual aqui, pero cambia la tabla de avance por grupo por la tabla de calificaciones por grupo que habiamos aplicado en la vista de grupo, con los filtros de grado, grupo, trimestre y materia. Lo demas mejoralo al estilo que estuviste trabajando" (Evaluación › Avance del periodo).
 - S14: "solo se muestra una sola tabla por grupo ... la tabla solo mostrara una materia y un grupo en concreto, para enriquecer un poco la tabla agrega las asistencias, ... colocalos encima de la tabla no hasya arriba, agrega una card a los pendientes por docente y cambialo a la derecha. Elimina la cantidad de texto chico, agrega una card a las estadisticas e implementa mas la paleta de colores que tenemos"
+- S15: "Tambien estiliza de forma similar esta parte" (Evaluación › Alumnos en riesgo).
 
 ## Tasks
 - T1 [S4,S6] Modelo: docente/suplente por fecha, editar materia/titular de una recurrencia, eliminar recurrencia; pruebas en scripts/group-schedule.test.ts. Route: inline. Risk: item 1 (formato guardado, aditivo). Commit: b789d4f ✅
@@ -29,6 +30,7 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - T9 [S12] Fin de semana angosto. Route: inline. Commit: (commit fin de semana) ✅
 - T10 [S13] Avance del periodo con tabla de calificaciones y filtros propios. Route: inline. Commit: (commit avance) ✅
 - T11 [S14] Avance: un grupo y una materia, acceso al plantel, filtros sobre la tabla, cards. Route: inline. Commit: (commit avance v2) ✅
+- T12 [S15] Alumnos en riesgo con el esquema de Avance. Route: inline. Commit: (commit riesgo) ✅
 - T7 [S7-S10] Verificación: pruebas, typecheck, biome, navegador escritorio/móvil, detector impeccable. Route: inline. Commit: sin código ✅
 
 ## Log
@@ -51,3 +53,4 @@ Branch: feat/schedule-redesign. Demo local; sin backend ni terminales.
 - L17 evidencia T10: RED 3 (filtro por grado en buildPeriodProgress; tabla y filtros propios; opciones de grado); GREEN 30/30 en evaluación. Suite 320+ pass / 6 fail preexistentes. Detector [] exit 0. Navegador 1520 y 390 sin desbordamiento. Decisiones: filtros propios solo en Avance (Riesgo y Resultados conservan la barra compartida); el selector Secundaria/Media superior sale de Avance (el grado lo reemplaza); trimestre sin "Todos" porque el avance es por periodo; KPIs, publicar y pendientes siguen los filtros.
 - L18 (usuario): S14. Decisión: "asistencias" = acceso al plantel (eventos de terminal); no existe pase de lista por clase real en el estado (solo muestra fija), no se inventa. Grado y trimestre fijan el alcance de estadísticas, publicación y pendientes; grupo y materia eligen la tabla.
 - L19 evidencia T11: RED 2; GREEN 19/19 evaluación. Detector [] exit 0. Navegador 1520/390 sin desbordamiento.
+- L20 (usuario): S15 + captura. Evidencia T12: RED 2; GREEN 20/20 evaluación; suite 325 pass / 6 fail preexistentes; detector [] exit 0; navegador 1450/390. Decisiones: barra compartida queda solo en Resultados; selector de nivel en Riesgo reemplazado por Grado; título "Riesgo de <trimestre>" para no repetir el h1.

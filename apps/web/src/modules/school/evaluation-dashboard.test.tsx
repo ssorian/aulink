@@ -202,17 +202,32 @@ test("grade filter offers each grade and scopes the stats", () => {
 	expect(html).toMatch(/<option value="2°">2°<\/option>/);
 	expect(html).not.toContain('aria-label="Nivel educativo"');
 });
-test("risk tab keeps the shared filters and level context for mixed levels", () => {
+test("risk uses the progress layout: stats card, filters above a standard table", () => {
+	const html = renderOperational(operationalFixture(), "Alumnos en riesgo");
+	expect(html).not.toContain('class="evaluation-context"');
+	expect(html).not.toContain('aria-label="Nivel educativo"');
+	expect(html).not.toMatch(/class="eval-panel/);
+	const stats = html.indexOf('class="progress-card progress-stats risk-stats"');
+	const filters = html.indexOf('class="progress-filters"');
+	const table = html.indexOf('class="ui-table-card"');
+	expect(stats).toBeGreaterThan(-1);
+	expect(stats).toBeLessThan(filters);
+	expect(filters).toBeLessThan(table);
+	for (const id of ["grade", "group", "period", "subject"])
+		expect(html).toContain(`id="risk-${id}"`);
+	expect(html).toMatch(
+		/id="risk-group"[^>]*><option value="" selected="">Todos/,
+	);
+	expect(html).toContain('class="ui-data-table"');
+	expect(html).not.toContain("Se incluyen borradores señalados como tales");
+});
+test("risk empty state stays inside the table", () => {
 	const s = operationalFixture();
-	s.groups[1].grade = "1 semestre";
+	s.grades[1].value = 8;
 	const html = renderOperational(s, "Alumnos en riesgo");
-	expect(html).toContain('class="evaluation-context"');
-	expect(html).toContain('aria-label="Nivel educativo"');
-	expect(html).toContain('aria-pressed="true">Todos');
-	expect(html).toContain("Media superior");
-	expect(
-		renderOperational(operationalFixture(), "Alumnos en riesgo"),
-	).not.toContain('aria-label="Nivel educativo"');
+	expect(html).toMatch(
+		/class="ui-table-empty"[^>]*>[\s\S]*Ningún alumno cumple el criterio/,
+	);
 });
 test("pending teachers are ranked and their assignments are collapsed", () => {
 	const s = operationalFixture();
