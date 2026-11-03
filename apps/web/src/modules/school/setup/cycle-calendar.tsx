@@ -1,19 +1,60 @@
 import { useCallback, useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { Field } from "../../../components/ui/field";
 import { Icon } from "../../../components/ui/icon";
+import { Legend } from "../../../components/ui/legend";
+import { type Tone, toneFill } from "../../../components/ui/tone";
+import { cn } from "../../../lib/utils";
 import {
 	CalendarDayActions,
 	type DayAnchor,
 } from "../schedule/calendar-day-actions";
-import { cycleDateFields } from "./cycle-dates";
 import { schoolToday } from "../schedule/schedule-helpers";
 import { field } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
-import "./cycle-calendar.css";
+import { cycleDateFields } from "./cycle-dates";
 
 const iso = (date: Date) => date.toISOString().slice(0, 10);
 const asDate = (date: string) => new Date(`${date}T12:00:00Z`);
 const formatDate = (date: string, options: Intl.DateTimeFormatOptions) =>
 	asDate(date).toLocaleDateString("es-MX", { ...options, timeZone: "UTC" });
+
+const controlClass =
+	"min-h-11 min-w-0 max-w-full flex-1 border-0 bg-transparent py-0 pl-0 text-sm font-semibold text-foreground outline-none focus-visible:outline-none";
+const dayMarkers: Record<string, { tone: Tone; ink: string }> = {
+	off: { tone: "brick", ink: "text-brick-ink" },
+	holiday: { tone: "brown", ink: "text-brown-ink" },
+	event: { tone: "teal", ink: "text-teal-ink" },
+};
+const legend: { tone: Tone; label: string }[] = [
+	{ tone: "brick", label: "Sin clases" },
+	{ tone: "brown", label: "Feriado · solo visual" },
+	{ tone: "teal", label: "Evento" },
+];
+
+function DayMarker({
+	kind,
+	label,
+}: {
+	kind: keyof typeof dayMarkers;
+	label: string;
+}) {
+	const marker = dayMarkers[kind];
+	return (
+		<span
+			data-slot="cycle-day-marker"
+			data-tone={marker.tone}
+			className={cn("flex items-center gap-1.5 text-xs", marker.ink)}
+		>
+			<span
+				aria-hidden="true"
+				className={cn("size-1.5 shrink-0 rounded-full", toneFill[marker.tone])}
+			/>
+			<span className="max-sm:sr-only">{label}</span>
+		</span>
+	);
+}
 
 export function moveMonth(month: string, offset: number) {
 	const date = asDate(`${month}-01`);
@@ -51,16 +92,16 @@ export function CycleCalendar({ s, open }: Pick<ViewProps, "s" | "open">) {
 	}
 
 	return (
-		<div className="cycle-calendar">
-			<section
-				className="cycle-settings"
-				aria-label="Configuración del ciclo"
-			>
-				<div className="cycle-settings-row">
-					<label className="cycle-selector">
-						Ciclo escolar
+		<div data-slot="cycle-calendar" className="min-w-0 tabular-nums">
+			<Card aria-label="Configuración del ciclo" className="mb-5 @container">
+				<div
+					data-slot="cycle-settings-row"
+					className="grid grid-cols-1 items-center gap-x-6 gap-y-4 @xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] @4xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)_auto]"
+				>
+					<Field id="cycle-select" label="Ciclo escolar">
 						<select
-							aria-label="Ciclo escolar"
+							id="cycle-select"
+							className={controlClass}
 							value={cycle?.id ?? ""}
 							disabled={!s.cycles.length}
 							onChange={(event) => setCycleId(event.target.value)}
@@ -74,97 +115,178 @@ export function CycleCalendar({ s, open }: Pick<ViewProps, "s" | "open">) {
 								</option>
 							))}
 						</select>
-					</label>
-					<dl className="cycle-date-metadata">
-						<div><dt>Inicio</dt><dd>{cycle?.startDate ? <time dateTime={cycle.startDate}>{formatDate(cycle.startDate, { dateStyle: "long" })}</time> : "Sin definir"}</dd></div>
-						<div><dt>Cierre</dt><dd>{cycle?.endDate ? <time dateTime={cycle.endDate}>{formatDate(cycle.endDate, { dateStyle: "long" })}</time> : "Sin definir"}</dd></div>
+					</Field>
+					<dl
+						data-slot="cycle-dates"
+						className="m-0 grid min-w-0 grid-cols-2 gap-4"
+					>
+						{(
+							[
+								["Inicio", cycle?.startDate],
+								["Cierre", cycle?.endDate],
+							] as const
+						).map(([label, date]) => (
+							<div key={label} className="grid min-w-0 gap-0.5">
+								<dt className="text-xs font-medium text-muted-foreground">
+									{label}
+								</dt>
+								<dd className="m-0 text-sm text-foreground [overflow-wrap:anywhere]">
+									{date ? (
+										<time dateTime={date}>
+											{formatDate(date, { dateStyle: "long" })}
+										</time>
+									) : (
+										"Sin definir"
+									)}
+								</dd>
+							</div>
+						))}
 					</dl>
-					<div className="cycle-settings-actions">
-						<button
-							type="button"
+					<div
+						data-slot="cycle-settings-actions"
+						className="flex flex-wrap gap-2 @xl:col-span-full @4xl:col-span-1"
+					>
+						<Button
+							className="whitespace-nowrap"
 							onClick={() =>
-								open("cycle", "Crear ciclo", [field("name", "Nombre del ciclo"), ...cycleDateFields()])
+								open("cycle", "Crear ciclo", [
+									field("name", "Nombre del ciclo"),
+									...cycleDateFields(),
+								])
 							}
 						>
 							<Icon name="plus" size={18} />
 							Crear ciclo
-						</button>
-						{cycle && <button type="button" onClick={() => open(
-							"cycle-dates", cycle.startDate ? "Editar fechas" : "Definir fechas", cycleDateFields(),
-							{ id: cycle.id, startDate: cycle.startDate ?? "", endDate: cycle.endDate ?? "" },
-							undefined, `Fechas del ciclo ${cycle.name}. No cambian la asistencia ni los eventos.`,
-						)}>{cycle.startDate ? "Editar fechas" : "Definir fechas"}</button>}
+						</Button>
+						{cycle && (
+							<Button
+								className="whitespace-nowrap"
+								onClick={() =>
+									open(
+										"cycle-dates",
+										cycle.startDate ? "Editar fechas" : "Definir fechas",
+										cycleDateFields(),
+										{
+											id: cycle.id,
+											startDate: cycle.startDate ?? "",
+											endDate: cycle.endDate ?? "",
+										},
+										undefined,
+										`Fechas del ciclo ${cycle.name}. No cambian la asistencia ni los eventos.`,
+									)
+								}
+							>
+								{cycle.startDate ? "Editar fechas" : "Definir fechas"}
+							</Button>
+						)}
 					</div>
 				</div>
-				<p className="cycle-settings-caption">
+				<p
+					data-slot="cycle-settings-caption"
+					className="m-0 mt-3 text-[13px] leading-normal text-muted-foreground"
+				>
 					{cycle
 						? `${groups} ${groups === 1 ? "grupo" : "grupos"} en este ciclo. Alumnos y materias se administran en Grupos.`
 						: "Crea un ciclo para organizar tus grupos."}
 				</p>
-			</section>
+			</Card>
 
-			<section className="cycle-month" aria-label="Calendario global">
-				<header className="cycle-month-header">
-					<div className="cycle-month-navigation">
-						<h2 aria-live="polite">
+			<section
+				data-slot="cycle-month"
+				aria-label="Calendario global"
+				className="min-w-0"
+			>
+				<header
+					data-slot="cycle-month-header"
+					className="flex flex-wrap items-center justify-between gap-3"
+				>
+					<div className="flex flex-wrap items-center gap-3">
+						<h2
+							aria-live="polite"
+							className="m-0 text-lg font-semibold tracking-tight first-letter:uppercase max-sm:text-base"
+						>
 							{formatDate(`${month}-01`, { month: "long", year: "numeric" })}
 						</h2>
-						<div className="cycle-actions">
-							<button
-								type="button"
+						<div className="flex items-center gap-2">
+							<Button
+								variant="icon"
 								aria-label="Mes anterior"
 								disabled={month === "0001-01"}
 								onClick={() => showMonth(moveMonth(month, -1))}
 							>
-								<span className="cycle-previous">
+								<span className="flex rotate-180">
 									<Icon name="chevron" size={18} />
 								</span>
-							</button>
-							<button
-								type="button"
+							</Button>
+							<Button
+								variant="icon"
 								aria-label="Mes siguiente"
 								disabled={month === "9998-12"}
 								onClick={() => showMonth(moveMonth(month, 1))}
 							>
 								<Icon name="chevron" size={18} />
-							</button>
+							</Button>
 						</div>
 					</div>
-					<div className="cycle-month-controls">
-						<button
-							type="button"
+					<div className="flex flex-wrap items-center gap-2 max-sm:w-full">
+						<Button
 							onClick={() => {
 								setMonth(today.slice(0, 7));
 								setSelected(today);
 							}}
 						>
 							Hoy
-						</button>
-						<label className="cycle-month-picker">
-							Ir al mes
+						</Button>
+						<Field
+							id="cycle-month-picker"
+							label="Ir al mes"
+							className="max-sm:min-w-0"
+						>
 							<input
+								id="cycle-month-picker"
 								type="month"
+								className={controlClass}
 								value={month}
 								min="0001-01"
 								max="9998-12"
 								onChange={(event) => showMonth(event.target.value)}
 							/>
-						</label>
+						</Field>
 					</div>
 				</header>
-				<p className="cycle-month-scope">
+				<p className="m-0 mt-1.5 mb-3 text-[13px] text-muted-foreground">
 					Todos los ciclos comparten los días sin clase.
 				</p>
-				<div className="cycle-grid-card">
-					<div className="cycle-weekdays" aria-hidden="true">
+				<Card
+					padding="none"
+					data-slot="cycle-grid"
+					className="min-w-0 overflow-hidden"
+				>
+					<div
+						data-slot="cycle-weekdays"
+						aria-hidden="true"
+						className="grid grid-cols-7 bg-muted"
+					>
 						{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
-							<span key={day}>{day}</span>
+							<span
+								key={day}
+								className="py-2.5 text-center text-xs font-semibold text-muted-foreground sm:p-3 sm:text-left"
+							>
+								{day}
+							</span>
 						))}
 					</div>
-					<div className="cycle-days">
+					<div
+						data-slot="cycle-days"
+						className="grid grid-cols-7 border-t border-border"
+					>
 						{calendarDays(month).map((date) => {
-							const holidays = s.calendarHolidays.filter((item) => item.date === date);
-							const events = s.calendarEvents.filter((item) => item.date === date);
+							const holidays = s.calendarHolidays.filter(
+								(item) => item.date === date,
+							);
+							const events = s.calendarEvents.filter(
+								(item) => item.date === date,
+							);
 							const exceptions = s.exceptions.filter(
 								(item) => item.date === date,
 							);
@@ -173,8 +295,16 @@ export function CycleCalendar({ s, open }: Pick<ViewProps, "s" | "open">) {
 									type="button"
 									key={date}
 									id={`calendar-day-${date}`}
-									className={`cycle-day${date.startsWith(month) ? "" : " cycle-day-outside"}${exceptions.length ? " cycle-day-off" : ""}`}
-									aria-label={`${formatDate(date, { dateStyle: "full" })}${exceptions.length ? ` · Sin clase: ${exceptions.map((item) => item.reason).join("; ")}` : ""}${holidays.length ? ` · Feriado (solo visual): ${holidays.map(x=>x.title).join("; ")}` : ""}${events.length ? ` · Evento: ${events.map(x=>x.title).join("; ")}` : ""}`}
+									data-slot="cycle-day"
+									data-state={
+										exceptions.length
+											? "off"
+											: date.startsWith(month)
+												? "inside"
+												: "outside"
+									}
+									className="group relative flex min-h-16 min-w-0 cursor-pointer flex-col items-center gap-1 rounded-none border-0 border-r border-b border-border bg-card p-1 text-sm font-medium text-foreground hover:bg-muted focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring aria-pressed:bg-selection aria-pressed:outline-2 aria-pressed:-outline-offset-2 aria-pressed:outline-primary data-[state=off]:bg-brick-bg data-[state=outside]:bg-background data-[state=outside]:text-muted-foreground nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 sm:min-h-24 sm:items-start sm:gap-2 sm:p-2.5"
+									aria-label={`${formatDate(date, { dateStyle: "full" })}${exceptions.length ? ` · Sin clase: ${exceptions.map((item) => item.reason).join("; ")}` : ""}${holidays.length ? ` · Feriado (solo visual): ${holidays.map((x) => x.title).join("; ")}` : ""}${events.length ? ` · Evento: ${events.map((x) => x.title).join("; ")}` : ""}`}
 									aria-haspopup="dialog"
 									aria-controls="calendar-day-actions"
 									aria-expanded={selection?.date === date}
@@ -186,36 +316,34 @@ export function CycleCalendar({ s, open }: Pick<ViewProps, "s" | "open">) {
 										setMonth(date.slice(0, 7));
 									}}
 								>
-									<span className="cycle-day-number">
+									<span className="grid size-7 shrink-0 place-items-center rounded-full group-aria-[current=date]:bg-primary group-aria-[current=date]:text-primary-foreground">
 										{Number(date.slice(-2))}
 									</span>
 									{exceptions.length > 0 && (
-										<span className="cycle-day-event">
-											<span className="cycle-event-dot" />
-											<span>Sin clase</span>
-										</span>
+										<DayMarker kind="off" label="Sin clase" />
 									)}
 									{holidays.length > 0 && (
-										<span className="cycle-day-event cycle-day-holiday">
-											<span className="cycle-event-dot" /><span>Feriado</span>
-										</span>
+										<DayMarker kind="holiday" label="Feriado" />
 									)}
 									{events.length > 0 && (
-										<span className="cycle-day-event cycle-day-notice">
-											<span className="cycle-event-dot" /><span>Evento</span>
-										</span>
+										<DayMarker kind="event" label="Evento" />
 									)}
 								</button>
 							);
 						})}
 					</div>
-				</div>
-				<div className="cycle-calendar-legend">
-					<span><i className="cycle-event-dot" />Sin clases</span>
-					<span className="cycle-day-holiday"><i className="cycle-event-dot" />Feriado · solo visual</span>
-					<span className="cycle-day-notice"><i className="cycle-event-dot" />Evento</span>
-				</div>
-				<CalendarDayActions selection={selection} s={s} open={open} onClose={closeActions} />
+				</Card>
+				<Legend
+					label="Leyenda del calendario"
+					items={legend}
+					className="mt-3.5 mb-5"
+				/>
+				<CalendarDayActions
+					selection={selection}
+					s={s}
+					open={open}
+					onClose={closeActions}
+				/>
 			</section>
 		</div>
 	);

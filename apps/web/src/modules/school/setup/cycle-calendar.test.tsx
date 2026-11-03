@@ -1,12 +1,12 @@
 // @ts-expect-error — Bun runs this test with browser-only app declarations.
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CycleCalendar, calendarDays, moveMonth } from "./cycle-calendar";
+import { schoolToday } from "../schedule/schedule-helpers";
 import { initialState } from "../shared/workflows";
+import { CycleCalendar, calendarDays, moveMonth } from "./cycle-calendar";
 import { cycleDateFields } from "./cycle-dates";
 import { FlowDialog } from "./flow-dialog";
 import { validateFlow } from "./flow-validation";
-import { schoolToday } from "../schedule/schedule-helpers";
 
 test("date dialog uses required date fields and contextual range validation", () => {
 	const fields = cycleDateFields();
@@ -69,16 +69,16 @@ test("cycle row orders selector, paired dates and grouped actions above the capt
 	const s = initialState();
 	const html = renderToStaticMarkup(<CycleCalendar s={s} open={() => {}} />);
 	const card = html.match(
-		/<section class="cycle-settings"[^>]*>(.*?)<\/section>/,
+		/<section[^>]*aria-label="Configuración del ciclo"[^>]*>(.*?)<\/section>/,
 	)?.[1];
 	expect(card).toMatch(
-		/^<div class="cycle-settings-row"><label class="cycle-selector">Ciclo escolar<select/,
+		/^<div data-slot="cycle-settings-row"[^>]*><label data-slot="field"[^>]*><span[^>]*>Ciclo escolar<\/span><select/,
 	);
 	expect(card).toMatch(
-		/<\/select><\/label><dl class="cycle-date-metadata">.*?<\/dl><div class="cycle-settings-actions">/,
+		/<\/select><\/label><dl data-slot="cycle-dates"[^>]*>.*?<\/dl><div data-slot="cycle-settings-actions"[^>]*>/,
 	);
 	expect(card).toMatch(
-		/<div class="cycle-settings-actions"><button[^>]*>.*?Crear ciclo<\/button><button[^>]*>Definir fechas<\/button><\/div><\/div><p class="cycle-settings-caption">/,
+		/<div data-slot="cycle-settings-actions"[^>]*><button[^>]*>.*?Crear ciclo<\/button><button[^>]*>Definir fechas<\/button><\/div><\/div><p data-slot="cycle-settings-caption"/,
 	);
 	const groups = s.groups.filter(
 		(group) => group.cycle === s.cycles[0]?.id,
@@ -86,7 +86,6 @@ test("cycle row orders selector, paired dates and grouped actions above the capt
 	expect(card).toContain(
 		`${groups} ${groups === 1 ? "grupo" : "grupos"} en este ciclo. Alumnos y materias se administran en Grupos.`,
 	);
-	expect(card).not.toContain("cycle-date-row");
 	expect(card).not.toContain("Agregar día sin clase");
 });
 
@@ -95,20 +94,22 @@ test("one calendar header groups the live month, navigation and month controls",
 		<CycleCalendar s={initialState()} open={() => {}} />,
 	);
 	const headers = [
-		...html.matchAll(/<header class="cycle-month-header">(.*?)<\/header>/g),
+		...html.matchAll(
+			/<header data-slot="cycle-month-header"[^>]*>(.*?)<\/header>/g,
+		),
 	];
 	expect(headers).toHaveLength(1);
 	const toolbar = headers[0]?.[1];
-	expect(toolbar).toMatch(/<h2 aria-live="polite">[^<]+<\/h2>/);
+	expect(toolbar).toMatch(/<h2[^>]*aria-live="polite"[^>]*>[^<]+<\/h2>/);
 	expect(toolbar).toMatch(/<button[^>]*aria-label="Mes anterior"/);
 	expect(toolbar).toMatch(/<button[^>]*aria-label="Mes siguiente"/);
 	expect(toolbar).toMatch(/<button[^>]*>Hoy<\/button>/);
 	expect(toolbar).toMatch(
-		/<input type="month"[^>]*min="0001-01" max="9998-12"/,
+		/<input[^>]*type="month"[^>]*min="0001-01" max="9998-12"/,
 	);
 	expect(html).not.toMatch(/<h[23][^>]*>Calendario global<\/h[23]>/);
-	expect(html).toContain(
-		'<section class="cycle-month" aria-label="Calendario global">',
+	expect(html).toMatch(
+		/<section data-slot="cycle-month"[^>]*aria-label="Calendario global"/,
 	);
 });
 
@@ -133,7 +134,7 @@ test("day labels distinguish visual holidays and events without implying no clas
 	expect(html).toContain(`id="calendar-day-${date}"`);
 	expect(html).toContain("Feriado (solo visual): Celebración escolar");
 	expect(html).toContain("Evento: Reunión de familias");
-	expect(html).not.toContain("cycle-day-off");
+	expect(html).not.toContain('data-state="off"');
 	expect(html).toContain('popover="auto"');
 	expect(html).toContain('role="dialog"');
 });
@@ -152,11 +153,11 @@ test("cycle card shows unknown dates separately from the month toolbar", () => {
 		<CycleCalendar s={initialState()} open={() => {}} />,
 	);
 	const card = html.match(
-		/<section class="cycle-settings"[^>]*>(.*?)<\/section>/,
+		/<section[^>]*aria-label="Configuración del ciclo"[^>]*>(.*?)<\/section>/,
 	)?.[1];
-	expect(card).toContain('<dl class="cycle-date-metadata">');
-	expect(card).toContain("<dt>Inicio</dt><dd>Sin definir</dd>");
-	expect(card).toContain("<dt>Cierre</dt><dd>Sin definir</dd>");
+	expect(card).toContain('<dl data-slot="cycle-dates"');
+	expect(card).toMatch(/<dt[^>]*>Inicio<\/dt><dd[^>]*>Sin definir<\/dd>/);
+	expect(card).toMatch(/<dt[^>]*>Cierre<\/dt><dd[^>]*>Sin definir<\/dd>/);
 	expect(card).toContain("Definir fechas");
 	expect(card).not.toContain("cycle-month-header");
 });
@@ -187,11 +188,12 @@ test("only weekday headings and date buttons share the calendar card", () => {
 	);
 	expect(html).not.toMatch(/class="[^"]*\bpanel\b/);
 	const card = html.match(
-		/<div class="cycle-grid-card">(.*?)<div class="cycle-calendar-legend">/,
+		/<section data-slot="cycle-grid"[^>]*>(.*?)<ul data-slot="legend"/,
 	)?.[1];
 	expect(card).toBeDefined();
-	expect(card).toContain('class="cycle-weekdays"');
-	expect(card).toContain('class="cycle-days"');
+	expect(card).toContain('data-slot="cycle-weekdays"');
+	expect(card).toContain('data-slot="cycle-days"');
+	expect(card).toContain('data-slot="cycle-day"');
 	expect(card).toContain('aria-pressed="true"');
 	for (const outside of [
 		"<header",
@@ -205,6 +207,9 @@ test("only weekday headings and date buttons share the calendar card", () => {
 	]) {
 		expect(card).not.toContain(outside);
 	}
-	expect(html).toContain('class="cycle-settings"');
-	expect(html).toContain('class="cycle-month"');
+	expect(html).toContain('aria-label="Configuración del ciclo"');
+	expect(html).toContain('data-slot="cycle-month"');
+	expect(html).toMatch(
+		/<ul data-slot="legend"[^>]*aria-label="Leyenda del calendario"/,
+	);
 });

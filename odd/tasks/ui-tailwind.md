@@ -27,10 +27,10 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - T5 [S1,S3] Evaluation → Tailwind + primitives; delete its CSS.
 - T6 [S1,S3] Communications + Conduct. Route: worker. Commit: (T6 commit) ✅
 - T7 [S1,S3] Groups (workspace, attendance/grades tables, directory). Route: worker. Commit: (T7 commit) ✅
-- T8 [S1,S3] Schedule (calendar, grid, sidebar, day actions, chip tooltip).
+- T8 [S1,S3] Schedule (calendar, grid, sidebar, day actions). Route: worker. Commit: (T8 commit) ✅
 - T9 [S1,S3,S7] Students (directory + profile to minimal style).
 - T10 [S1,S3,S7] Staff + credentials directories. Route: worker. Commit: (T10 commit) ✅
-- T11 [S1,S3] Setup, cycle calendar, flow dialog.
+- T11 [S1,S3] Setup, cycle calendar, flow dialog. Route: worker. Commit: (T11 commit) ✅
 - T12 [S1,S3,S7] Shell + Inicio; delete remaining .css except styles.css.
 - T13 Verification: suite, typecheck, Biome, detector, browser desktop+390.
 
@@ -44,3 +44,5 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - L7: T10 done by worker: Personal and Terminales restyled to minimal (stats card with Registros/Docentes/Con materias asignadas and Equipos/Habilitados/Desactivados, FilterBar, DataTable with Avatar+Badge, icon action); staff-view.css deleted; staff-layout.test hooks -> data-slot/data-variant (RED 8/4 then GREEN 12/12). ChipTooltip (shared) unchanged. Stale school-primitives failures kept; proposed fixes: 4->6 columns (x2), find the icon button by aria-label, replace the <details> assertion with the open() payload — pending user decision.
 - L8: T6 done by worker: shared PostCard family in components/ui/post-card.tsx used by Comunicados and Conducta; conduct-view.css deleted; hooks -> data-slot (RED 11/10, GREEN 21/0, ui 18/0). Accepted visual deltas: 36px marker in both, 44px segmented filter/sm buttons, 24px tutor avatars (12px minimum), success-token green. Known regression handed to T7: group picker (.followup-scope) lost its 420px width because its rules lived in conduct-view.css.
 - L9: T7 done by worker: groups/ + grades/group-grades-table to utilities; new groups/group-table-ui.tsx (Segmented switch, StatusLegend with hollow dot, table class strings); MiniMonth from components/ui; followup picker = FilterBar+Select max-w-[420px]; group-directory.css deleted; tests -> data-slot (RED 6, GREEN 16/0). Parent fixed two cross-folder assertions: conduct picker test now targets data-slot="field", school-primitives tolerates extra classes after ui-table-scroll. Group tabs look the same (14px heading buttons, 44px MiniMonth cells); Grupos directory restyled (inline-label selects). Risk noted: complete-dot colour arbitrary #5a9e6e.
+- L10: T11 done by worker: Configuración card + storage details, Ciclos y calendario settings card + utility month grid + dot legend, flow dialog native <dialog> with utilities and an <ol> stepper (aria-current=step); cycle-calendar.css deleted; flow-dialog.test.ts -> .tsx with 2 new markup tests (RED 6/15, GREEN 15/15). Open: selected day uses lilac bg-selection token.
+- L11: T8 done by worker: schedule-calendar.tsx 1125->727 lines split into toolbar, panel body, class panel, toast, format, tones, marks, types; calendar-day-actions.css deleted; schedule-calendar.css reduced to the `.schedule-hidden` shim still used by groups/grades (T12 switches them to sr-only and deletes it). 28 real-browser interaction checks passed (panel, cancel+Deshacer, Escape, arrow keys, mini-month, structure view, subject filter, drag-and-drop). Deltas: 44px month cells/stepper/fields; MiniMonth prev/next kept 32px in the 248px column (below the 44px target).

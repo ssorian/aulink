@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { Icon } from "../../../components/ui/icon";
+import { cn } from "../../../lib/utils";
 import type { Field } from "../shared/view-types";
 import { validateFlow } from "./flow-validation";
 
@@ -22,6 +25,9 @@ export const flowDraftKey = (flow: Flow) =>
 		flow.values.group,
 		flow.values.date,
 	].join("|");
+
+const controlClass =
+	"min-h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-normal text-foreground aria-invalid:border-destructive";
 
 export function FlowDialog({
 	flow,
@@ -74,38 +80,59 @@ export function FlowDialog({
 	return (
 		<dialog
 			ref={ref}
+			data-slot="flow-dialog"
 			onCancel={(e) => {
 				e.preventDefault();
 				close();
 			}}
 			aria-labelledby="flow-dialog-heading"
 			aria-describedby="flow-dialog-description"
+			className="fixed m-auto max-h-[88dvh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl backdrop:bg-foreground/40"
 		>
-			<div className="dialog-head">
-				<button
-					type="button"
+			<header className="mb-2 flex items-start justify-between gap-3">
+				<h2
+					id="flow-dialog-heading"
+					tabIndex={-1}
+					className="m-0 pt-2 text-xl font-semibold tracking-tight"
+				>
+					{flow?.title}
+				</h2>
+				<Button
+					variant="icon"
 					onClick={close}
 					aria-label="Cerrar y conservar captura"
 				>
-					×
-				</button>
-			</div>
-			<h2 id="flow-dialog-heading" tabIndex={-1}>
-				{flow?.title}
-			</h2>
-			<p id="flow-dialog-description">{flow?.description}</p>
-			<p>
+					<Icon name="close" size={18} />
+				</Button>
+			</header>
+			<p
+				id="flow-dialog-description"
+				className="m-0 mb-2 text-sm text-foreground"
+			>
+				{flow?.description}
+			</p>
+			<p className="m-0 text-[13px] text-muted-foreground">
 				Al cancelar, la captura se conserva solo en memoria mientras esta página
 				siga abierta.
 			</p>
-			<div className="steps">
-				<span className={step === 0 ? "selected" : ""}>1. Completar</span>
-				<span className={step === 1 ? "selected" : ""}>
-					2. Revisar y confirmar
-				</span>
-			</div>
+			<ol
+				data-slot="flow-steps"
+				className="m-0 my-4 flex list-none gap-5 border-b border-border p-0 text-[13px]"
+			>
+				{["1. Completar", "2. Revisar y confirmar"].map((label, index) => (
+					<li
+						key={label}
+						data-state={step === index ? "current" : "pending"}
+						aria-current={step === index ? "step" : undefined}
+						className="-mb-px border-b-2 border-transparent py-2.5 text-muted-foreground data-[state=current]:border-primary data-[state=current]:font-semibold data-[state=current]:text-primary"
+					>
+						{label}
+					</li>
+				))}
+			</ol>
 			<form
 				noValidate
+				className="flex flex-col gap-4"
 				onSubmit={(e) => {
 					e.preventDefault();
 					setError("");
@@ -134,10 +161,15 @@ export function FlowDialog({
 			>
 				{step === 0 ? (
 					flow?.fields.map((f) => (
-						<label key={f.key} htmlFor={`flow-${f.key}`}>
+						<label
+							key={f.key}
+							htmlFor={`flow-${f.key}`}
+							className="m-0 flex flex-col gap-1.5 text-[13px] font-medium text-foreground has-aria-invalid:text-destructive"
+						>
 							{f.label}
 							{f.options ? (
 								<select
+									className={controlClass}
 									aria-invalid={!!errors[f.key]}
 									aria-describedby={
 										errors[f.key] ? `flow-error-${f.key}` : undefined
@@ -158,6 +190,7 @@ export function FlowDialog({
 								</select>
 							) : f.type === "textarea" ? (
 								<textarea
+									className={cn(controlClass, "min-h-28 py-2")}
 									rows={f.rows}
 									aria-invalid={!!errors[f.key]}
 									aria-describedby={
@@ -172,6 +205,7 @@ export function FlowDialog({
 								/>
 							) : (
 								<input
+									className={controlClass}
 									aria-invalid={!!errors[f.key]}
 									aria-describedby={
 										errors[f.key] ? `flow-error-${f.key}` : undefined
@@ -187,28 +221,43 @@ export function FlowDialog({
 								/>
 							)}
 							{errors[f.key] && (
-								<span className="form-field-error" id={`flow-error-${f.key}`}>
+								<span
+									data-slot="flow-field-error"
+									className="text-[13px] font-medium text-destructive"
+									id={`flow-error-${f.key}`}
+								>
 									{errors[f.key]}
 								</span>
 							)}
 						</label>
 					))
 				) : (
-					<div className="review">
-						<h3 ref={review} tabIndex={-1}>
+					<div data-slot="flow-review" className="rounded-lg bg-muted p-4">
+						<h3
+							ref={review}
+							tabIndex={-1}
+							className="m-0 mb-3 text-base font-semibold"
+						>
 							Revisión: {flow?.title}
 						</h3>
-						{flow?.fields.map((f) => (
-							<p key={f.key}>
-								<strong>{f.label}</strong>
-								<br />
-								{f.options?.find((o) => o.value === values[f.key])?.label ||
-									values[f.key] ||
-									"Sin contenido"}
-							</p>
-						))}
+						<dl className="m-0 grid gap-3">
+							{flow?.fields.map((f) => (
+								<div key={f.key} className="min-w-0">
+									<dt className="text-xs font-medium text-muted-foreground">
+										{f.label}
+									</dt>
+									<dd className="m-0 text-sm text-foreground [overflow-wrap:anywhere]">
+										{f.options?.find((o) => o.value === values[f.key])?.label ||
+											values[f.key] ||
+											"Sin contenido"}
+									</dd>
+								</div>
+							))}
+						</dl>
 						{flow?.preview?.map((p) => (
-							<p key={p}>{p}</p>
+							<p key={p} className="m-0 mt-3 text-sm text-foreground">
+								{p}
+							</p>
 						))}
 					</div>
 				)}
@@ -217,33 +266,31 @@ export function FlowDialog({
 						ref={alert}
 						tabIndex={-1}
 						role="alert"
-						className="error form-error-summary"
+						data-slot="flow-error"
+						className="m-0 rounded-lg border border-destructive bg-destructive-bg p-3.5 text-sm font-medium text-destructive"
 					>
 						{error}
 					</p>
 				)}
-				<div className="actions">
-					<button type="button" onClick={close}>
-						Cancelar y conservar
-					</button>
+				<div className="flex flex-wrap justify-end gap-2 max-sm:flex-col-reverse max-sm:flex-nowrap max-sm:*:w-full">
+					<Button onClick={close}>Cancelar y conservar</Button>
 					{step === 1 && (
-						<button
-							type="button"
+						<Button
 							onClick={() => {
 								setError("");
 								setStep(0);
 							}}
 						>
 							Corregir
-						</button>
+						</Button>
 					)}
-					<button className="primary" type="submit">
+					<Button variant="primary" type="submit">
 						{step === 0
 							? "Revisar cambios"
 							: flow?.kind.endsWith("-publish")
 								? "Publicar"
 								: "Guardar"}
-					</button>
+					</Button>
 				</div>
 			</form>
 		</dialog>
