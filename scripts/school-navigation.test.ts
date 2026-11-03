@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
 import { createRequire } from "node:module";
-import { GroupFollowupView } from "../apps/web/src/modules/school/group-followup-view";
-import { SetupView } from "../apps/web/src/modules/school/setup-view";
-import { StaffView } from "../apps/web/src/modules/school/staff-view";
-import { initialState } from "../apps/web/src/modules/school/workflows";
+import { GroupFollowupView } from "../apps/web/src/modules/school/groups/group-followup-view";
+import { SetupView } from "../apps/web/src/modules/school/setup/setup-view";
+import { StaffView } from "../apps/web/src/modules/school/staff/staff-view";
+import { initialState } from "../apps/web/src/modules/school/shared/workflows";
 const requireWeb = createRequire(new URL("../apps/web/package.json", import.meta.url));
 const { createElement } = requireWeb("react");
 const { renderToStaticMarkup } = requireWeb("react-dom/server");
-import { schoolNavigation, sectionFor } from "../apps/web/src/modules/school/navigation";
+import { schoolNavigation, sectionFor } from "../apps/web/src/modules/school/shell/navigation";
 
 test("six administrator sections own unique existing destinations", () => {
 	expect(schoolNavigation.map((section) => section.label)).toEqual([

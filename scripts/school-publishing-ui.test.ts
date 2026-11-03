@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { validateFlow } from "../apps/web/src/modules/school/flow-validation";
-import { communicationSummary, validateCommunicationTarget } from "../apps/web/src/modules/school/communication-summary";
-import { initialState } from "../apps/web/src/modules/school/workflows";
+import { validateFlow } from "../apps/web/src/modules/school/setup/flow-validation";
+import { communicationSummary, validateCommunicationTarget } from "../apps/web/src/modules/school/communications/communication-summary";
+import { initialState } from "../apps/web/src/modules/school/shared/workflows";
 
 test("field validation rejects whitespace, invalid email and nonfinite numbers", () => {
  const fields = [{key:"name",label:"Nombre"}, {key:"email",label:"Correo",type:"email"}, {key:"value",label:"Valor",type:"number"}];

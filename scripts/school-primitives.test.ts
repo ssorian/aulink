@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 import { createRequire } from "node:module";
-import { StaffRoleAction, StaffView } from "../apps/web/src/modules/school/staff-view";
-import { DevicesView } from "../apps/web/src/modules/school/credentials-view";
-import { GroupDirectory } from "../apps/web/src/modules/school/group-workspace";
-import { initialState } from "../apps/web/src/modules/school/workflows";
+import { StaffRoleAction, StaffView } from "../apps/web/src/modules/school/staff/staff-view";
+import { DevicesView } from "../apps/web/src/modules/school/staff/credentials-view";
+import { GroupDirectory } from "../apps/web/src/modules/school/groups/group-workspace";
+import { initialState } from "../apps/web/src/modules/school/shared/workflows";
 
 const requireWeb = createRequire(
 	new URL("../apps/web/package.json", import.meta.url),
@@ -56,7 +56,7 @@ for (const [component, caption, action, columns] of [
 
 test("administration breadcrumb does not repeat its root", async () => {
 	const { schoolBreadcrumb } = await import(
-		"../apps/web/src/modules/school/school-app"
+		"../apps/web/src/modules/school/shell/school-app"
 	);
 	expect(schoolBreadcrumb("Administración", "Terminales")).toBe(
 		"Administración / Terminales",

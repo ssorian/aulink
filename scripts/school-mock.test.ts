@@ -2,13 +2,13 @@ import { expect, test } from "bun:test";
 import {
 	buildMockData,
 	mergeMockData,
-} from "../apps/web/src/modules/school/mock-data";
+} from "../apps/web/src/modules/school/shared/mock-data";
 import {
 	initialState,
 	recipients,
 	restore,
 	wasEnrolled,
-} from "../apps/web/src/modules/school/workflows";
+} from "../apps/web/src/modules/school/shared/workflows";
 
 test("seed records use natural school names and complete personal names", () => {
 	for (const s of [initialState(), buildMockData()]) {
@@ -27,7 +27,7 @@ test("only canonical and legacy verified guardians receive notices", () => {
 });
 
 test("legacy seed migration preserves edited rows, custom data and histories", async () => {
-	const { migrateLegacySeed } = await import("../apps/web/src/modules/school/seed-migration");
+	const { migrateLegacySeed } = await import("../apps/web/src/modules/school/shared/seed-migration");
 	const old = buildMockData(true);
 	old.school.name = "Colegio Aurora · Demo";
 	old.students[0].name = "Lucía Prueba";
@@ -54,7 +54,7 @@ test("legacy seed migration preserves edited rows, custom data and histories", a
 });
 
 test("migration does not introduce registration, cycle or group identity collisions", async () => {
-	const { migrateLegacySeed } = await import("../apps/web/src/modules/school/seed-migration");
+	const { migrateLegacySeed } = await import("../apps/web/src/modules/school/shared/seed-migration");
 	const old = buildMockData(true);
 	const next = buildMockData();
 	old.students.push({ ...next.students[0], id: "custom-student" });

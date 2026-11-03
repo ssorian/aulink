@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { summarizeHome } from "../apps/web/src/modules/school/home-summary";
-import { initialState } from "../apps/web/src/modules/school/workflows";
+import { summarizeHome } from "../apps/web/src/modules/school/shell/home-summary";
+import { initialState } from "../apps/web/src/modules/school/shared/workflows";
 
 describe("inicio operativo DEMO", () => {
 	test("cuenta alumnos y grupos sin modificar el estado", () => {

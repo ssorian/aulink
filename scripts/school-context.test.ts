@@ -3,12 +3,12 @@ import {
 	enrolledStudents,
 	groupScope,
 	registrationContext,
-} from "../apps/web/src/modules/school/group-context";
+} from "../apps/web/src/modules/school/groups/group-context";
 import {
 	apply,
 	initialState,
 	restore,
-} from "../apps/web/src/modules/school/workflows";
+} from "../apps/web/src/modules/school/shared/workflows";
 
 test("group context selects enrollment references, not latest membership", () => {
 	let s = initialState();

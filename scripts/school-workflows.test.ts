@@ -6,7 +6,7 @@ import {
 	recipients,
 	restore,
 	type State,
-} from "../apps/web/src/modules/school/workflows";
+} from "../apps/web/src/modules/school/shared/workflows";
 
 const run = (s: State, kind: string, data: Record<string, string>) =>
 	apply(s, { kind, data });

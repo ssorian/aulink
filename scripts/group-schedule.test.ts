@@ -4,14 +4,14 @@ import {
 	initialState,
 	restore,
 	type State,
-} from "../apps/web/src/modules/school/workflows";
+} from "../apps/web/src/modules/school/shared/workflows";
 import {
 	dayWindow,
 	occurrences,
 	undoCommand,
 	schoolToday,
 	validDate,
-} from "../apps/web/src/modules/school/schedule-helpers";
+} from "../apps/web/src/modules/school/schedule/schedule-helpers";
 const run = (s: State, kind: string, data: Record<string, string>) =>
 	apply(s, { kind, data });
 function fixture() {

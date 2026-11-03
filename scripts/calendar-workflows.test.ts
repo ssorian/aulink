@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { apply, initialState, restore } from "../apps/web/src/modules/school/workflows";
+import { apply, initialState, restore } from "../apps/web/src/modules/school/shared/workflows";
 
 const event = { date: "2026-10-20", title: "Festival", text: "Aviso del festival", audience: "school", target: "ignored" };
 

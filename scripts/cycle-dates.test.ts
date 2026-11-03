@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { apply, initialState, restore } from "../apps/web/src/modules/school/workflows";
+import { apply, initialState, restore } from "../apps/web/src/modules/school/shared/workflows";
 
 const dates = { startDate: "2028-02-29", endDate: "2028-07-01" };
 test("legacy snapshots and legacy create keep dates absent", () => {

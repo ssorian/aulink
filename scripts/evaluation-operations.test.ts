@@ -4,13 +4,13 @@ import {
 	buildRiskReport,
 	groupProgress,
 	riskDistribution,
-} from "../apps/web/src/modules/school/evaluation-operations";
+} from "../apps/web/src/modules/school/evaluation/evaluation-operations";
 import {
 	apply,
 	initialState,
 	restore,
 	type State,
-} from "../apps/web/src/modules/school/workflows";
+} from "../apps/web/src/modules/school/shared/workflows";
 
 const run = (s: State, kind: string, data: Record<string, string>) =>
 	apply(s, { kind, data });

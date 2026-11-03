@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterStudents, students } from "../apps/web/src/modules/school/demo";
+import { filterStudents, students } from "../apps/web/src/modules/school/shared/demo";
 
 describe("student directory filters", () => {
 	test("searches accents and student registration without case sensitivity", () => {

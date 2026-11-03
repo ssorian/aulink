@@ -1,14 +1,14 @@
 import { expect, test } from "bun:test";
 import { createRequire } from "node:module";
-import { GroupAttendanceTable } from "../apps/web/src/modules/school/group-attendance-table";
-import { GroupWorkspace } from "../apps/web/src/modules/school/group-workspace";
-import { GroupGradesTable } from "../apps/web/src/modules/school/group-grades-table";
+import { GroupAttendanceTable } from "../apps/web/src/modules/school/groups/group-attendance-table";
+import { GroupWorkspace } from "../apps/web/src/modules/school/groups/group-workspace";
+import { GroupGradesTable } from "../apps/web/src/modules/school/grades/group-grades-table";
 const requireWeb = createRequire(new URL("../apps/web/package.json", import.meta.url));
 const { createElement } = requireWeb("react");
 const { renderToStaticMarkup } = requireWeb("react-dom/server");
-import { attendanceStatus, rangeDays, gradeAverage } from "../apps/web/src/modules/school/group-table-helpers";
-import { initialState } from "../apps/web/src/modules/school/workflows";
-import { groupScope } from "../apps/web/src/modules/school/group-context";
+import { attendanceStatus, rangeDays, gradeAverage } from "../apps/web/src/modules/school/groups/group-table-helpers";
+import { initialState } from "../apps/web/src/modules/school/shared/workflows";
+import { groupScope } from "../apps/web/src/modules/school/groups/group-context";
 test("rendered tables expose scoped evidence, accessible days and draft grades", () => {
  const s=initialState();
  s.events.push({...s.events[0],id:"foreign",student:"s2",group:"g2",kind:"Inasistencia"});

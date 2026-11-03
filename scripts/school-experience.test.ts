@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { filterDirectory, summarizeAttendance } from "../apps/web/src/modules/school/experience";
-import { buildMockData } from "../apps/web/src/modules/school/mock-data";
+import { filterDirectory, summarizeAttendance } from "../apps/web/src/modules/school/students/experience";
+import { buildMockData } from "../apps/web/src/modules/school/shared/mock-data";
 
 describe("directory context", () => {
 	test("combines accent-insensitive search, group and cycle", () => {
