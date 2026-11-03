@@ -31,7 +31,7 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - T9 [S1,S3,S7] Students (directory + profile to minimal style). Route: worker. Commit: (T9 commit) ✅
 - T10 [S1,S3,S7] Staff + credentials directories. Route: worker. Commit: (T10 commit) ✅
 - T11 [S1,S3] Setup, cycle calendar, flow dialog. Route: worker. Commit: (T11 commit) ✅
-- T12 [S1,S3,S7] Shell + Inicio; delete remaining .css except styles.css.
+- T12 [S1,S3,S7] Shell + Inicio; delete remaining .css except styles.css. Route: workers (a shell, b tokens) + inline cleanup. Commit: (T12 commits) ✅
 - T13 Verification: suite, typecheck, Biome, detector, browser desktop+390.
 
 ## Log
@@ -52,3 +52,4 @@ Branch `feat/ui-tailwind` (from master after fast-forward merge of feat/schedule
 - L15: parent removed dead code with no importers: shared/group-tables.css (1530 lines), shared/directory.css + directory-components.tsx, shared/profile-badge.tsx, grades/grades-view.tsx, and the unused Empty helper in view-helpers. Typecheck errors/test failures at that moment only in shell/ (T12a mid-RED).
 - L16: parent moved components/ui CSS into Tailwind: primitives.css + data-table.css deleted; DataTable skin rewritten as `@apply` rules in styles.css @layer components (callers keep overriding with utilities; the table area of Avance is pixel-identical to t12b); WorkspaceTabs styled with utilities + data-slot hook (2 tests now match data-slot); unused Panel deleted; README updated.
 - L17: T12a done by worker: shell frame (skip link, sidebar, brand, school mark Avatar, topbar + stripe, page heading, back link, banners) and sidebar-nav on utilities/primitives; Inicio restyled to four tone stat cards with actions + 'Por revisar' Card + EmptyState; new school-app.test.tsx and home-view.test.tsx; RED 7/9 -> GREEN 9/9; suite 359/6 known. Frame matches base at 1440; at <=760px breadcrumb text 11->12px (PRODUCT minimum). Sidebar uses arbitrary breakpoints max-[1150px]/max-[760px].
+- L18: parent replaced the legacy layer of styles.css with an explicit `@layer base` (element defaults with the effective values of the old cascade) and a 3-rule `@layer components` (.ui-icon, button:has(.ui-icon), .stripe-border); chip-tooltip moved to utilities (tone-* class kept as hook, fill via bg-<tone>-ink map) and its CSS deleted. styles.css is now the only CSS file (423 lines, from 446 + 16 module files ~7k lines). Visual diff pre vs post across 17 routes x 2 widths: all identical except antialias on Personal chips (0.056%); tooltip open state checked in Chromium. Suite 359/6 known (staff-layout tooltip regex tolerates utility classes after the hooks).

@@ -237,13 +237,13 @@ test("workload derives subjects, groups and weekly hours from assignments", () =
 test("subjects and groups open a tooltip of colored cards", () => {
 	const html = render();
 	expect(html).toMatch(
-		/<button type="button" class="chip-tooltip-trigger stripe-border" aria-label="2 materias" aria-describedby="([^"]+)">2<\/button><ul role="tooltip" id="\1" class="chip-tooltip">/,
+		/<button type="button" class="chip-tooltip-trigger stripe-border[^"]*" aria-label="2 materias" aria-describedby="([^"]+)">2<\/button><ul role="tooltip" id="\1" class="chip-tooltip [^"]*">/,
 	);
 	expect(html).toContain('aria-label="2 grupos"');
 	expect(html).not.toContain(">2 materias</button>");
 	for (const name of ["Matemáticas", "Física", "1° A", "2° B"])
 		expect(html).toMatch(
-			new RegExp(`<li class="chip tone-[a-z]+">${name}</li>`),
+			new RegExp(`<li class="chip tone-[a-z]+ [^"]*">${name}</li>`),
 		);
 	expect(html).not.toContain("Matemáticas, Física");
 	expect(html).toMatch(/<td[^>]*>2\.5<\/td>/);
