@@ -8,17 +8,15 @@ import {
 } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConductView } from "../conduct/conduct-view";
-import { buildMockData } from "../shared/mock-data";
 import { StudentGrades } from "../grades/student-grades";
-import {
-	credentialPreview,
-	GuardianDetail,
-	openWithdraw,
-	StudentProfile,
-} from "./student-profile";
-import { summarizeGrades } from "./student-summary";
+import { buildMockData } from "../shared/mock-data";
 import { options } from "../shared/view-helpers";
 import { activeGroup, wasEnrolled } from "../shared/workflows";
+import { credentialPreview } from "./profile/credential";
+import { GuardianDetail } from "./profile/guardian-detail";
+import { GuardianDialog } from "./profile/guardian-dialog";
+import { openWithdraw, StudentProfile } from "./student-profile";
+import { summarizeGrades } from "./student-summary";
 
 function setup() {
 	const s = buildMockData();
@@ -62,16 +60,17 @@ test("profile offers four tabs and opens on Resumen", () => {
 const section = (html: string, heading: string) =>
 	html.match(
 		new RegExp(
-			`<section class="panel ui-panel profile-card[^"]*"[^>]*>(?:(?!</section>)[\\s\\S])*?<h2[^>]*>${heading}</h2>[\\s\\S]*?</section>`,
+			`<section data-slot="card"[^>]*>(?:(?!</section>)[\\s\\S])*?<h3[^>]*>${heading}</h3>[\\s\\S]*?</section>`,
 		),
 	)?.[0] ?? "";
 
 test("heading names the student with matrícula, grade, group, cycle and two actions", () => {
 	const html = render();
 	const heading =
-		html.match(/<section class="workspace-heading[\s\S]*?<\/section>/)?.[0] ??
-		"";
-	expect(heading).toContain("<h2>Alba Mendoza Ruiz</h2>");
+		html.match(
+			/<section data-slot="student-heading"[\s\S]*?<\/section>/,
+		)?.[0] ?? "";
+	expect(heading).toMatch(/<h2[^>]*>Alba Mendoza Ruiz<\/h2>/);
 	expect(text(heading)).toContain(
 		"Matrícula AUR-26101 · 1° B · Agosto 2026 – Julio 2027",
 	);
@@ -92,9 +91,11 @@ test("a withdrawn student shows a Baja badge and cannot be moved or withdrawn ag
 	});
 	const heading =
 		render(s, student.id).match(
-			/<section class="workspace-heading[\s\S]*?<\/section>/,
+			/<section data-slot="student-heading"[\s\S]*?<\/section>/,
 		)?.[0] ?? "";
-	expect(heading).toMatch(/profile-badge[^"]*">Baja<\/span>/);
+	expect(heading).toMatch(
+		/data-slot="badge" data-tone="danger"[^>]*>Baja<\/span>/,
+	);
 	expect(heading).toMatch(/<button[^>]*disabled=""[^>]*>Cambiar de grupo/);
 	expect(heading).toMatch(/<button[^>]*disabled=""[^>]*>Dar de baja/);
 });
@@ -163,7 +164,7 @@ test("guardians list at most two rows, each a button, with relation and status",
 	expect(text(rows[0])).toContain("Mariana Ruiz Salcedo");
 	expect(text(rows[0])).toContain("Madre");
 	expect(rows.join("")).toMatch(
-		/profile-badge[^"]*">Verificado en el registro<\/span>/,
+		/data-slot="badge" data-tone="success"[^>]*>Verificado en el registro<\/span>/,
 	);
 	expect(text(panel)).not.toContain("Historial del vínculo");
 	expect(panel).not.toContain("Revocado");
@@ -209,7 +210,6 @@ test("guardian detail shows contact data, never invents missing values, and wire
 		onClose: () => closed.push("x"),
 	});
 	const html = renderToStaticMarkup(element);
-	expect(text(html)).toContain("Rosa Pérez");
 	expect(text(html)).toContain("Parentesco Sin registrar");
 	expect(text(html)).toContain("Teléfono 5512345678");
 	expect(text(html)).toContain("Correo Sin registrar");
@@ -259,6 +259,26 @@ test("guardian detail shows contact data, never invents missing values, and wire
 	status?.props.onClick();
 	expect(calls[1][0]).toBe("guardian-status");
 	expect(calls[1][3]).toEqual({ id: "l9" });
+});
+
+test("guardian dialog is a labelled dialog titled with the guardian name", () => {
+	const html = renderToStaticMarkup(
+		<GuardianDialog
+			link={{
+				id: "l9",
+				student: "s",
+				name: "Rosa Pérez",
+				status: "Verificado",
+				history: [],
+			}}
+			open={() => {}}
+			onClose={() => {}}
+		/>,
+	);
+	expect(html).toMatch(/<dialog data-slot="dialog"[^>]*aria-labelledby=/);
+	expect(html).toMatch(/<h2[^>]*>Rosa Pérez<\/h2>/);
+	expect(html).toContain('aria-label="Cerrar"');
+	expect(text(html)).toContain("Estado Verificado en el registro");
 });
 
 test("guardian detail disables status change for revoked links", () => {
@@ -335,7 +355,9 @@ test("credential shows a compact card for the active revision", () => {
 	const panel = section(html, "Credencial");
 	expect(text(panel)).toContain("AUR-26101");
 	expect(text(panel)).toContain("Revisión 2");
-	expect(panel).toMatch(/profile-badge[^"]*">Vigente<\/span>/);
+	expect(panel).toMatch(
+		/data-slot="badge" data-tone="success"[^>]*>Vigente<\/span>/,
+	);
 	expect(panel).toContain(">Reemitir credencial</button>");
 	expect(text(panel)).not.toContain("Revisiones anteriores");
 	expect(text(panel)).not.toContain("revoca");
@@ -354,7 +376,7 @@ test("without an active credential a static empty state offers issuing one", () 
 
 test("the no-scan warning is a visible notice, not muted description", () => {
 	const panel = section(render(), "Credencial");
-	expect(panel).toMatch(/class="profile-notice"/);
+	expect(panel).toContain('data-slot="credential-notice"');
 	expect(text(panel)).toContain(
 		"Modelo sin código escaneable; no sirve para acceso.",
 	);
@@ -362,8 +384,10 @@ test("the no-scan warning is a visible notice, not muted description", () => {
 
 test("destructive actions use the danger button class and Cambiar de grupo stays neutral", () => {
 	const html = render();
-	expect(html).toMatch(/<button[^>]*class="button-danger"[^>]*>Dar de baja/);
-	expect(html).not.toMatch(/<button[^>]*button-danger[^>]*>Cambiar de grupo/);
+	expect(html).toMatch(/<button[^>]*data-variant="danger"[^>]*>Dar de baja/);
+	expect(html).not.toMatch(
+		/<button[^>]*data-variant="danger"[^>]*>Cambiar de grupo/,
+	);
 	const detail = renderToStaticMarkup(
 		GuardianDetail({
 			link: {
@@ -378,7 +402,7 @@ test("destructive actions use the danger button class and Cambiar de grupo stays
 		}),
 	);
 	expect(detail).toMatch(
-		/<button[^>]*class="button-danger"[^>]*>Restringir o revocar/,
+		/<button[^>]*data-variant="danger"[^>]*>Restringir o revocar/,
 	);
 });
 
@@ -405,7 +429,7 @@ test("resumen has no history anywhere", () => {
 	])
 		expect(text(html)).not.toContain(gone);
 	expect(html).not.toContain("<details");
-	expect(html).not.toContain("avatar");
+	expect(html).not.toContain("<img");
 });
 
 test("attendance shows campus percent, subject table and absences to justify", () => {
@@ -413,8 +437,8 @@ test("attendance shows campus percent, subject table and absences to justify", (
 	const html = render(s, student.id, "Asistencia");
 	const plain = text(html);
 	// Three separate blocks.
-	const headings = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map((m) =>
-		text(m[1]).trim(),
+	const headings = [...html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/g)].map(
+		(m) => text(m[1]).trim(),
 	);
 	expect(headings).toEqual([
 		"Alba Mendoza Ruiz",
@@ -428,7 +452,7 @@ test("attendance shows campus percent, subject table and absences to justify", (
 	);
 	// General percent comes from campus entries over elapsed school days.
 	expect(plain).toContain(
-		"Asistencia a la escuela Entradas registradas por la terminal del plantel 97 % 43 de 44 días de clase con entrada",
+		"Asistencia a la escuela Entradas registradas por la terminal del plantel Entradas al plantel 97 % 43 de 44 días de clase con entrada",
 	);
 	// Per-subject table states the rules and flags the subject under the minimum.
 	expect(plain).toContain(
@@ -447,7 +471,7 @@ test("attendance shows campus percent, subject table and absences to justify", (
 		"Asistencia",
 		"Estado",
 	]);
-	const artes = html.match(/<tr class="is-risk">[\s\S]*?<\/tr>/g) ?? [];
+	const artes = html.match(/<tr data-state="risk"[\s\S]*?<\/tr>/g) ?? [];
 	expect(artes).toHaveLength(1);
 	expect(text(artes[0] ?? "")).toContain(
 		"Artes 13 de 18 5 0 72 % Riesgo de extraordinario",
@@ -461,11 +485,11 @@ test("attendance shows campus percent, subject table and absences to justify", (
 		"Sin entrada a la escuela · faltó a todas sus clases",
 	);
 	expect(html.match(/>Justificar<\/button>/g)).toHaveLength(6);
-	// The table sits on the page in its own card; the list keeps its panel.
-	expect(html.match(/class="panel ui-panel"/g)).toHaveLength(1);
-	expect(html).toContain('class="panel attendance-pending-panel"');
+	// Stat card and pending list are cards; the subject table keeps its own table card.
+	expect(html.match(/data-slot="card"/g)).toHaveLength(2);
 	expect(html.match(/class="ui-table-card"/g)).toHaveLength(1);
-	expect(html.match(/class="attendance-pending-item"/g)).toHaveLength(6);
+	expect(html.match(/data-slot="pending-day"/g)).toHaveLength(6);
+	expect(html.match(/data-slot="meter"/g)?.length).toBeGreaterThan(1);
 	expect(html).toContain(
 		'aria-label="Justificar falta del lunes, 19 de octubre de 2026"',
 	);
@@ -580,7 +604,7 @@ test("grade tables group cycles, sort rows and show statuses and actions", () =>
 	expect(text(html)).toContain("Segundo trimestre");
 	expect(text(html)).toContain("Abierto hasta el 13 nov");
 	// Passing subjects stay plain text; only failing ones get a badge.
-	expect(html).not.toMatch(/profile-badge[^"]*">Aprueba</);
+	expect(html).not.toMatch(/data-slot="badge"[^>]*>Aprueba</);
 	expect(text(html)).toContain("Sin calificación del docente");
 	expect(html).toContain("—");
 	expect(html).toContain("Aprueba");
@@ -678,42 +702,45 @@ test("profile buttons avoid slash labels", () => {
 	}
 });
 
-test("each Resumen card carries its tone modifier", () => {
+test("each Resumen block is a card with its heading", () => {
 	const html = render();
-	for (const [heading, tone] of [
-		["Grado y grupo", "sky"],
-		["Calificaciones", "lilac"],
-		["Asistencia", "teal"],
-		["Tutores", "peach"],
-		["Credencial", "mustard"],
-	] as const)
-		expect(section(html, heading)).toContain(`profile-card--${tone}`);
+	for (const heading of [
+		"Grado y grupo",
+		"Calificaciones",
+		"Asistencia",
+		"Tutores",
+		"Credencial",
+	])
+		expect(section(html, heading)).not.toBe("");
+	expect(html).not.toContain("profile-card");
 });
 
-test("focal numbers get a decorative meter and secondary tiles a status dot", () => {
+test("focal numbers get a meter and secondary stats a tone from their state", () => {
 	const html = render();
 	for (const heading of ["Calificaciones", "Asistencia"]) {
 		const panel = section(html, heading);
-		expect(panel).toMatch(
-			/<span class="profile-meter" aria-hidden="true"><span style="width:[\d.]+%"><\/span><i style="left:[\d.]+%"><\/i><\/span>/,
-		);
+		expect(panel).toMatch(/data-slot="meter"[^>]*role="meter"/);
+		expect(panel).toMatch(/aria-valuenow="[\d.]+"/);
+		expect(panel).toContain('data-slot="stat"');
 	}
-	expect(section(html, "Calificaciones")).toContain("profile-stat--dot");
-	expect(section(html, "Asistencia")).toContain("profile-stat--dot");
+	// No subject under the minimum and five drafts for this student.
+	expect(section(html, "Calificaciones")).toContain('data-tone="success"');
+	expect(section(html, "Calificaciones")).toContain('data-tone="mustard"');
+	expect(section(html, "Asistencia")).toContain('data-tone="danger"');
 });
 
 test("no meter when the average is missing", () => {
 	const { s, student } = setup();
 	s.grades = [];
 	expect(section(render(s, student.id), "Calificaciones")).not.toContain(
-		"profile-meter",
+		'data-slot="meter"',
 	);
 });
 
 test("active credential is a card with school name, student and matrícula", () => {
 	const { s, student } = setup();
 	const panel = section(render(s, student.id), "Credencial");
-	expect(panel).toContain("profile-id-card");
+	expect(panel).toContain('data-slot="credential-card"');
 	expect(text(panel)).toContain(s.school.name);
 	expect(text(panel)).toContain(student.name);
 	expect(text(panel)).toContain(student.matricula);
@@ -722,6 +749,6 @@ test("active credential is a card with school name, student and matrícula", () 
 test("guardian initials are decorative", () => {
 	const panel = section(render(), "Tutores");
 	expect(panel).toMatch(
-		/<span class="profile-initials[^"]*" aria-hidden="true">[A-ZÁÉÍÓÚÑ]{1,2}<\/span>/,
+		/<span aria-hidden="true"[^>]*><span data-slot="avatar"[^>]*>[A-ZÁÉÍÓÚÑ]{1,2}<\/span><\/span>/,
 	);
 });

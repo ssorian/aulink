@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Select } from "../../../components/ui/field";
 import { field, options, reason } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
 export function GradeRecords({
@@ -7,16 +12,22 @@ export function GradeRecords({
 	studentName,
 }: Pick<ViewProps, "s" | "open" | "studentName">) {
 	return (
-		<section className="panel">
-			<h2>Revisar y publicar</h2>
+		<Card>
+			<h2 className="m-0 mb-2 text-lg font-semibold tracking-tight">
+				Revisar y publicar
+			</h2>
 			{s.grades.map((g) => (
-				<article className="list-row" key={g.id}>
-					<h3>
+				<article
+					data-slot="grade-record"
+					className="grid gap-2 border-b border-border py-4 last:border-b-0"
+					key={g.id}
+				>
+					<h3 className="m-0 text-base font-semibold">
 						{studentName(g.student)} ·{" "}
 						{s.assignments.find((a) => a.id === g.assignment)?.subject}:{" "}
 						{g.value}
 					</h3>
-					<p>
+					<p className="m-0 text-sm text-muted-foreground">
 						{s.assignments.find((a) => a.id === g.assignment)?.period} ·{" "}
 						{
 							s.groups.find(
@@ -38,10 +49,14 @@ export function GradeRecords({
 							)?.name
 						}
 					</p>
-					<span className="pill">{g.published ? "Publicado" : "Borrador"}</span>
-					<div className="actions">
-						<button
-							type="button"
+					<Badge
+						tone={g.published ? "success" : "mustard"}
+						className="justify-self-start"
+					>
+						{g.published ? "Publicado" : "Borrador"}
+					</Badge>
+					<div className="flex flex-wrap gap-2">
+						<Button
 							onClick={() =>
 								open(
 									"grade",
@@ -56,9 +71,8 @@ export function GradeRecords({
 							}
 						>
 							Corregir con motivo
-						</button>
-						<button
-							type="button"
+						</Button>
+						<Button
 							disabled={g.published}
 							onClick={() =>
 								open(
@@ -73,21 +87,22 @@ export function GradeRecords({
 							}
 						>
 							Revisar publicación
-						</button>
+						</Button>
 					</div>
 					{g.history.map((h) => (
-						<p key={h.id}>
+						<p key={h.id} className="m-0 text-sm text-muted-foreground">
 							{h.value} · {h.reason} · {h.author}
 						</p>
 					))}
 				</article>
 			))}
 			{!s.grades.length && (
-				<p>
-					Configura una asignación y captura alumnos inscritos para comenzar.
-				</p>
+				<EmptyState
+					title="Sin calificaciones"
+					text="Configura una asignación y captura alumnos inscritos para comenzar."
+				/>
 			)}
-		</section>
+		</Card>
 	);
 }
 export function GradesView({
@@ -99,33 +114,34 @@ export function GradesView({
 	const a = s.assignments.find((x) => x.id === assignment);
 	return (
 		<>
-			<section className="panel">
-				<h2>Captura por materia y periodo</h2>
-				<p>
+			<Card className="grid gap-3">
+				<h2 className="m-0 text-lg font-semibold tracking-tight">
+					Captura por materia y periodo
+				</h2>
+				<p className="m-0 max-w-none text-sm text-muted-foreground">
 					Primero selecciona una asignación de este grupo. Sin fórmulas de
 					promedio automáticas.
 				</p>
-				<label>
-					Materia / periodo
-					<select
-						value={assignment}
-						onChange={(e) => setAssignment(e.target.value)}
-					>
-						<option value="">Selecciona una asignación</option>
-						{s.assignments.map((a) => (
-							<option value={a.id} key={a.id}>
-								{a.subject} · {a.period} · {a.teacher}
-							</option>
-						))}
-					</select>
-				</label>
+				<Select
+					id="grade-assignment"
+					label="Materia y periodo"
+					value={assignment}
+					all="Selecciona una asignación"
+					items={s.assignments.map((x) => ({
+						value: x.id,
+						label: `${x.subject} · ${x.period} · ${x.teacher}`,
+					}))}
+					onChange={setAssignment}
+					className="flex-none"
+				/>
 				{a && (
 					<>
-						<p>
+						<p className="m-0 text-sm text-muted-foreground">
 							Escala {a.min}–{a.max} · {a.teacher}
 						</p>
-						<button
-							type="button"
+						<Button
+							className="justify-self-start"
+							variant="primary"
 							onClick={() =>
 								open(
 									"grade",
@@ -141,13 +157,15 @@ export function GradesView({
 							}
 						>
 							Capturar calificación
-						</button>
+						</Button>
 					</>
 				)}
 				{!s.assignments.length && (
-					<p>Agrega una asignación en Materias y horario para comenzar.</p>
+					<p className="m-0 text-sm text-muted-foreground">
+						Agrega una asignación en Materias y horario para comenzar.
+					</p>
 				)}
-			</section>
+			</Card>
 			{a && (
 				<GradeRecords
 					s={{ ...s, grades: s.grades.filter((g) => g.assignment === a.id) }}

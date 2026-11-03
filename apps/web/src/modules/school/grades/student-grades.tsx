@@ -1,13 +1,18 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { Badge } from "../../../components/ui/badge";
+import { Button, buttonVariants } from "../../../components/ui/button";
 import { DataTable } from "../../../components/ui/data-table";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { Select } from "../../../components/ui/field";
+import { FilterBar } from "../../../components/ui/filter-bar";
 import { Icon } from "../../../components/ui/icon";
-import { cycleStartYear } from "../students/experience";
-import { average, periodRows, periodState, situation } from "./grades-record";
-import { DEMO_PERIODS, demoPeriod, GRADES_TODAY } from "./grades-record-demo";
-import { ProfileBadge } from "../shared/profile-badge";
+import { cn } from "../../../lib/utils";
 import { field, reason } from "../shared/view-helpers";
 import type { ViewProps } from "../shared/view-types";
 import type { State } from "../shared/workflows";
+import { cycleStartYear } from "../students/experience";
+import { average, periodRows, periodState, situation } from "./grades-record";
+import { DEMO_PERIODS, demoPeriod, GRADES_TODAY } from "./grades-record-demo";
 
 type Grade = State["grades"][number];
 const dateLabel = (date: string) =>
@@ -81,15 +86,21 @@ function GradeActions({
 			? grade.history[0].value.split("→")[0].trim()
 			: "No disponible"
 		: String(grade.value);
+	const item = "w-full justify-start font-medium text-foreground";
 	return (
 		<>
 			<button
 				type="button"
+				data-slot="button"
+				data-variant="icon"
 				ref={trigger}
 				aria-label={`Acciones de ${subject}`}
 				aria-haspopup="dialog"
 				aria-controls={id}
-				className="profile-grade-trigger"
+				className={cn(
+					buttonVariants({ variant: "icon" }),
+					"text-muted-foreground",
+				)}
 				onClick={show}
 			>
 				<Icon name="more" size={18} />
@@ -100,11 +111,12 @@ function GradeActions({
 				popover="auto"
 				role="dialog"
 				aria-label={`Acciones de ${subject}`}
-				className="profile-grade-popover"
+				className="fixed inset-auto m-0 w-max min-w-56 max-w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-border bg-card p-1.5 text-foreground shadow-lg"
 			>
 				<div hidden={history}>
-					<button
-						type="button"
+					<Button
+						variant="ghost"
+						className={item}
 						disabled={closed}
 						onClick={() => {
 							popup.current?.hidePopover();
@@ -121,17 +133,25 @@ function GradeActions({
 						}}
 					>
 						Corregir calificación…
-					</button>
-					{closed && <span>{hint}</span>}
-					<button type="button" onClick={() => setHistory(true)}>
+					</Button>
+					{closed && (
+						<span className="block px-3 pb-1.5 text-sm text-muted-foreground">
+							{hint}
+						</span>
+					)}
+					<Button
+						variant="ghost"
+						className={item}
+						onClick={() => setHistory(true)}
+					>
 						Ver historial
-					</button>
+					</Button>
 				</div>
 				<div hidden={!history}>
-					<strong>Historial de {subject}</strong>
-					<p>Valor original: {original}</p>
+					<strong className="block px-3 pt-2">Historial de {subject}</strong>
+					<p className="mx-0 my-1.5 px-3 text-sm">Valor original: {original}</p>
 					{grade.history.length ? (
-						<ul>
+						<ul className="my-1.5 pr-3 pl-7 text-sm">
 							{grade.history.map((h) => (
 								<li key={h.id}>
 									{h.value} · {h.reason} · {h.author}
@@ -139,11 +159,14 @@ function GradeActions({
 							))}
 						</ul>
 					) : (
-						<p>Sin correcciones</p>
+						<p className="mx-0 my-1.5 px-3 text-sm">Sin correcciones</p>
 					)}
 					<button
-						ref={closeHistory}
 						type="button"
+						data-slot="button"
+						data-variant="ghost"
+						ref={closeHistory}
+						className={cn(buttonVariants({ variant: "ghost" }), item)}
 						onClick={() => popup.current?.hidePopover()}
 					>
 						Cerrar
@@ -240,148 +263,169 @@ export function StudentGrades({
 		? periodState(selectedPeriod, GRADES_TODAY)
 		: "closed";
 	return (
-		<section className="profile-grades">
+		<section data-slot="student-grades" className="grid min-w-0 gap-4">
 			{!cycles.length ? (
-				<p>Sin calificaciones capturadas para este alumno.</p>
+				<EmptyState
+					title="Sin calificaciones"
+					text="Sin calificaciones capturadas para este alumno."
+				/>
 			) : (
 				<>
-					<div className="profile-grades-toolbar">
-						<fieldset className="profile-grades-periods" aria-label="Periodo">
+					<FilterBar
+						label="Filtros de calificaciones"
+						className="m-0 items-center gap-3"
+					>
+						<fieldset
+							aria-label="Periodo"
+							className="m-0 flex min-w-0 max-w-full gap-2 overflow-x-auto border-0 p-0"
+						>
 							{[...names, "Final"].map((name) => (
-								<button
+								<Button
 									key={name}
-									type="button"
+									size="sm"
+									variant={
+										(isFinal ? name === "Final" : name === selectedPeriod?.name)
+											? "primary"
+											: "default"
+									}
 									aria-pressed={
 										isFinal ? name === "Final" : name === selectedPeriod?.name
 									}
+									className="shrink-0 whitespace-nowrap"
 									onClick={() => setSelected(name)}
 								>
 									{name}
-								</button>
+								</Button>
 							))}
 						</fieldset>
-						<p className="profile-grades-state">
-							{isFinal ? (
-								"Promedio de los periodos calificados"
-							) : selectedPeriod && state === "open" ? (
-								<ProfileBadge tone="ok">{`Abierto hasta el ${dateLabel(selectedPeriod.end)}`}</ProfileBadge>
-							) : selectedPeriod && state === "closed" ? (
-								`Cerrado el ${dateLabel(selectedPeriod.end)}`
-							) : (
-								selectedPeriod && `Inicia el ${dateLabel(selectedPeriod.start)}`
-							)}
-						</p>
-						<div className="profile-grades-meta">
-							{cycles.length > 1 && (
-								<select
-									aria-label="Ciclo"
-									value={cycle}
-									onChange={(e) => {
-										setCycle(e.target.value);
-										setSelected(undefined);
-									}}
-								>
-									{cycles.map((id) => (
-										<option key={id} value={id}>
-											{s.cycles.find((c) => c.id === id)?.name ?? id}
-										</option>
-									))}
-								</select>
-							)}
-							<ProfileBadge tone="current">Datos de muestra</ProfileBadge>
-						</div>
+						{cycles.length > 1 && (
+							<Select
+								id="student-grades-cycle"
+								label="Ciclo"
+								value={cycle}
+								items={cycles.map((id) => ({
+									value: id,
+									label: s.cycles.find((c) => c.id === id)?.name ?? id,
+								}))}
+								onChange={(value) => {
+									setCycle(value);
+									setSelected(undefined);
+								}}
+								className="flex-none"
+							/>
+						)}
+					</FilterBar>
+					<div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+						{isFinal ? (
+							<p className="m-0">Promedio de los periodos calificados</p>
+						) : selectedPeriod && state === "open" ? (
+							<Badge tone="success">{`Abierto hasta el ${dateLabel(selectedPeriod.end)}`}</Badge>
+						) : selectedPeriod && state === "closed" ? (
+							<p className="m-0">{`Cerrado el ${dateLabel(selectedPeriod.end)}`}</p>
+						) : (
+							selectedPeriod && (
+								<p className="m-0">{`Inicia el ${dateLabel(selectedPeriod.start)}`}</p>
+							)
+						)}
+						<Badge>Datos de muestra</Badge>
 					</div>
-					<DataTable
-						caption={`Calificaciones · ${isFinal ? "Final" : selectedPeriod?.name}`}
-						variant="card"
-						scrollClassName="profile-grades-scroll"
-					>
-						<thead>
-							<tr>
-								<th scope="col">Materia</th>
-								{isFinal ? (
-									periods.map((p) => (
-										<th key={p.name} scope="col">
-											{p.name}
-										</th>
-									))
-								) : (
-									<th scope="col">Docente</th>
-								)}
-								<th scope="col">{isFinal ? "Promedio" : "Calificación"}</th>
-								<th scope="col">Situación</th>
-								{!isFinal && <th scope="col">Acciones</th>}
-							</tr>
-						</thead>
-						<tbody>
-							{periodRows(rows, selectedPeriod?.name ?? "").map((row) => {
-								const assignment = row.assignments.find(
-									(a) =>
-										demoPeriod(a.period, recent).name === selectedPeriod?.name,
-								);
-								const grade =
-									state === "upcoming"
-										? undefined
-										: cycleGrades.find((g) => g.assignment === assignment?.id);
-								const value = isFinal
-									? average(periods.map((p) => row.values[p.name]))
-									: (grade?.value ?? null);
-								const status = situation(value, s.evaluationRules.passing);
-								return (
-									<tr key={row.subject}>
-										<th scope="row">{row.subject}</th>
-										{isFinal ? (
-											periods.map((p) => (
-												<td key={p.name}>{row.values[p.name] ?? "—"}</td>
-											))
-										) : (
-											<td className="profile-grade-muted">
-												{assignment?.teacher ??
-													row.assignments[0]?.teacher ??
-													"—"}
-											</td>
-										)}
-										<td className="profile-grade-value">
-											{value == null
-												? "—"
-												: isFinal
-													? numberLabel(value)
-													: value}
-										</td>
-										<td>
-											{status === "Reprueba" ? (
-												<ProfileBadge tone="off">Reprueba</ProfileBadge>
-											) : status ? (
-												"Aprueba"
+					<div className="min-w-0 [&_caption]:sr-only [&_table]:table-auto [&_td]:align-middle [&_td]:text-sm [&_th]:align-middle [&_thead_th]:whitespace-nowrap">
+						<DataTable
+							caption={`Calificaciones · ${isFinal ? "Final" : selectedPeriod?.name}`}
+							variant="card"
+						>
+							<thead>
+								<tr>
+									<th scope="col">Materia</th>
+									{isFinal ? (
+										periods.map((p) => (
+											<th key={p.name} scope="col">
+												{p.name}
+											</th>
+										))
+									) : (
+										<th scope="col">Docente</th>
+									)}
+									<th scope="col">{isFinal ? "Promedio" : "Calificación"}</th>
+									<th scope="col">Situación</th>
+									{!isFinal && <th scope="col">Acciones</th>}
+								</tr>
+							</thead>
+							<tbody>
+								{periodRows(rows, selectedPeriod?.name ?? "").map((row) => {
+									const assignment = row.assignments.find(
+										(a) =>
+											demoPeriod(a.period, recent).name ===
+											selectedPeriod?.name,
+									);
+									const grade =
+										state === "upcoming"
+											? undefined
+											: cycleGrades.find(
+													(g) => g.assignment === assignment?.id,
+												);
+									const value = isFinal
+										? average(periods.map((p) => row.values[p.name]))
+										: (grade?.value ?? null);
+									const status = situation(value, s.evaluationRules.passing);
+									return (
+										<tr key={row.subject}>
+											<th scope="row" className="text-sm">
+												{row.subject}
+											</th>
+											{isFinal ? (
+												periods.map((p) => (
+													<td key={p.name}>{row.values[p.name] ?? "—"}</td>
+												))
 											) : (
-												<span className="profile-grade-muted">
-													Sin calificación del docente
-												</span>
+												<td className="text-muted-foreground">
+													{assignment?.teacher ??
+														row.assignments[0]?.teacher ??
+														"—"}
+												</td>
 											)}
-										</td>
-										{!isFinal && (
+											<td className="font-semibold tabular-nums">
+												{value == null
+													? "—"
+													: isFinal
+														? numberLabel(value)
+														: value}
+											</td>
 											<td>
-												{grade && (
-													<GradeActions
-														grade={grade}
-														subject={row.subject}
-														closed={state !== "open"}
-														hint={
-															state === "closed" && selectedPeriod
-																? `Periodo cerrado el ${dateLabel(selectedPeriod.end)}`
-																: "Aún no inicia"
-														}
-														studentName={studentName}
-														open={open}
-													/>
+												{status === "Reprueba" ? (
+													<Badge tone="danger">Reprueba</Badge>
+												) : status ? (
+													"Aprueba"
+												) : (
+													<span className="text-muted-foreground">
+														Sin calificación del docente
+													</span>
 												)}
 											</td>
-										)}
-									</tr>
-								);
-							})}
-						</tbody>
-					</DataTable>
+											{!isFinal && (
+												<td>
+													{grade && (
+														<GradeActions
+															grade={grade}
+															subject={row.subject}
+															closed={state !== "open"}
+															hint={
+																state === "closed" && selectedPeriod
+																	? `Periodo cerrado el ${dateLabel(selectedPeriod.end)}`
+																	: "Aún no inicia"
+															}
+															studentName={studentName}
+															open={open}
+														/>
+													)}
+												</td>
+											)}
+										</tr>
+									);
+								})}
+							</tbody>
+						</DataTable>
+					</div>
 				</>
 			)}
 		</section>

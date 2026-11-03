@@ -2,9 +2,9 @@
 import { expect, test } from "bun:test";
 import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { initialState, previewCSV } from "../shared/workflows";
 import { studentPlacement } from "./experience";
 import { StudentsView } from "./students-view";
-import { initialState, previewCSV } from "../shared/workflows";
 
 function render(overrides: Partial<ComponentProps<typeof StudentsView>> = {}) {
 	const s = initialState();
@@ -49,7 +49,10 @@ function render(overrides: Partial<ComponentProps<typeof StudentsView>> = {}) {
 test("directory owns its heading, actions and three explicitly labeled filters", () => {
 	const html = render();
 	expect(html).toMatch(/^<section[^>]*aria-label="Directorio de alumnos"/);
-	expect(html).toContain("<h2>Directorio de alumnos</h2>");
+	expect(html).toMatch(/<h2[^>]*>Directorio de alumnos<\/h2>/);
+	expect(html).toContain('data-slot="student-directory"');
+	expect(html).toContain('data-slot="filter-bar"');
+	expect(html).toContain('data-slot="stat-grid"');
 	expect(html).not.toContain('class="panel student-directory"');
 	expect(html).toContain("2 de 2 alumnos");
 	for (const label of [
@@ -74,7 +77,10 @@ test("selected cycle keeps rows focused and the name opens the profile", () => {
 	expect(body).not.toContain("Histórico");
 	expect(body).not.toContain("2025–2026");
 	expect(body).not.toContain("2026–2027");
-	expect(body).toMatch(/Ana Ejemplo<\/button><\/span><\/td><td>DEMO-001<\/td>/);
+	expect(body).toMatch(
+		/data-slot="student-identity"[\s\S]*Ana Ejemplo<\/button><\/span><\/th><td>DEMO-001<\/td>/,
+	);
+	expect(body).toContain('data-slot="avatar"');
 	expect(body).not.toContain('class="directory-matricula"');
 	expect(html).toContain('id="student-s1"');
 	expect(html).toContain('aria-label="Abrir Ana Ejemplo"');
@@ -154,7 +160,7 @@ test("active filters are individually removable and search can be cleared", () =
 
 test("empty results retain recovery and a live count", () => {
 	const html = render({ visible: [], query: "nadie" });
-	expect(html).toContain('aria-live="polite">0 de 2 alumnos');
+	expect(html).toMatch(/<output[^>]*aria-live="polite"[^>]*>0 de 2 alumnos/);
 	expect(html).toContain("No se encontraron alumnos");
 	expect(html).toContain("Limpiar filtros");
 });
@@ -168,7 +174,7 @@ test("CSV expansion exposes errors and only enables review for valid rows", () =
 		/aria-expanded="true" aria-controls="directory-import"/,
 	);
 	expect(invalid).toContain('id="directory-import"');
-	expect(invalid).toContain('class="error"');
+	expect(invalid).toContain('data-state="error"');
 	expect(invalid).toMatch(/disabled="">Revisar filas válidas \(0\)/);
 	const valid = render({
 		csvPreview: true,
@@ -182,7 +188,7 @@ test("only the student table is a card, including empty recovery", () => {
 	const html = render({ visible: [], query: "nadie" });
 	const card = html.split('<div class="ui-table-card">')[1];
 	expect(card).toBeDefined();
-	expect(card).toContain('class="ui-table-scroll table-scroll"');
+	expect(card).toContain('class="ui-table-scroll"');
 	expect(card).toContain(
 		'<td colSpan="6" class="ui-table-empty">No se encontraron alumnos.',
 	);
@@ -192,9 +198,9 @@ test("only the student table is a card, including empty recovery", () => {
 	expect(html.match(/No se encontraron alumnos/g)).toHaveLength(1);
 });
 
-test("each row has a brick open button with an icon", () => {
+test("each row has an icon button that opens the profile", () => {
 	const row = render().split("<tbody>")[1].split("</tr>")[0];
 	expect(row).toMatch(
-		/<button type="button" class="directory-open" aria-label="Abrir expediente de Ana Ejemplo"><svg[^>]*aria-hidden="true"[\s\S]*?<\/svg><\/button>/,
+		/<button data-slot="button" data-variant="icon" type="button"[^>]*aria-label="Abrir expediente de Ana Ejemplo"[^>]*><svg[^>]*aria-hidden="true"[\s\S]*?<\/svg><\/button>/,
 	);
 });
