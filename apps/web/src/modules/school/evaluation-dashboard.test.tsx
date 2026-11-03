@@ -7,6 +7,7 @@ import {
 	buildEvaluationMatrix,
 	summarizeEvaluation,
 } from "./evaluation-results";
+import { EvaluationResultsView } from "./evaluation-results-view";
 import { initialState, type State } from "./workflows";
 
 function fixture() {
@@ -289,14 +290,14 @@ test("risk summary pluralizes risk and evaluated counts", () => {
 	expect(plural).toContain("2 evaluados");
 });
 
-test("results follow the minimal layout: stats card, filters above one table, lowest groups card", () => {
+test("results follow the minimal layout: stats card, filters above the bars, failing subjects card", () => {
 	const html = render();
 	for (const text of [
 		"Promedio general",
 		"Aprobación",
 		"Reprobatorias",
-		"Grupos con menor promedio",
-		"No se imparte",
+		"Promedio por grupo",
+		"Materias con más reprobación",
 	])
 		expect(html).toContain(text);
 	for (const removed of [
@@ -306,13 +307,16 @@ test("results follow the minimal layout: stats card, filters above one table, lo
 		"Evolución por periodo",
 		'class="evaluation-context"',
 		'aria-label="Nivel educativo"',
+		'class="ui-data-table"',
+		"No se imparte",
+		"Grupos con menor promedio",
 	])
 		expect(html).not.toContain(removed);
 	const stats = html.indexOf(
 		'class="progress-card progress-stats results-stats"',
 	);
 	const filters = html.indexOf('class="progress-filters"');
-	const table = html.indexOf('class="ui-table-card"');
+	const table = html.indexOf('class="progress-card results-bars"');
 	expect(stats).toBeGreaterThan(-1);
 	expect(stats).toBeLessThan(filters);
 	expect(filters).toBeLessThan(table);
@@ -322,7 +326,7 @@ test("results follow the minimal layout: stats card, filters above one table, lo
 		/id="results-period"[^>]*><option value="" selected="">Todo el ciclo/,
 	);
 	expect(html).toContain('aria-label="Abrir grupo 1° A"');
-	expect(html).toContain('class="progress-card results-groups"');
+	expect(html).toContain('class="progress-card results-failing"');
 	const s = fixture();
 	s.groups[1].grade = "1° semestre";
 	expect(render(s)).not.toContain('aria-label="Nivel educativo"');
@@ -341,11 +345,71 @@ test("published zero remains numeric, missing and draft values are dashes", () =
 	expect(html).toContain('class="evaluation-mean">0.0</strong>');
 	expect(html).toContain("calificación publicada");
 	expect(html).toContain("Sin publicar");
-	expect(html).toContain("No se imparte");
 	expect(html).not.toContain("7.777");
 	expect(html).not.toContain(">95<");
 	expect(html).not.toContain('<th scope="col">Otra escala</th>');
 	expect(html).toMatch(/<option value="[^"]+">0–100<\/option>/);
+});
+
+function renderResults(groupId: string, s: State = fixture()) {
+	const data = buildEvaluationData(s);
+	return renderToStaticMarkup(
+		<EvaluationResultsView
+			data={data}
+			cycleId="c1"
+			cycleName="2026–2027"
+			period=""
+			subject=""
+			groupId={groupId}
+			options={{
+				periods: [],
+				grades: [],
+				groups: s.groups,
+				subjects: [],
+			}}
+			onFilter={() => {}}
+			rules={s.evaluationRules}
+			onOpenGroup={() => {}}
+		/>,
+	);
+}
+test("all groups are bars ranked from the lowest average, unpublished last", () => {
+	const s = fixture();
+	s.assignments.push({ ...s.assignments[0], id: "g2m", group: "g2" });
+	s.grades.push({ ...s.grades[0], id: "g2g", assignment: "g2m", value: 9 });
+	s.groups.push({ id: "g3", name: "3° C", cycle: "c1", grade: "3°" });
+	s.assignments.push({ ...s.assignments[1], id: "g3a", group: "g3" });
+	const html = renderResults("", s);
+	const order = ["1° A", "2° B", "3° C"].map((name) =>
+		html.indexOf(`aria-label="Abrir grupo ${name}"`),
+	);
+	expect(order[0]).toBeGreaterThan(-1);
+	expect(order[0]).toBeLessThan(order[1]);
+	expect(order[1]).toBeLessThan(order[2]);
+	expect(html).toMatch(/class="results-threshold"/);
+});
+test("a selected group shows only the subjects it takes", () => {
+	const g1 = renderResults("g1");
+	expect(g1).toContain("Materias de 1° A");
+	expect(g1).toMatch(/<span class="results-row-name">Matemáticas<\/span>/);
+	expect(g1).not.toContain("Arte");
+	const g2 = renderResults("g2");
+	expect(g2).toMatch(/<span class="results-row-name">Arte<\/span>/);
+	expect(g2).not.toContain("Matemáticas");
+	expect(g2).toContain("Sin publicar");
+});
+test("failing subjects card ranks subjects by failure rate", () => {
+	const s = fixture();
+	s.assignments.push({ ...s.assignments[0], id: "h", subject: "Historia" });
+	s.grades.push(
+		{ ...s.grades[0], id: "h1", assignment: "h", value: 9 },
+		{ ...s.grades[0], id: "h2", assignment: "h", value: 4 },
+	);
+	const html = renderResults("", s);
+	const card = html.slice(html.indexOf("Materias con más reprobación"));
+	expect(card.indexOf("Matemáticas")).toBeLessThan(card.indexOf("Historia"));
+	expect(card).toContain("100%");
+	expect(card).toContain("50%");
 });
 
 test("single scale is context rather than an unnecessary selector", () => {

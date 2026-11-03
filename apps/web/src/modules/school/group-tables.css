@@ -998,50 +998,33 @@
 	--tone-fill: transparent;
 	--tone-text: var(--ink-muted);
 }
-.results-value {
-	display: inline-block;
-	min-width: 44px;
-	padding: 3px 8px;
-	border-radius: 8px;
-	background: var(--tone-fill);
-	color: var(--tone-text);
-	font-size: 14px;
-	font-weight: 600;
-}
-.results-total {
-	font-size: 15px;
-	color: var(--tone-text);
-}
-.evaluation-dashboard .results-scroll .ui-data-table tbody th {
-	text-align: left;
-}
-.results-groups {
+.results-failing {
 	position: sticky;
 	top: 16px;
 	padding: 18px;
 }
-.results-groups h3 {
+.results-failing h3 {
 	margin: 0 0 10px;
 	font-size: 17px;
 	font-weight: 650;
 }
-.results-groups ol {
+.results-failing ol {
 	display: grid;
 	gap: 14px;
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
-.results-groups li {
+.results-failing li {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 4px 12px;
 }
-.results-groups li > strong {
-	font-size: 18px;
+.results-failing li > strong {
+	font-size: 16px;
 	font-weight: 650;
-	color: var(--tone-text);
+	color: var(--tone-brick-ink);
 }
 .results-bar {
 	grid-column: 1 / -1;
@@ -1055,16 +1038,16 @@
 	display: block;
 	height: 100%;
 	border-radius: inherit;
-	background: var(--tone-dot);
+	background: var(--palette-brick);
 }
-.evaluation-dashboard .results-groups > p {
+.evaluation-dashboard .results-failing > p {
 	font-size: 14px;
 }
 .evaluation-results .evaluation-method {
 	margin-top: 16px;
 }
 @media (max-width: 1180px) {
-	.results-groups {
+	.results-failing {
 		position: static;
 	}
 }
@@ -1072,10 +1055,6 @@
 	.progress-stats.results-stats dl {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
-}
-/* Visually hidden labels are absolutely positioned; keep them inside the scroller. */
-.results-scroll {
-	position: relative;
 }
 .results-legend li::before {
 	content: "";
@@ -1089,7 +1068,129 @@
 	font-weight: 650;
 	color: var(--tone-ink);
 }
-.evaluation-dashboard .results-groups .progress-group-link {
+
+/* Results bars: groups or the selected group's subjects. */
+.results-bars {
+	padding: 18px 22px 8px;
+}
+.results-bars > header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 16px;
+	margin-bottom: 8px;
+}
+.results-bars h3 {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 650;
+}
+.results-bars .results-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 14px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 13px;
+	color: var(--ink-muted);
+}
+.results-bars .results-legend li {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.results-rows {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.results-rows li {
+	display: grid;
+	grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 64px 84px;
+	align-items: center;
+	gap: 14px;
+	min-height: 48px;
+	border-top: 1px solid var(--line);
+}
+.results-rows li:first-child {
+	border-top: 0;
+}
+.results-row-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ink);
+}
+.evaluation-dashboard .results-rows .progress-group-link {
 	justify-self: start;
+	max-width: 100%;
 	text-align: left;
+}
+.results-track {
+	position: relative;
+	display: block;
+	height: 12px;
+	border-radius: 999px;
+	background: var(--surface-muted);
+}
+.results-track i {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--tone-dot);
+}
+.results-rows li[data-tone="good"] .results-track i {
+	background: #4f9466;
+}
+.results-threshold {
+	position: absolute;
+	top: -4px;
+	bottom: -4px;
+	width: 2px;
+	border-radius: 1px;
+	background: var(--ink);
+	opacity: 0.55;
+}
+.results-row-mean {
+	justify-self: end;
+	font-size: 16px;
+	font-weight: 650;
+	color: var(--tone-text);
+	white-space: nowrap;
+}
+.results-rows li[data-tone="missing"] .results-row-mean {
+	font-size: 13px;
+	font-weight: 500;
+}
+.results-row-approval {
+	justify-self: end;
+	font-size: 13px;
+	color: var(--ink-muted);
+	white-space: nowrap;
+}
+.results-empty {
+	padding: 24px 0;
+	text-align: center;
+}
+.evaluation-dashboard .results-empty p {
+	margin: 4px 0 0;
+	font-size: 14px;
+}
+@media (max-width: 760px) {
+	.results-rows li {
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 6px 12px;
+		padding: 8px 0;
+	}
+	.results-track {
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+	.results-row-approval {
+		display: none;
+	}
 }

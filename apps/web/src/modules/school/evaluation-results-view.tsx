@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { DataTable, EmptyTableRow } from "../../components/ui/data-table";
 import type { EvaluationRules } from "./evaluation-operations";
 import { Select } from "./evaluation-progress";
 import {
 	buildEvaluationMatrix,
 	type EvaluationData,
+	subjectStatistics,
 	summarizeEvaluation,
 } from "./evaluation-results";
 import type { State } from "./workflows";
@@ -101,9 +101,50 @@ export function EvaluationResultsView({
 		...filters,
 		period: "",
 	}).byPeriod.filter((p) => p.mean != null);
-	const lowest = matrix.groups
-		.filter((g) => g.mean != null)
-		.sort((a, b) => (a.mean ?? 0) - (b.mean ?? 0))
+	const approvalOf = (list: typeof records) =>
+		list.length
+			? list.filter((r) => r.value >= rules.passing).length / list.length
+			: null;
+	const byMean = <T extends { mean: number | null; label: string }>(
+		a: T,
+		b: T,
+	) =>
+		a.mean == null
+			? b.mean == null
+				? a.label.localeCompare(b.label, "es", { numeric: true })
+				: 1
+			: b.mean == null
+				? -1
+				: a.mean - b.mean;
+	const selected = options.groups.find((g) => g.id === validGroup);
+	// With a group chosen the report only holds that group's assignments,
+	// so the bars list exactly the subjects it takes.
+	const rows = selected
+		? matrix.bySubject
+				.map((subject) => ({
+					key: subject.key,
+					label: subject.label,
+					mean: subject.mean,
+					count: subject.count,
+					approval: approvalOf(
+						records.filter((r) => r.subject === subject.key),
+					),
+					group: undefined as string | undefined,
+				}))
+				.sort(byMean)
+		: matrix.groups
+				.map((group) => ({
+					key: group.key,
+					label: group.label,
+					mean: group.mean,
+					count: group.count,
+					approval: approvalOf(records.filter((r) => r.groupId === group.key)),
+					group: group.key,
+				}))
+				.sort(byMean);
+	const failing = subjectStatistics(report, records, rules.passing)
+		.filter((row) => row.failureRate != null && row.failureRate > 0)
+		.sort((a, b) => (b.failureRate ?? 0) - (a.failureRate ?? 0))
 		.slice(0, 5);
 	const position = (value: number) =>
 		scale
@@ -231,96 +272,76 @@ export function EvaluationResultsView({
 							onChange={(v) => onFilter("subject", v)}
 						/>
 					</div>
-					<ul
-						className="grades-legend results-legend"
-						aria-label="Leyenda de promedios"
+					<section
+						className="progress-card results-bars"
+						aria-labelledby="results-bars-title"
 					>
-						<li data-tone="fail">
-							Reprobatorio (&lt; {number.format(rules.passing)})
-						</li>
-						<li data-tone="near">
-							Cerca del mínimo (&lt; {number.format(rules.passing + 1)})
-						</li>
-						<li data-tone="good">Aprobado</li>
-					</ul>
-					<DataTable
-						caption={`Promedio publicado por grupo y materia · ${cycleName}`}
-						variant="card"
-						scrollClassName="grades-scroll progress-scroll results-scroll"
-						scrollLabel="Promedio por grupo y materia"
-					>
-						<thead>
-							<tr>
-								<th scope="col">Grupo</th>
-								{matrix.subjects.map((name) => (
-									<th scope="col" key={name}>
-										{name}
-									</th>
-								))}
-								<th scope="col">Promedio</th>
-							</tr>
-						</thead>
-						<tbody>
-							{empty && (
-								<EmptyTableRow columns={matrix.subjects.length + 2}>
-									<strong>Sin resultados publicados</strong>
-									<br />
+						<header>
+							<h3 id="results-bars-title">
+								{selected
+									? `Materias de ${selected.name}`
+									: "Promedio por grupo"}
+							</h3>
+							<ul className="results-legend" aria-label="Leyenda de promedios">
+								<li data-tone="fail">
+									Reprobatorio (&lt; {number.format(rules.passing)})
+								</li>
+								<li data-tone="near">
+									Cerca del mínimo (&lt; {number.format(rules.passing + 1)})
+								</li>
+								<li data-tone="good">Aprobado</li>
+							</ul>
+						</header>
+						{empty ? (
+							<div className="results-empty">
+								<strong>Sin resultados publicados</strong>
+								<p>
 									Publica calificaciones desde el espacio de un grupo para
 									verlas aquí.
-								</EmptyTableRow>
-							)}
-							{matrix.groups.map((group) => (
-								<tr key={group.key}>
-									<th scope="row">
-										<button
-											type="button"
-											className="progress-group-link"
-											aria-label={`Abrir grupo ${group.label}`}
-											onClick={() => onOpenGroup(group.key)}
-										>
-											{group.label}
-										</button>
-									</th>
-									{matrix.subjects.map((name) => {
-										const cell = group.cells.get(name);
-										if (!cell)
-											return (
-												<td key={name} aria-label={`${name}: No se imparte`}>
-													<span className="grade-none" />
-													<span className="evaluation-sr-only">
-														No se imparte
-													</span>
-												</td>
-											);
-										return (
-											<td
-												key={name}
-												title={
-													cell.count ? countLabel(cell.count) : "Sin publicar"
-												}
-												aria-label={`${name}: ${cell.count ? fmt(cell.mean) : "Sin publicar"}, ${countLabel(cell.count)}`}
+								</p>
+							</div>
+						) : (
+							<ol className="results-rows">
+								{rows.map((row) => (
+									<li key={row.key} data-tone={tone(row.mean)}>
+										{row.group ? (
+											<button
+												type="button"
+												className="progress-group-link results-row-name"
+												aria-label={`Abrir grupo ${row.label}`}
+												onClick={() => onOpenGroup(row.group as string)}
 											>
-												<span
-													className="results-value"
-													data-tone={tone(cell.mean)}
-												>
-													{fmt(cell.mean)}
-												</span>
-											</td>
-										);
-									})}
-									<td>
-										<strong
-											className="results-total"
-											data-tone={tone(group.mean)}
+												{row.label}
+											</button>
+										) : (
+											<span className="results-row-name">{row.label}</span>
+										)}
+										<span
+											className="results-track"
+											aria-hidden="true"
+											title={countLabel(row.count)}
 										>
-											{fmt(group.mean)}
+											{row.mean != null && (
+												<i style={{ width: `${position(row.mean)}%` }} />
+											)}
+											<b
+												className="results-threshold"
+												style={{ left: `${position(rules.passing)}%` }}
+											/>
+										</span>
+										<strong className="results-row-mean">
+											{row.count ? fmt(row.mean) : "Sin publicar"}
 										</strong>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</DataTable>
+										<span className="results-row-approval">
+											{row.approval == null
+												? ""
+												: `${percent.format(row.approval)} aprob.`}
+										</span>
+									</li>
+								))}
+							</ol>
+						)}
+					</section>
 					<details className="evaluation-method">
 						<summary>Cómo se calculan los resultados</summary>
 						<p>
@@ -343,35 +364,24 @@ export function EvaluationResultsView({
 					)}
 				</div>
 				<aside
-					className="progress-card results-groups"
-					aria-labelledby="results-groups-title"
+					className="progress-card results-failing"
+					aria-labelledby="results-failing-title"
 				>
-					<h3 id="results-groups-title">Grupos con menor promedio</h3>
-					{lowest.length ? (
+					<h3 id="results-failing-title">Materias con más reprobación</h3>
+					{failing.length ? (
 						<ol>
-							{lowest.map((group) => (
-								<li key={group.key}>
-									<button
-										type="button"
-										className="progress-group-link"
-										onClick={() => onOpenGroup(group.key)}
-									>
-										{group.label}
-									</button>
-									<strong data-tone={tone(group.mean)}>
-										{fmt(group.mean)}
-									</strong>
+							{failing.map((row) => (
+								<li key={row.subject}>
+									<span>{row.subject}</span>
+									<strong>{percent.format(row.failureRate ?? 0)}</strong>
 									<span className="results-bar" aria-hidden="true">
-										<i
-											data-tone={tone(group.mean)}
-											style={{ width: `${position(group.mean ?? 0)}%` }}
-										/>
+										<i style={{ width: `${(row.failureRate ?? 0) * 100}%` }} />
 									</span>
 								</li>
 							))}
 						</ol>
 					) : (
-						<p>Aún no hay promedios publicados.</p>
+						<p>Ninguna materia tiene calificaciones reprobatorias.</p>
 					)}
 				</aside>
 			</div>
