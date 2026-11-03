@@ -1,9 +1,22 @@
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
 import { DataTable, EmptyTableRow } from "../../../components/ui/data-table";
-import { buildRiskReport, type PeriodFilters } from "./evaluation-operations";
-import { Select } from "./evaluation-progress";
+import { Select } from "../../../components/ui/field";
+import { FilterBar } from "../../../components/ui/filter-bar";
+import { Stat, StatGrid } from "../../../components/ui/stat";
+import { toneSurface } from "../../../components/ui/tone";
+import { cn } from "../../../lib/utils";
 import type { ViewProps } from "../shared/view-types";
 import type { State } from "../shared/workflows";
-import "../shared/group-tables.css";
+import { buildRiskReport, type PeriodFilters } from "./evaluation-operations";
+import {
+	ActionNote,
+	filterFieldClass,
+	filterRowClass,
+	SectionHeading,
+	statClass,
+	tableScroll,
+} from "./evaluation-parts";
 
 type Filter = "period" | "groupId" | "subject" | "grade";
 
@@ -42,23 +55,21 @@ export function EvaluationRisk({
 	const report = buildRiskReport(s, rules, filters);
 	const columns = onOpenStudent ? 5 : 4;
 	const stats = [
-		["risk", "En riesgo", report.students.length],
-		["failed", "Con alguna reprobada", report.withFailures],
-		["evaluated", "Evaluados", report.evaluated],
+		["risk", "En riesgo", report.students.length, "brick"],
+		["failed", "Con alguna reprobada", report.withFailures, "mustard"],
+		["evaluated", "Evaluados", report.evaluated, "teal"],
 	] as const;
 	return (
-		<section className="evaluation-progress evaluation-risk">
-			<header className="progress-heading">
+		<section data-slot="evaluation-risk" className="mt-2">
+			<SectionHeading
+				title={`Riesgo de ${filters.period || "periodo"}`}
+				description={`En riesgo: ${rules.riskSubjects} o más materias con calificación menor a ${rules.passing}.`}
+			>
 				<div>
-					<h2>Riesgo de {filters.period || "periodo"}</h2>
-					<p>
-						En riesgo: {rules.riskSubjects} o más materias con calificación
-						menor a {rules.passing}.
-					</p>
-				</div>
-				<div className="progress-publish">
-					<button
-						type="button"
+					<Button
+						variant="default"
+						size="sm"
+						className="min-h-11 rounded-sm border-border bg-transparent px-3 py-2 text-[13px] text-primary"
 						disabled={!open}
 						onClick={() =>
 							open?.(
@@ -86,47 +97,74 @@ export function EvaluationRisk({
 						}
 					>
 						Cambiar criterio
-					</button>
-					{!open && <small>La configuración no está disponible.</small>}
+					</Button>
+					{!open && (
+						<ActionNote>La configuración no está disponible.</ActionNote>
+					)}
 				</div>
-			</header>
-			<section
-				className="progress-card progress-stats risk-stats"
+			</SectionHeading>
+			<Card
+				data-slot="risk-stats"
 				aria-label="Resumen de riesgo"
+				padding="none"
+				className="px-5.5 py-5"
 			>
-				<dl>
-					{stats.map(([key, label, count]) => (
-						<div key={key} data-state={key}>
-							<dt>{label}</dt>
-							<dd>
-								<strong>{count}</strong>
-							</dd>
-						</div>
+				<StatGrid className="grid-cols-2 md:grid-cols-[repeat(3,minmax(0,0.7fr))_minmax(0,1.4fr)]">
+					{stats.map(([key, label, count, tone]) => (
+						<Stat
+							key={key}
+							tone={tone}
+							label={label}
+							value={count}
+							className={statClass}
+						/>
 					))}
-					<div data-state="distribution" className="evaluation-distribution">
-						<dt>Materias reprobadas</dt>
-						<dd>
-							<ul>
+					<div
+						data-slot="stat"
+						data-state="distribution"
+						className={cn(
+							"col-span-full px-3.5 py-3 md:col-span-1",
+							"rounded-lg",
+							toneSurface.lilac,
+						)}
+					>
+						<dt className="text-[13px] font-semibold [hyphens:auto]">
+							Materias reprobadas
+						</dt>
+						<dd className="m-0">
+							<ul className="m-0 mt-1 flex w-full list-none gap-1.5 p-0">
 								{report.distribution.map((bucket) => (
-									<li key={bucket.label} data-risk={bucket.risk}>
-										<span>{bucket.label}</span>
-										<strong>{bucket.count}</strong>
+									<li
+										key={bucket.label}
+										data-risk={bucket.risk}
+										className={cn(
+											"grid flex-1 justify-items-center gap-0.5 rounded-lg py-1 leading-[1.5]",
+											bucket.risk
+												? toneSurface.brick
+												: "bg-card text-lilac-ink",
+										)}
+									>
+										<span className="text-xs font-semibold">
+											{bucket.label}
+										</span>
+										<strong className="text-[13px]">{bucket.count}</strong>
 									</li>
 								))}
 							</ul>
 						</dd>
 					</div>
-				</dl>
-				<p className="evaluation-risk-summary evaluation-sr-only">
+				</StatGrid>
+				<p className="sr-only">
 					{report.students.length}{" "}
 					{report.students.length === 1 ? "alumno" : "alumnos"} en riesgo ·{" "}
 					{report.withFailures} con al menos una materia reprobada ·{" "}
 					{report.evaluated} {report.evaluated === 1 ? "evaluado" : "evaluados"}
 				</p>
-			</section>
-			<div className="progress-filters">
+			</Card>
+			<FilterBar label="Filtros de riesgo" className={filterRowClass}>
 				<Select
 					id="risk-grade"
+					className={filterFieldClass}
 					label="Grado"
 					value={filters.grade || ""}
 					all="Todos"
@@ -135,6 +173,7 @@ export function EvaluationRisk({
 				/>
 				<Select
 					id="risk-group"
+					className={filterFieldClass}
 					label="Grupo"
 					value={filters.groupId || ""}
 					all="Todos"
@@ -143,6 +182,7 @@ export function EvaluationRisk({
 				/>
 				<Select
 					id="risk-period"
+					className={filterFieldClass}
 					label="Trimestre"
 					value={filters.period}
 					items={options.periods.map((p) => ({ value: p, label: p }))}
@@ -150,24 +190,40 @@ export function EvaluationRisk({
 				/>
 				<Select
 					id="risk-subject"
+					className={filterFieldClass}
 					label="Materia"
 					value={filters.subject || ""}
 					all="Todas"
 					items={options.subjects.map((x) => ({ value: x, label: x }))}
 					onChange={(v) => onFilter("subject", v)}
 				/>
-			</div>
+			</FilterBar>
 			<ul
-				className="grades-legend risk-legend"
+				data-slot="legend"
 				aria-label="Calificaciones reprobadas"
+				className="m-0 -mt-0.5 mb-3 flex list-none flex-wrap gap-x-4.5 gap-y-1.5 p-0 text-[13px] text-muted-foreground"
 			>
-				<li data-state="published">Publicada</li>
-				<li data-state="draft">Borrador, aún no visible para familias</li>
+				<li data-state="published" className="inline-flex items-center gap-1.5">
+					<span
+						aria-hidden="true"
+						className="size-2 shrink-0 rounded-full bg-brick"
+					/>
+					Publicada
+				</li>
+				<li data-state="draft" className="inline-flex items-center gap-1.5">
+					<span
+						aria-hidden="true"
+						className="size-2 shrink-0 rounded-full ring-[1.5px] ring-brick ring-inset"
+					/>
+					Borrador, aún no visible para familias
+				</li>
 			</ul>
 			<DataTable
 				caption="Alumnos en riesgo"
 				variant="card"
-				scrollClassName="grades-scroll risk-scroll"
+				scrollClassName={tableScroll(
+					"[&_table]:min-w-[680px] [&_th]:text-left [&_td]:text-left [&_tbody_td:nth-child(3)]:whitespace-normal",
+				)}
 				scrollLabel="Alumnos en riesgo"
 			>
 				<thead>
@@ -182,7 +238,9 @@ export function EvaluationRisk({
 				<tbody>
 					{!report.students.length && (
 						<EmptyTableRow columns={columns}>
-							<strong>Ningún alumno cumple el criterio</strong>
+							<strong className="text-[15px] text-foreground">
+								Ningún alumno cumple el criterio
+							</strong>
 							<br />
 							{report.withFailures > 0
 								? `${report.withFailures} ${report.withFailures === 1 ? "alumno tiene" : "alumnos tienen"} al menos una materia reprobada.`
@@ -194,31 +252,36 @@ export function EvaluationRisk({
 							<th scope="row">{row.name}</th>
 							<td>
 								{onOpenGroup ? (
-									<button
-										type="button"
-										className="progress-group-link"
+									<Button
+										variant="link"
+										className="min-h-9 text-sm font-[650] whitespace-nowrap"
 										onClick={() => onOpenGroup(row.groupId)}
 									>
 										{row.groupName}
-									</button>
+									</Button>
 								) : (
 									row.groupName
 								)}
 							</td>
 							<td>
-								<ul className="risk-failed">
+								<ul className="m-0 flex list-none flex-wrap gap-1 p-0 whitespace-normal">
 									{row.failed.map((f, i) => (
 										<li
 											// biome-ignore lint/suspicious/noArrayIndexKey: Duplicate subject assignments can produce identical entries.
 											key={`${f.subject}-${i}`}
 											data-state={f.published ? "published" : "draft"}
+											className={cn(
+												"rounded-full px-2.5 py-0.5 text-[13px] leading-[1.6] font-semibold whitespace-nowrap",
+												f.published
+													? toneSurface.brick
+													: "bg-transparent text-brick-ink ring-1 ring-brick ring-inset",
+											)}
 										>
 											{f.subject} {f.value}
 											{!f.published && (
 												<>
 													{" "}
-													·{" "}
-													<span className="evaluation-draft-tag">borrador</span>
+													· <span data-slot="draft-tag">borrador</span>
 												</>
 											)}
 										</li>
@@ -228,13 +291,13 @@ export function EvaluationRisk({
 							<td>{row.missing}</td>
 							{onOpenStudent && (
 								<td>
-									<button
-										type="button"
-										className="risk-open"
+									<Button
+										size="sm"
+										className="min-h-9 max-md:min-h-11 rounded-sm border-border bg-transparent px-3 py-0 text-[13px] whitespace-nowrap text-primary"
 										onClick={() => onOpenStudent(row.studentId)}
 									>
 										Ver expediente
-									</button>
+									</Button>
 								</td>
 							)}
 						</tr>

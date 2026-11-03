@@ -1,14 +1,29 @@
 import { useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardTitle } from "../../../components/ui/card";
+import { Select } from "../../../components/ui/field";
+import { FilterBar } from "../../../components/ui/filter-bar";
+import { Legend } from "../../../components/ui/legend";
+import { Meter } from "../../../components/ui/meter";
+import { Stat, StatGrid } from "../../../components/ui/stat";
+import type { Tone } from "../../../components/ui/tone";
+import { cn } from "../../../lib/utils";
+import type { State } from "../shared/workflows";
 import type { EvaluationRules } from "./evaluation-operations";
-import { Select } from "./evaluation-progress";
+import {
+	filterFieldClass,
+	filterRowClass,
+	layoutClass,
+	SectionHeading,
+	sideClass,
+	statClass,
+} from "./evaluation-parts";
 import {
 	buildEvaluationMatrix,
 	type EvaluationData,
 	subjectStatistics,
 	summarizeEvaluation,
 } from "./evaluation-results";
-import type { State } from "../shared/workflows";
-import "../shared/group-tables.css";
 
 type Filter = "period" | "groupId" | "subject" | "grade";
 type Props = {
@@ -40,6 +55,17 @@ const decimal = new Intl.NumberFormat("es-MX", {
 });
 const fmt = (value: number | null | undefined) =>
 	value == null ? "—" : decimal.format(value);
+const rowTone = {
+	fail: { fill: "bg-brick", mean: "text-brick-ink" },
+	near: { fill: "bg-mustard", mean: "text-mustard-ink" },
+	good: { fill: "bg-success", mean: "text-foreground" },
+	missing: { fill: "", mean: "text-muted-foreground" },
+} as const;
+const legendTones: Record<"fail" | "near" | "good", Tone> = {
+	fail: "brick",
+	near: "mustard",
+	good: "success",
+};
 const countLabel = (count: number) =>
 	`${count} ${count === 1 ? "calificación publicada" : "calificaciones publicadas"}`;
 
@@ -164,81 +190,90 @@ export function EvaluationResultsView({
 	const empty = !report.rows.length;
 	return (
 		<section
-			className="evaluation-progress evaluation-results"
+			data-slot="evaluation-results"
+			className="mt-7"
 			aria-label="Resultados publicados"
 		>
-			<header className="progress-heading">
-				<div>
-					<h2>Resultados de {period || "todo el ciclo"}</h2>
-					<p>
-						{scale ? scale.label : "Sin escala"} · {cycleName}
-					</p>
-				</div>
+			<SectionHeading
+				title={`Resultados de ${period || "todo el ciclo"}`}
+				description={`${scale ? scale.label : "Sin escala"} · ${cycleName}`}
+			>
 				{scales.length > 1 && (
-					<label htmlFor="evaluation-scale" className="progress-filter">
-						<span>Escala</span>
-						<select
-							id="evaluation-scale"
-							value={scaleKey}
-							onChange={(e) => setSelectedScale(e.target.value)}
-						>
-							{scales.map((item) => (
-								<option key={item.key} value={item.key}>
-									{item.label.replace(/^Escala /, "")}
-								</option>
-							))}
-						</select>
-					</label>
+					<Select
+						id="evaluation-scale"
+						label="Escala"
+						className={cn(filterFieldClass, "flex-none")}
+						value={scaleKey}
+						items={scales.map((item) => ({
+							value: item.key,
+							label: item.label.replace(/^Escala /, ""),
+						}))}
+						onChange={setSelectedScale}
+					/>
 				)}
-			</header>
-			<div className="progress-layout">
-				<div className="progress-main">
-					<section
-						className="progress-card progress-stats results-stats"
+			</SectionHeading>
+			<div className={layoutClass}>
+				<div className="min-w-0">
+					<Card
+						data-slot="results-stats"
 						aria-label="Resumen de resultados"
+						padding="none"
+						className="px-5.5 py-5"
 					>
-						<dl>
-							<div data-state="groups">
-								<dt>Promedio general</dt>
-								<dd>
-									<strong className="evaluation-mean">
-										{fmt(report.mean)}
-									</strong>
-									<span>{countLabel(report.count)}</span>
-								</dd>
-							</div>
-							<div data-state="published">
-								<dt>Aprobación</dt>
-								<dd>
-									<strong>
-										{approval == null ? "—" : percent.format(approval)}
-									</strong>
-									<span>mínimo {number.format(rules.passing)}</span>
-								</dd>
-							</div>
-							<div data-state="missing">
-								<dt>Reprobatorias</dt>
-								<dd>
-									<strong>{failures}</strong>
-									<span>de {records.length}</span>
-								</dd>
-							</div>
-						</dl>
+						<StatGrid className="grid-cols-2 md:grid-cols-3">
+							<Stat
+								state="groups"
+								label="Promedio general"
+								value={
+									<span data-slot="evaluation-mean">{fmt(report.mean)}</span>
+								}
+								caption={countLabel(report.count)}
+								className={cn(
+									statClass,
+									"[&_dd]:flex-wrap [&_dd>span]:font-medium",
+								)}
+							/>
+							<Stat
+								state="published"
+								label="Aprobación"
+								value={approval == null ? "—" : percent.format(approval)}
+								caption={`mínimo ${number.format(rules.passing)}`}
+								className={cn(
+									statClass,
+									"[&_dd]:flex-wrap [&_dd>span]:font-medium",
+								)}
+							/>
+							<Stat
+								state="missing"
+								label="Reprobatorias"
+								value={failures}
+								caption={`de ${records.length}`}
+								className={cn(
+									statClass,
+									"[&_dd]:flex-wrap [&_dd>span]:font-medium",
+								)}
+							/>
+						</StatGrid>
 						{evolution.length > 1 && (
-							<p className="results-evolution">
+							<p
+								data-slot="results-evolution"
+								className="mt-3.5 max-w-[72ch] text-sm leading-[1.6] text-muted-foreground"
+							>
 								{evolution.map((p, index) => (
 									<span key={p.key}>
 										{index > 0 && <span aria-hidden="true"> → </span>}
-										{p.label} <strong>{fmt(p.mean)}</strong>
+										{p.label}{" "}
+										<strong className="text-foreground">{fmt(p.mean)}</strong>
 									</span>
 								))}
 							</p>
 						)}
-					</section>
-					<div className="progress-filters">
+					</Card>
+					<FilterBar label="Filtros de resultados" className={filterRowClass}>
 						<Select
 							id="results-grade"
 							label="Grado"
+							className={filterFieldClass}
 							value={grade}
 							all="Todos"
 							items={options.grades.map((g) => ({ value: g, label: g }))}
@@ -247,6 +282,7 @@ export function EvaluationResultsView({
 						<Select
 							id="results-group"
 							label="Grupo"
+							className={filterFieldClass}
 							value={validGroup}
 							all="Todos"
 							items={options.groups.map((g) => ({
@@ -258,6 +294,7 @@ export function EvaluationResultsView({
 						<Select
 							id="results-period"
 							label="Trimestre"
+							className={filterFieldClass}
 							value={period}
 							all="Todo el ciclo"
 							items={options.periods.map((p) => ({ value: p, label: p }))}
@@ -266,85 +303,125 @@ export function EvaluationResultsView({
 						<Select
 							id="results-subject"
 							label="Materia"
+							className={filterFieldClass}
 							value={subject}
 							all="Todas"
 							items={options.subjects.map((x) => ({ value: x, label: x }))}
 							onChange={(v) => onFilter("subject", v)}
 						/>
-					</div>
-					<section
-						className="progress-card results-bars"
+					</FilterBar>
+					<Card
+						data-slot="results-bars"
 						aria-labelledby="results-bars-title"
+						padding="none"
+						className="px-5.5 pt-[18px] pb-2"
 					>
-						<header>
-							<h3 id="results-bars-title">
+						<header className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+							<CardTitle
+								id="results-bars-title"
+								className="text-base font-[650] tracking-normal"
+							>
 								{selected
 									? `Materias de ${selected.name}`
 									: "Promedio por grupo"}
-							</h3>
-							<ul className="results-legend" aria-label="Leyenda de promedios">
-								<li data-tone="fail">
-									Reprobatorio (&lt; {number.format(rules.passing)})
-								</li>
-								<li data-tone="near">
-									Cerca del mínimo (&lt; {number.format(rules.passing + 1)})
-								</li>
-								<li data-tone="good">Aprobado</li>
-							</ul>
+							</CardTitle>
+							<Legend
+								label="Leyenda de promedios"
+								className="gap-x-3.5 gap-y-1 text-[13px]"
+								items={[
+									{
+										tone: legendTones.fail,
+										label: `Reprobatorio (< ${number.format(rules.passing)})`,
+									},
+									{
+										tone: legendTones.near,
+										label: `Cerca del mínimo (< ${number.format(rules.passing + 1)})`,
+									},
+									{ tone: legendTones.good, label: "Aprobado" },
+								]}
+							/>
 						</header>
 						{empty ? (
-							<div className="results-empty">
+							<div className="py-6 text-center">
 								<strong>Sin resultados publicados</strong>
-								<p>
+								<p className="mt-1 text-sm">
 									Publica calificaciones desde el espacio de un grupo para
 									verlas aquí.
 								</p>
 							</div>
 						) : (
-							<ol className="results-rows">
-								{rows.map((row) => (
-									<li key={row.key} data-tone={tone(row.mean)}>
-										{row.group ? (
-											<button
-												type="button"
-												className="progress-group-link results-row-name"
-												aria-label={`Abrir grupo ${row.label}`}
-												onClick={() => onOpenGroup(row.group as string)}
-											>
-												{row.label}
-											</button>
-										) : (
-											<span className="results-row-name">{row.label}</span>
-										)}
-										<span
-											className="results-track"
-											aria-hidden="true"
-											title={countLabel(row.count)}
+							<ol className="m-0 list-none p-0">
+								{rows.map((row) => {
+									const key = tone(row.mean);
+									return (
+										<li
+											key={row.key}
+											data-tone={key}
+											className="grid min-h-12 grid-cols-[minmax(120px,180px)_minmax(0,1fr)_64px_84px] items-center gap-3.5 border-border not-first:border-t max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-3 max-md:gap-y-1.5 max-md:py-2"
 										>
-											{row.mean != null && (
-												<i style={{ width: `${position(row.mean)}%` }} />
+											{row.group ? (
+												<Button
+													variant="link"
+													data-slot="results-row-name"
+													className="min-h-9 max-w-full justify-self-start overflow-hidden text-left text-sm font-[650] text-ellipsis whitespace-nowrap"
+													aria-label={`Abrir grupo ${row.label}`}
+													onClick={() => onOpenGroup(row.group as string)}
+												>
+													{row.label}
+												</Button>
+											) : (
+												<span
+													data-slot="results-row-name"
+													className="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-foreground"
+												>
+													{row.label}
+												</span>
 											)}
-											<b
-												className="results-threshold"
-												style={{ left: `${position(rules.passing)}%` }}
-											/>
-										</span>
-										<strong className="results-row-mean">
-											{row.count ? fmt(row.mean) : "Sin publicar"}
-										</strong>
-										<span className="results-row-approval">
-											{row.approval == null
-												? ""
-												: `${percent.format(row.approval)} aprob.`}
-										</span>
-									</li>
-								))}
+											<span
+												aria-hidden="true"
+												title={countLabel(row.count)}
+												className="relative block h-3 rounded-full bg-muted max-md:col-span-full max-md:row-start-2"
+											>
+												{row.mean != null && (
+													<span
+														className={cn(
+															"block h-full rounded-[inherit]",
+															rowTone[key].fill,
+														)}
+														style={{ width: `${position(row.mean)}%` }}
+													/>
+												)}
+												<b
+													data-slot="results-threshold"
+													className="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-foreground opacity-55"
+													style={{ left: `${position(rules.passing)}%` }}
+												/>
+											</span>
+											<strong
+												className={cn(
+													"justify-self-end text-base font-[650] whitespace-nowrap",
+													rowTone[key].mean,
+													key === "missing" && "text-[13px] font-medium",
+												)}
+											>
+												{row.count ? fmt(row.mean) : "Sin publicar"}
+											</strong>
+											<span className="justify-self-end text-[13px] whitespace-nowrap text-muted-foreground max-md:hidden">
+												{row.approval == null
+													? ""
+													: `${percent.format(row.approval)} aprob.`}
+											</span>
+										</li>
+									);
+								})}
 							</ol>
 						)}
-					</section>
-					<details className="evaluation-method">
-						<summary>Cómo se calculan los resultados</summary>
-						<p>
+					</Card>
+					<details className="mt-6 border-t border-border">
+						<summary className="min-h-11 cursor-pointer py-3 text-[13px] text-primary">
+							Cómo se calculan los resultados
+						</summary>
+						<p className="mt-2 mb-3 max-w-[72ch] text-[13px] leading-[1.6] text-muted-foreground">
 							Cada calificación publicada pesa igual; no se promedian los
 							promedios de los grupos. Las faltantes no cuentan como cero, los
 							borradores quedan fuera y las escalas nunca se mezclan. Los
@@ -354,7 +431,7 @@ export function EvaluationResultsView({
 					</details>
 					{(data.diagnostics.excluded > 0 ||
 						data.diagnostics.duplicates > 0) && (
-						<p className="evaluation-diagnostics">
+						<p className="max-w-[72ch] pt-4 text-[13px] leading-[1.6] text-muted-foreground">
 							Diagnóstico global de los datos guardados (todos los ciclos y
 							escalas): {data.diagnostics.excluded} registros publicados
 							excluidos por datos inválidos o referencias incompletas;{" "}
@@ -363,26 +440,47 @@ export function EvaluationResultsView({
 						</p>
 					)}
 				</div>
-				<aside
-					className="progress-card results-failing"
-					aria-labelledby="results-failing-title"
-				>
-					<h3 id="results-failing-title">Materias con más reprobación</h3>
-					{failing.length ? (
-						<ol>
-							{failing.map((row) => (
-								<li key={row.subject}>
-									<span>{row.subject}</span>
-									<strong>{percent.format(row.failureRate ?? 0)}</strong>
-									<span className="results-bar" aria-hidden="true">
-										<i style={{ width: `${(row.failureRate ?? 0) * 100}%` }} />
-									</span>
-								</li>
-							))}
-						</ol>
-					) : (
-						<p>Ninguna materia tiene calificaciones reprobatorias.</p>
-					)}
+				<aside className={sideClass}>
+					<Card
+						data-slot="results-failing"
+						aria-labelledby="results-failing-title"
+						padding="none"
+						className="p-[18px]"
+					>
+						<CardTitle
+							id="results-failing-title"
+							className="text-base font-[650] tracking-normal"
+						>
+							Materias con más reprobación
+						</CardTitle>
+						{failing.length ? (
+							<CardContent>
+								<ol className="m-0 grid list-none gap-3.5 p-0">
+									{failing.map((row) => (
+										<li
+											key={row.subject}
+											className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1"
+										>
+											<span>{row.subject}</span>
+											<strong className="text-base font-[650] text-brick-ink">
+												{percent.format(row.failureRate ?? 0)}
+											</strong>
+											<Meter
+												percent={(row.failureRate ?? 0) * 100}
+												label={`Reprobación de ${row.subject}`}
+												tone="brick"
+												className="col-span-full h-2"
+											/>
+										</li>
+									))}
+								</ol>
+							</CardContent>
+						) : (
+							<p className="text-sm">
+								Ninguna materia tiene calificaciones reprobatorias.
+							</p>
+						)}
+					</Card>
 				</aside>
 			</div>
 		</section>

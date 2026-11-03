@@ -1,6 +1,6 @@
-import { educationLevel } from "./evaluation-results";
 import { enrolledStudents } from "../groups/group-context";
 import type { State } from "../shared/workflows";
+import { educationLevel } from "./evaluation-results";
 
 export type EvaluationRules = State["evaluationRules"];
 export type PeriodFilters = {

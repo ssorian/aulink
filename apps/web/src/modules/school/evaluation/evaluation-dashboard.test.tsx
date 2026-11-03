@@ -1,6 +1,7 @@
 // @ts-expect-error Bun runs these tests; browser compilation excludes its types.
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { initialState, type State } from "../shared/workflows";
 import { EvaluationDashboard } from "./evaluation-dashboard";
 import {
 	buildEvaluationData,
@@ -8,7 +9,6 @@ import {
 	summarizeEvaluation,
 } from "./evaluation-results";
 import { EvaluationResultsView } from "./evaluation-results-view";
-import { initialState, type State } from "../shared/workflows";
 
 function fixture() {
 	const s = initialState();
@@ -162,8 +162,8 @@ test("progress presents publication and teacher pending with a single period", (
 		expect(html).toContain(text);
 	expect(html).not.toContain("<h2>Evaluación del ciclo</h2>");
 	expect(html).toContain('aria-label="Evaluación del ciclo"');
-	expect(html).toContain("<details>");
-	expect(html).not.toContain("<details open");
+	expect(html).toMatch(/<details[^>]*>/);
+	expect(html).not.toMatch(/<details[^>]*\sopen/);
 	expect(html).not.toContain("Todos los periodos");
 	expect(renderOperational(operationalFixture(), "Resultados")).toContain(
 		"Todo el ciclo",
@@ -180,18 +180,18 @@ test("progress table shows one group and one subject with every term, average an
 	expect(html).toMatch(/<th scope="col" data-current="true">P1<\/th>/);
 	expect(html).toContain('<th scope="col">Promedio</th>');
 	expect(html).toContain('<th scope="col">Acceso al plantel</th>');
-	expect(html).toMatch(/class="grade-value" data-state="draft"[^>]*>4</);
+	expect(html).toMatch(/data-slot="grade-value" data-state="draft"[^>]*>4</);
 	expect(html).not.toContain("Leonardo Castillo Vega");
 });
 test("filters sit right above the table; stats and teacher pending are cards", () => {
 	const html = renderOperational(operationalFixture());
-	const stats = html.indexOf('class="progress-card progress-stats"');
-	const filters = html.indexOf('class="progress-filters"');
+	const stats = html.indexOf('data-slot="progress-stats"');
+	const filters = html.indexOf('data-slot="filter-bar"');
 	const table = html.indexOf('class="ui-table-card"');
 	expect(stats).toBeGreaterThan(-1);
 	expect(stats).toBeLessThan(filters);
 	expect(filters).toBeLessThan(table);
-	expect(html).toContain('class="progress-card progress-pending"');
+	expect(html).toContain('data-slot="progress-pending"');
 	expect(html).not.toContain("% del total");
 	expect(html).not.toContain(
 		"La captura y corrección se realizan dentro de cada grupo.",
@@ -208,8 +208,8 @@ test("risk uses the progress layout: stats card, filters above a standard table"
 	expect(html).not.toContain('class="evaluation-context"');
 	expect(html).not.toContain('aria-label="Nivel educativo"');
 	expect(html).not.toMatch(/class="eval-panel/);
-	const stats = html.indexOf('class="progress-card progress-stats risk-stats"');
-	const filters = html.indexOf('class="progress-filters"');
+	const stats = html.indexOf('data-slot="risk-stats"');
+	const filters = html.indexOf('data-slot="filter-bar"');
 	const table = html.indexOf('class="ui-table-card"');
 	expect(stats).toBeGreaterThan(-1);
 	expect(stats).toBeLessThan(filters);
@@ -239,27 +239,28 @@ test("pending teachers are ranked and their assignments are collapsed", () => {
 		enrollments: [{ group: "g1", cycle: "c1" }],
 	});
 	const html = renderOperational(s);
-	expect(html.indexOf("<strong>Docente B</strong>")).toBeLessThan(
-		html.indexOf("<strong>Docente A</strong>"),
-	);
-	expect(html).toContain("<details><summary>");
-	expect(html).not.toContain("<details open");
+	const teacher = (name: string) =>
+		html.search(new RegExp(`<strong[^>]*>${name}</strong>`));
+	expect(teacher("Docente B")).toBeGreaterThan(-1);
+	expect(teacher("Docente B")).toBeLessThan(teacher("Docente A"));
+	expect(html).toMatch(/<details[^>]*><summary/);
+	expect(html).not.toMatch(/<details[^>]*\sopen/);
 });
 test("risk includes failing drafts and explains its criterion", () => {
 	const html = renderOperational(operationalFixture(), "Alumnos en riesgo");
 	for (const text of [
 		"En riesgo: 2 o más materias con calificación menor a 6.",
 		"Matemáticas 5",
-		'Lengua 4 · <span class="evaluation-draft-tag">borrador</span>',
+		'Lengua 4 · <span data-slot="draft-tag">borrador</span>',
 		"1 alumno en riesgo",
 		"2 evaluados",
 		"Ver expediente",
 	])
 		expect(html).toContain(text);
 	expect(html).toContain("Materias reprobadas</dt>");
-	expect(html).toContain("<span>0</span><strong>1</strong>");
-	expect(html).toContain("<span>2</span><strong>1</strong>");
-	expect(html).toContain("<span>3+</span><strong>0</strong>");
+	expect(html).toMatch(/<span[^>]*>0<\/span><strong[^>]*>1<\/strong>/);
+	expect(html).toMatch(/<span[^>]*>2<\/span><strong[^>]*>1<\/strong>/);
+	expect(html).toMatch(/<span[^>]*>3\+<\/span><strong[^>]*>0<\/strong>/);
 });
 test("risk empty state explains other failures", () => {
 	const s = operationalFixture();
@@ -312,11 +313,9 @@ test("results follow the minimal layout: stats card, filters above the bars, fai
 		"Grupos con menor promedio",
 	])
 		expect(html).not.toContain(removed);
-	const stats = html.indexOf(
-		'class="progress-card progress-stats results-stats"',
-	);
-	const filters = html.indexOf('class="progress-filters"');
-	const table = html.indexOf('class="progress-card results-bars"');
+	const stats = html.indexOf('data-slot="results-stats"');
+	const filters = html.indexOf('data-slot="filter-bar"');
+	const table = html.indexOf('data-slot="results-bars"');
 	expect(stats).toBeGreaterThan(-1);
 	expect(stats).toBeLessThan(filters);
 	expect(filters).toBeLessThan(table);
@@ -326,7 +325,7 @@ test("results follow the minimal layout: stats card, filters above the bars, fai
 		/id="results-period"[^>]*><option value="" selected="">Todo el ciclo/,
 	);
 	expect(html).toContain('aria-label="Abrir grupo 1° A"');
-	expect(html).toContain('class="progress-card results-failing"');
+	expect(html).toContain('data-slot="results-failing"');
 	const s = fixture();
 	s.groups[1].grade = "1° semestre";
 	expect(render(s)).not.toContain('aria-label="Nivel educativo"');
@@ -337,12 +336,12 @@ test("results show the evolution between terms as one line of text", () => {
 	s.grades.push({ ...s.grades[0], id: "a", assignment: "later", value: 8 });
 	const html = render(s);
 	expect(html).toMatch(
-		/class="results-evolution"[^>]*>[\s\S]*Primera[\s\S]*0\.0[\s\S]*Segunda[\s\S]*8\.0/,
+		/data-slot="results-evolution"[^>]*>[\s\S]*Primera[\s\S]*0\.0[\s\S]*Segunda[\s\S]*8\.0/,
 	);
 });
 test("published zero remains numeric, missing and draft values are dashes", () => {
 	const html = render();
-	expect(html).toContain('class="evaluation-mean">0.0</strong>');
+	expect(html).toContain('data-slot="evaluation-mean">0.0</span>');
 	expect(html).toContain("calificación publicada");
 	expect(html).toContain("Sin publicar");
 	expect(html).not.toContain("7.777");
@@ -386,15 +385,17 @@ test("all groups are bars ranked from the lowest average, unpublished last", () 
 	expect(order[0]).toBeGreaterThan(-1);
 	expect(order[0]).toBeLessThan(order[1]);
 	expect(order[1]).toBeLessThan(order[2]);
-	expect(html).toMatch(/class="results-threshold"/);
+	expect(html).toMatch(/data-slot="results-threshold"/);
 });
 test("a selected group shows only the subjects it takes", () => {
 	const g1 = renderResults("g1");
 	expect(g1).toContain("Materias de 1° A");
-	expect(g1).toMatch(/<span class="results-row-name">Matemáticas<\/span>/);
+	expect(g1).toMatch(
+		/<span data-slot="results-row-name"[^>]*>Matemáticas<\/span>/,
+	);
 	expect(g1).not.toContain("Arte");
 	const g2 = renderResults("g2");
-	expect(g2).toMatch(/<span class="results-row-name">Arte<\/span>/);
+	expect(g2).toMatch(/<span data-slot="results-row-name"[^>]*>Arte<\/span>/);
 	expect(g2).not.toContain("Matemáticas");
 	expect(g2).toContain("Sin publicar");
 });
@@ -429,7 +430,7 @@ test("empty data explains publication without fabricating group links or zero", 
 	expect(html).toContain("Sin resultados publicados");
 	expect(html).toContain("Publica calificaciones desde el espacio de un grupo");
 	expect(html).not.toContain("Abrir grupo");
-	expect(html).not.toContain('class="evaluation-mean">0');
+	expect(html).not.toContain('data-slot="evaluation-mean">0');
 });
 
 test("cycle-specific scales fall back to the available scale only", () => {
@@ -438,7 +439,7 @@ test("cycle-specific scales fall back to the available scale only", () => {
 	s.groups.push({ id: "next-group", name: "Grupo futuro", cycle: "next" });
 	s.assignments[2].group = "next-group";
 	const html = render(s, "next");
-	expect(html).toContain('class="evaluation-mean">95.0</strong>');
+	expect(html).toContain('data-slot="evaluation-mean">95.0</span>');
 	expect(html).not.toContain("Escala 0–10</option>");
 	expect(html).not.toContain('<option value="Matemáticas">');
 });

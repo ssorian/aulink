@@ -1,5 +1,6 @@
 // @ts-expect-error Bun runs these tests; browser compilation excludes its types.
 import { expect, test } from "bun:test";
+import { initialState, type State } from "../shared/workflows";
 import {
 	buildEvaluationData,
 	educationLevel,
@@ -8,7 +9,6 @@ import {
 	subjectStatistics,
 	summarizeEvaluation,
 } from "./evaluation-results";
-import { initialState, type State } from "../shared/workflows";
 
 const scaleKey = "[0,10]";
 function assignment(

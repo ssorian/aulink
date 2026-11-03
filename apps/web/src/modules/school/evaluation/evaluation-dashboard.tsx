@@ -1,15 +1,13 @@
 import { useMemo, useState } from "react";
 import { WorkspaceTabs } from "../../../components/ui/workspace-tabs";
+import type { ViewProps } from "../shared/view-types";
+import type { State } from "../shared/workflows";
+import { type EvaluationPage, evaluationPages } from "../shell/navigation";
 import { cyclePeriods } from "./evaluation-operations";
 import { EvaluationProgress } from "./evaluation-progress";
 import { buildEvaluationData } from "./evaluation-results";
 import { EvaluationResultsView } from "./evaluation-results-view";
 import { EvaluationRisk } from "./evaluation-risk";
-import { type EvaluationPage, evaluationPages } from "../shell/navigation";
-import type { ViewProps } from "../shared/view-types";
-import type { State } from "../shared/workflows";
-import "./evaluation-dashboard.css";
-import "./evaluation-workspace.css";
 
 type Tab = EvaluationPage;
 type Props = {
@@ -89,15 +87,23 @@ export function EvaluationDashboard({
 	] as string[];
 	const grade = grades.includes(current.grade) ? current.grade : "";
 	return (
-		<section className="evaluation-dashboard" aria-label="Evaluación del ciclo">
-			<header className="evaluation-header">
-				<p>
+		<section
+			data-slot="evaluation-dashboard"
+			className="max-w-full min-w-0 text-foreground tabular-nums selection:bg-selection selection:text-foreground"
+			aria-label="Evaluación del ciclo"
+		>
+			<header className="flex items-center justify-between gap-6 max-md:flex-col max-md:items-start max-md:gap-4">
+				<p className="max-w-[72ch] text-[13px] leading-[1.6] text-muted-foreground">
 					Seguimiento y coordinación de calificaciones para control escolar.
 				</p>
-				<label htmlFor="evaluation-cycle">
+				<label
+					htmlFor="evaluation-cycle"
+					className="flex flex-row items-center gap-2 text-[13px] font-semibold whitespace-nowrap text-foreground"
+				>
 					Ciclo escolar
 					<select
 						id="evaluation-cycle"
+						className="min-h-9 w-auto min-w-0 rounded-sm border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:bg-background disabled:text-muted-foreground"
 						value={cycleId}
 						disabled={!s.cycles.length}
 						onChange={(e) => {
